@@ -2,6 +2,8 @@
 import React from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
+import { useApp } from './store.jsx';
+import { Popover, WhenPicker, PRIO } from './composer.jsx';
 
 // ── Circular priority checkbox ───────────────────────────────
 export function Checkbox({ done, priority = 4, onToggle, size = 20 }) {
@@ -94,15 +96,31 @@ export function Segmented({ value, onChange, options }) {
 // ── Task row ────────────────────────────────────────────────
 // density: 'comfortable' | 'compact' | 'card'
 export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true }) {
+  const { updateTask, deleteTask, labels: customLabels } = useApp();
+  const [menu, setMenu] = React.useState(null);
+  const [hovered, setHovered] = React.useState(false);
+
   const proj = task.projectId && task.projectId !== 'inbox' ? H.projectById(task.projectId) : null;
   const compact = density === 'compact';
   const card = density === 'card';
   const labels = task.labels || [];
+
   const statusChoices = {
+    planned: { label: 'Planned', color: 'var(--text-3)' },
     inprogress: { label: 'In Progress', color: 'var(--p2)' },
     blocked: { label: 'Blocked', color: 'var(--p1)' },
-    waiting: { label: 'Waiting', color: 'var(--p3)' }
+    waiting: { label: 'Waiting', color: 'var(--p3)' },
+    done: { label: 'Done', color: 'var(--today)' }
   };
+
+  const STATUS_CHOICES = {
+    planned: { label: 'Planned', icon: <span style={{ width: 14, height: 14, borderRadius: 99, border: '2.5px solid var(--text-3)', display: 'inline-block' }} /> },
+    inprogress: { label: 'In Progress', icon: <span style={{ width: 14, height: 14, borderRadius: 99, border: '2.5px solid var(--p2)', position: 'relative', overflow: 'hidden', display: 'inline-block' }}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'var(--p2)' }} /></span> },
+    blocked: { label: 'Blocked', icon: <I.x size={14} style={{ color: 'var(--p1)' }} /> },
+    waiting: { label: 'Waiting', icon: <I.repeat size={14} style={{ color: 'var(--p3)' }} /> },
+    done: { label: 'Done', icon: <I.check size={14} style={{ color: 'var(--today)' }} /> }
+  };
+
   const hasMeta = (task.dueOffset !== null && task.dueOffset !== undefined && showProject !== 'inDate') ||
     (task.startOffset !== null && task.startOffset !== undefined && showProject !== 'inDate') ||
     labels.length || (task.subtasks && task.subtasks.length) || task.note ||
@@ -113,18 +131,60 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const meta = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: compact ? 1 : 4 }}>
       {task.status && statusChoices[task.status] && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: statusChoices[task.status].color, fontWeight: 700, fontSize: 12 }}>
-          {task.status === 'inprogress' && <span style={{ width: 10, height: 10, borderRadius: 99, border: '2px solid var(--p2)', position: 'relative', overflow: 'hidden', display: 'inline-block', flexShrink: 0 }}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'var(--p2)' }} /></span>}
-          {task.status === 'blocked' && <I.x size={10} style={{ color: 'var(--p1)', flexShrink: 0 }} />}
-          {task.status === 'waiting' && <I.repeat size={10} style={{ color: 'var(--p3)', flexShrink: 0 }} />}
-          {statusChoices[task.status].label}
-        </span>
+        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => setMenu(menu === 'status' ? null : 'status')} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: statusChoices[task.status].color, fontWeight: 700, fontSize: 12 }}>
+            {task.status === 'inprogress' && <span style={{ width: 10, height: 10, borderRadius: 99, border: '2px solid var(--p2)', position: 'relative', overflow: 'hidden', display: 'inline-block', flexShrink: 0 }}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'var(--p2)' }} /></span>}
+            {task.status === 'blocked' && <I.x size={10} style={{ color: 'var(--p1)', flexShrink: 0 }} />}
+            {task.status === 'waiting' && <I.repeat size={10} style={{ color: 'var(--p3)', flexShrink: 0 }} />}
+            {statusChoices[task.status].label}
+          </button>
+          {menu === 'status' && (
+            <Popover onClose={() => setMenu(null)} style={{ top: 24, left: 0, zIndex: 100, minWidth: 160 }}>
+              {Object.entries(STATUS_CHOICES).map(([k, v]) => (
+                <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
+                  {v.icon}{v.label}
+                </div>
+              ))}
+            </Popover>
+          )}
+        </div>
       )}
-      {showProject !== 'inDate' && <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} />}
+      {showProject !== 'inDate' && (
+        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => setMenu(menu === 'due' ? null : 'due')} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'flex' }}>
+            <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} />
+          </button>
+          {menu === 'due' && (
+            <Popover onClose={() => setMenu(null)} style={{ top: 24, left: 0, zIndex: 100, minWidth: 200 }}>
+              <WhenPicker value={task.dueOffset} time={task.time} onChange={(val, newTime) => {
+                updateTask(task.id, { dueOffset: val, time: newTime });
+              }} onClose={() => setMenu(null)} />
+            </Popover>
+          )}
+        </div>
+      )}
       <SubProgress subtasks={task.subtasks} />
-      {task.note ? <I.note size={13} style={{ color: 'var(--text-3)' }} /> : null}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {labels.map((id) => <LabelChip key={id} id={id} small />)}
+        {labels.map((id) => (
+          <div key={id} style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setMenu(menu === `label_${id}` ? null : `label_${id}`)} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }}>
+              <LabelChip id={id} small />
+            </button>
+            {menu === `label_${id}` && (
+              <Popover onClose={() => setMenu(null)} style={{ top: 20, left: 0, zIndex: 100, minWidth: 180 }}>
+                {customLabels.map((l) => {
+                  const on = task.labels.includes(l.id);
+                  return (
+                    <div key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
+                      <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
+                      {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                    </div>
+                  );
+                })}
+              </Popover>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -133,6 +193,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     <div
       className={'task-row no-sel' + (selected ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
       style={{ padding: pad, marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setMenu(null); }}
       onClick={() => onOpen && onOpen(task)}>
       <div style={{ display: 'flex', width: '100%', alignItems: 'start', gap: 12 }}>
         <div style={{ paddingTop: compact ? 1 : 1.5, flexShrink: 0 }}>
@@ -140,9 +202,68 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="task-title" style={{ fontSize: compact ? 14.5 : 15.5, fontWeight: 600, lineHeight: 1.34, color: 'var(--text)', wordBreak: 'break-word' }}>
-            {task.title}
-          </div>
+          <textarea
+            value={task.title}
+            onChange={(e) => updateTask(task.id, { title: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.target.blur();
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            placeholder="Task title..."
+            rows={1}
+            ref={(el) => {
+              if (el) {
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+              }
+            }}
+            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+            style={{
+              width: '100%',
+              border: 'none',
+              outline: 'none',
+              resize: 'none',
+              background: 'transparent',
+              fontSize: compact ? '14.5px' : '15.5px',
+              fontWeight: 600,
+              lineHeight: 1.34,
+              color: 'var(--text)',
+              fontFamily: 'inherit',
+              padding: 0,
+              margin: 0,
+            }}
+          />
+          {(task.note || hovered) && (
+            <textarea
+              value={task.note || ''}
+              onChange={(e) => updateTask(task.id, { note: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="Add note..."
+              rows={1}
+              ref={(el) => {
+                if (el) {
+                  el.style.height = 'auto';
+                  el.style.height = el.scrollHeight + 'px';
+                }
+              }}
+              onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+              style={{
+                width: '100%',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                background: 'transparent',
+                fontSize: '12.5px',
+                color: 'var(--text-3)',
+                fontFamily: 'inherit',
+                padding: 0,
+                marginTop: 2,
+              }}
+            />
+          )}
           {hasMeta && (compact ? null : meta)}
           {compact && hasMeta && meta}
         </div>
@@ -153,6 +274,87 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               {proj.name}<Dot color={proj.color} />
             </span>
           )}
+
+          {/* Hover Action Bar */}
+          {hovered && (
+            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+              {/* Due Date Trigger */}
+              <div style={{ position: 'relative' }}>
+                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'due_btn' ? null : 'due_btn')} title="Set due date">
+                  <I.calendar size={15} />
+                </button>
+                {menu === 'due_btn' && (
+                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 200 }}>
+                    <WhenPicker value={task.dueOffset} time={task.time} onChange={(val, newTime) => {
+                      updateTask(task.id, { dueOffset: val, time: newTime });
+                    }} onClose={() => setMenu(null)} />
+                  </Popover>
+                )}
+              </div>
+
+              {/* Priority Trigger */}
+              <div style={{ position: 'relative' }}>
+                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'prio_btn' ? null : 'prio_btn')} title="Set priority">
+                  <I.flag size={15} />
+                </button>
+                {menu === 'prio_btn' && (
+                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 140 }}>
+                    {PRIO.map((p) => (
+                      <div key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
+                        <I.flag size={14} sw={2} style={{ color: p.color }} />{p.label}
+                      </div>
+                    ))}
+                  </Popover>
+                )}
+              </div>
+
+              {/* Labels Trigger */}
+              <div style={{ position: 'relative' }}>
+                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'label_btn' ? null : 'label_btn')} title="Add labels">
+                  <I.tag size={15} />
+                </button>
+                {menu === 'label_btn' && (
+                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 180 }}>
+                    {customLabels.map((l) => {
+                      const on = task.labels.includes(l.id);
+                      return (
+                        <div key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
+                          <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
+                          {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                        </div>
+                      );
+                    })}
+                  </Popover>
+                )}
+              </div>
+
+              {/* Status Trigger */}
+              <div style={{ position: 'relative' }}>
+                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'status_btn' ? null : 'status_btn')} title="Set status">
+                  <I.repeat size={15} />
+                </button>
+                {menu === 'status_btn' && (
+                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 160 }}>
+                    {Object.entries(STATUS_CHOICES).map(([k, v]) => (
+                      <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
+                        {v.icon}{v.label}
+                      </div>
+                    ))}
+                  </Popover>
+                )}
+              </div>
+
+              {/* Delete Trigger */}
+              <button className="icon-btn" style={{ width: 28, height: 28, color: 'var(--p1)' }} onClick={() => {
+                if (window.confirm("Are you sure you want to delete this task?")) {
+                  deleteTask(task.id);
+                }
+              }} title="Delete task">
+                <I.trash size={15} />
+              </button>
+            </div>
+          )}
+
           <button className="icon-btn row-hover" style={{ width: 28, height: 28 }} onClick={(e) => { e.stopPropagation(); onOpen && onOpen(task); }} aria-label="More">
             <I.dots size={17} />
           </button>

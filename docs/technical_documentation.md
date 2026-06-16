@@ -152,6 +152,12 @@ State is served using a React Context. The `useStore` custom hook handles databa
 
 ## 5. UI & Styling Framework
 * **Theme System**: Premium CSS custom properties defined in `src/index.css`. Includes dark-mode and light-mode mapping.
+* **TaskRow Inline Editing**:
+  * The `TaskRow` component (defined in `src/ui.jsx`) provides full inline editing.
+  * Uses auto-resizing borderless `<textarea>` elements for title and note inputs.
+  * Interactive popovers (`WhenPicker` for due dates, status select list, custom labels tags picker) open directly relative to the row's badges.
+  * A hover-revealed quick action bar provides shortcuts for calendar, priority flags, label tags, status, and task deletion.
+  * Clicking inputs, textareas, and popover buttons blocks event propagation (`e.stopPropagation()`), preventing the row's outer detail drawer trigger (`onOpen`) from firing.
 * **Layouts**:
   * **Desktop**: Three-column responsive grid (Sidebar Navigation, Central Tasks List, Detail Editor pane).
   * **Mobile**: iOS simulated viewport. Tab bar navigation, modal sheets, and floating action button (FAB) for fast capture.

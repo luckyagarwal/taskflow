@@ -38,8 +38,9 @@ To maintain scalability, tasks are organized into a strict hierarchy:
 
 ## 4. Key User Workflows
 1. **Quick Capture**: Pressing `⌘K` or clicking "+ Add Task" opens the natural language composer. The user types `Review PR tomorrow at 10am @Work p1` and hits `Enter`. The task is parsed and scheduled instantly.
-2. **Review & Refine**: The user clicks a task to expand it inline (Desktop) or slides it open (Mobile) to add notes, create subtasks, schedule reminders, or modify tags.
-3. **Daily Planning**: Using the "Today" and "Upcoming" views, users review scheduled tasks, custom-sort them using drag-and-drop to design their day, and log their progress.
+2. **Inline Editing & Customization**: The user can edit the task's title and note directly inside the task list rows on the main views. Date, status, priority, and labels can also be edited inline via popovers directly in the list row, without opening the details panel.
+3. **Detail Pane**: Clicking the blank area of the row or the "dots" menu opens the Detail Pane for managing subtasks, recurrence rules, and reminders.
+4. **Daily Planning**: Using the "Today" and "Upcoming" views, users review scheduled tasks, custom-sort them using drag-and-drop to design their day, and log their progress.
 
 ---
 
