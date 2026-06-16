@@ -1,6 +1,7 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
+import { db } from './db.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -12,36 +13,10 @@ export function AppProvider({ children, value }) {
 }
 
 export function useStore() {
-  // Persistence keys
-  const KEY_TASKS = 'todo-proto-tasks';
-  const KEY_PROJECTS = 'todo-proto-projects';
-  const KEY_LABELS = 'todo-proto-labels';
-
-  const [tasks, setTasks] = useState(() => {
-    const normalize = (list) => list.map((t, idx) => {
-      const subtasks = (t.subtasks || []).map((sub, sIdx) => ({
-        priority: 4,
-        status: 'planned',
-        startOffset: null,
-        dueOffset: null,
-        createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
-        ...sub
-      }));
-      return {
-        createdAt: t.createdAt || (Date.now() - (1000 - idx) * 60000),
-        subtaskSort: t.subtaskSort || 'manual',
-        ...t,
-        subtasks
-      };
-    });
-
-    try {
-      const saved = localStorage.getItem(KEY_TASKS);
-      return saved ? normalize(JSON.parse(saved)) : normalize(DATA.tasks);
-    } catch (e) {
-      return normalize(DATA.tasks);
-    }
-  });
+  const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [customLabels, setCustomLabels] = useState([]);
+  const [loaded, setLoaded] = useState(false);
 
   const KEY_SIDEBAR_COLLAPSED = 'todo-proto-sidebar-collapsed';
   const KEY_SIDEBAR_WIDTH = 'todo-proto-sidebar-width';
@@ -65,42 +40,84 @@ export function useStore() {
     }
   });
 
-  const [projects, setProjects] = useState(() => {
-    try {
-      const saved = localStorage.getItem(KEY_PROJECTS);
-      return saved ? JSON.parse(saved) : DATA.projects.map((p) => ({ ...p }));
-    } catch (e) {
-      return DATA.projects.map((p) => ({ ...p }));
-    }
-  });
-
-  const [customLabels, setCustomLabels] = useState(() => {
-    try {
-      const saved = localStorage.getItem(KEY_LABELS);
-      return saved ? JSON.parse(saved) : DATA.labels.map((l) => ({ ...l }));
-    } catch (e) {
-      return DATA.labels.map((l) => ({ ...l }));
-    }
-  });
-
   const [view, setView] = useState({ type: 'today' });
   const [selectedId, setSelectedId] = useState(null);
   const [quickAdd, setQuickAdd] = useState(false);
   const [search, setSearch] = useState(false);
   const [expandedIds, setExpandedIds] = useState([]);
 
-  // Sync state changes back to localStorage
+  // Database initialization and migration
   useEffect(() => {
-    localStorage.setItem(KEY_TASKS, JSON.stringify(tasks));
-  }, [tasks]);
+    async function init() {
+      const tasksCount = await db.tasks.count();
+      const projectsCount = await db.projects.count();
+      const labelsCount = await db.labels.count();
+      
+      let loadedTasks = [];
+      let loadedProjects = [];
+      let loadedLabels = [];
 
-  useEffect(() => {
-    localStorage.setItem(KEY_PROJECTS, JSON.stringify(projects));
-  }, [projects]);
+      const KEY_TASKS = 'todo-proto-tasks';
+      const KEY_PROJECTS = 'todo-proto-projects';
+      const KEY_LABELS = 'todo-proto-labels';
 
-  useEffect(() => {
-    localStorage.setItem(KEY_LABELS, JSON.stringify(customLabels));
-  }, [customLabels]);
+      if (tasksCount > 0 || projectsCount > 0 || labelsCount > 0) {
+        loadedTasks = await db.tasks.toArray();
+        loadedProjects = await db.projects.toArray();
+        loadedLabels = await db.labels.toArray();
+      } else {
+        const localTasks = localStorage.getItem(KEY_TASKS);
+        const localProjects = localStorage.getItem(KEY_PROJECTS);
+        const localLabels = localStorage.getItem(KEY_LABELS);
+
+        const normalize = (list) => list.map((t, idx) => {
+          const subtasks = (t.subtasks || []).map((sub, sIdx) => ({
+            priority: 4,
+            status: 'planned',
+            startOffset: null,
+            dueOffset: null,
+            createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
+            ...sub
+          }));
+          return {
+            createdAt: t.createdAt || (Date.now() - (1000 - idx) * 60000),
+            subtaskSort: t.subtaskSort || 'manual',
+            ...t,
+            subtasks
+          };
+        });
+
+        if (localTasks || localProjects || localLabels) {
+          loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : normalize(DATA.tasks);
+          loadedProjects = localProjects ? JSON.parse(localProjects) : DATA.projects.map(p => ({ ...p }));
+          loadedLabels = localLabels ? JSON.parse(localLabels) : DATA.labels.map(l => ({ ...l }));
+
+          await db.tasks.bulkPut(loadedTasks);
+          await db.projects.bulkPut(loadedProjects);
+          await db.labels.bulkPut(loadedLabels);
+
+          localStorage.removeItem(KEY_TASKS);
+          localStorage.removeItem(KEY_PROJECTS);
+          localStorage.removeItem(KEY_LABELS);
+        } else {
+          loadedTasks = normalize(DATA.tasks);
+          loadedProjects = DATA.projects.map(p => ({ ...p }));
+          loadedLabels = DATA.labels.map(l => ({ ...l }));
+
+          await db.tasks.bulkPut(loadedTasks);
+          await db.projects.bulkPut(loadedProjects);
+          await db.labels.bulkPut(loadedLabels);
+        }
+      }
+
+      setTasks(loadedTasks);
+      setProjects(loadedProjects);
+      setCustomLabels(loadedLabels);
+      setLoaded(true);
+    }
+    
+    init().catch(err => console.error("Database initialization failed", err));
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(KEY_SIDEBAR_COLLAPSED, JSON.stringify(sidebarCollapsed));
@@ -117,16 +134,27 @@ export function useStore() {
   const toggleTask = useCallback((id) => {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== id) return t;
+      let updated;
       if (!t.done && t.recurring) {
         const nextDue = advanceRecurring(t.dueOffset, t.recurring);
-        return { ...t, dueOffset: nextDue, done: false };
+        updated = { ...t, dueOffset: nextDue, done: false };
+      } else {
+        updated = { ...t, done: !t.done, doneOffset: !t.done ? 0 : null };
       }
-      return { ...t, done: !t.done, doneOffset: !t.done ? 0 : null };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
     }));
   }, []);
 
   const updateTask = useCallback((id, patch) => {
-    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    setTasks((ts) => ts.map((t) => {
+      if (t.id === id) {
+        const updated = { ...t, ...patch };
+        db.tasks.put(updated).catch(() => {});
+        return updated;
+      }
+      return t;
+    }));
   }, []);
 
   const addTask = useCallback((partial) => {
@@ -144,6 +172,7 @@ export function useStore() {
         parent: null
       };
       setProjects((prev) => [...prev, np]);
+      db.projects.put(np).catch(() => {});
       targetProjectId = newProjId;
     }
 
@@ -156,7 +185,11 @@ export function useStore() {
           name: newTagName,
           color: ['#7C5CFC', '#1F9D55', '#F5A623', '#9AA0A6', '#2D7FF9', '#E8588A'][Math.floor(Math.random() * 6)]
         };
-        setCustomLabels(prev => [...prev, newTag]);
+        setCustomLabels((prev) => {
+          const next = [...prev, newTag];
+          db.labels.put(newTag).catch(() => {});
+          return next;
+        });
         return newTagId;
       }
       return lId;
@@ -169,46 +202,63 @@ export function useStore() {
     }, partial, { projectId: targetProjectId, labels: finalLabels });
     
     setTasks((ts) => [task, ...ts]);
+    db.tasks.put(task).catch(() => {});
     return id;
   }, [projects]);
 
   const deleteTask = useCallback((id) => {
     setTasks((ts) => ts.filter((t) => t.id !== id));
+    db.tasks.delete(id).catch(() => {});
     setSelectedId((s) => (s === id ? null : s));
   }, []);
 
   const toggleSubtask = useCallback((taskId, subId) => {
-    setTasks((ts) => ts.map((t) => t.id === taskId
-      ? { ...t, subtasks: t.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done, status: !s.done ? 'done' : 'planned' } : s)) } : t));
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const updated = { ...t, subtasks: t.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done, status: !s.done ? 'done' : 'planned' } : s)) };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
   }, []);
 
   const addSubtask = useCallback((taskId, title) => {
-    setTasks((ts) => ts.map((t) => t.id === taskId
-      ? { ...t, subtasks: [...t.subtasks, { id: 's' + (++_n), title, done: false, priority: 4, status: 'planned', startOffset: null, dueOffset: null, createdAt: Date.now() }] } : t));
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const updated = { ...t, subtasks: [...t.subtasks, { id: 's' + (++_n), title, done: false, priority: 4, status: 'planned', startOffset: null, dueOffset: null, createdAt: Date.now() }] };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
   }, []);
 
   const updateSubtask = useCallback((taskId, subId, patch) => {
-    setTasks((ts) => ts.map((t) => t.id === taskId
-      ? {
-          ...t,
-          subtasks: t.subtasks.map((s) => {
-            if (s.id !== subId) return s;
-            const updated = { ...s, ...patch };
-            if (patch.status !== undefined) {
-              updated.done = patch.status === 'done';
-            }
-            if (patch.done !== undefined) {
-              updated.status = patch.done ? 'done' : 'planned';
-            }
-            return updated;
-          })
-        }
-      : t));
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const updated = {
+        ...t,
+        subtasks: t.subtasks.map((s) => {
+          if (s.id !== subId) return s;
+          const updatedSub = { ...s, ...patch };
+          if (patch.status !== undefined) {
+            updatedSub.done = patch.status === 'done';
+          }
+          if (patch.done !== undefined) {
+            updatedSub.status = patch.done ? 'done' : 'planned';
+          }
+          return updatedSub;
+        })
+      };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
   }, []);
 
   const deleteSubtask = useCallback((taskId, subId) => {
-    setTasks((ts) => ts.map((t) => t.id === taskId
-      ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subId) } : t));
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const updated = { ...t, subtasks: t.subtasks.filter((s) => s.id !== subId) };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
   }, []);
 
   const addProject = useCallback((name) => {
@@ -221,22 +271,46 @@ export function useStore() {
       parent: null
     };
     setProjects((prev) => [...prev, np]);
+    db.projects.put(np).catch(() => {});
     setView({ type: 'project', id: np.id });
   }, [projects]);
 
   const deleteProject = useCallback((id) => {
     setProjects((prev) => prev.filter((p) => p.id !== id));
-    setTasks((prev) => prev.map((t) => t.projectId === id ? { ...t, projectId: 'inbox' } : t));
+    db.projects.delete(id).catch(() => {});
+    setTasks((prev) => {
+      const next = prev.map((t) => {
+        if (t.projectId === id) {
+          const updated = { ...t, projectId: 'inbox' };
+          db.tasks.put(updated).catch(() => {});
+          return updated;
+        }
+        return t;
+      });
+      return next;
+    });
     setView((v) => v.type === 'project' && v.id === id ? { type: 'inbox' } : v);
+  }, []);
+
+  const resetDatabase = useCallback(async () => {
+    localStorage.removeItem('todo-proto-sidebar-collapsed');
+    localStorage.removeItem('todo-proto-sidebar-width');
+    localStorage.removeItem('todo-proto-project-sort');
+    
+    await db.tasks.clear();
+    await db.projects.clear();
+    await db.labels.clear();
+    
+    window.location.reload();
   }, []);
 
   return {
     tasks, projects, labels: customLabels, view, selectedId, quickAdd, search, expandedIds,
-    sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed,
+    sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded,
     setView: (v) => { setView(v); setSelectedId(null); },
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
-    addProject, deleteProject, toggleExpand,
+    addProject, deleteProject, toggleExpand, resetDatabase,
   };
 }
 

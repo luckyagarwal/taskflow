@@ -27,6 +27,18 @@ function Root() {
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
+  if (!store.loaded) {
+    return (
+      <div style={{
+        display: 'grid', placeItems: 'center', height: '100vh', width: '100vw',
+        background: theme === 'dark' ? '#141416' : '#f7f6f4', color: theme === 'dark' ? '#ededee' : '#25241f',
+        fontSize: 16, fontWeight: 800, fontFamily: 'sans-serif'
+      }}>
+        Loading Casex Tasks...
+      </div>
+    );
+  }
+
   return (
     <AppProvider value={store}>
       <div className="app-root" data-theme={theme} style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
@@ -41,3 +53,11 @@ function Root() {
 }
 
 createRoot(document.getElementById("root")).render(<Root />);
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('SW registered:', reg))
+      .catch((err) => console.error('SW registration failed:', err));
+  });
+}

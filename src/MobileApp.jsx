@@ -16,8 +16,8 @@ function MobileHeader({ theme, onToggleTheme }) {
   const { setSearch } = useApp();
   return (
     <div style={{ flex: 'none', padding: `${STATUS_PAD}px 16px 8px`, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg)' }}>
-      <span style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flex: 'none' }}>M</span>
-      <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Maya Iyer</span>
+      <span style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flex: 'none' }}>C</span>
+      <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Casex Tasks</span>
       <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={() => setSearch(true)}><I.search size={20} /></button>
       <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={onToggleTheme}><I.sun size={19} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={19} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
     </div>
@@ -47,7 +47,7 @@ function TabBar() {
 }
 
 function BrowseView() {
-  const { setView, tasks, projects } = useApp();
+  const { setView, tasks, projects, resetDatabase } = useApp();
   const c = Sel.counts(tasks);
   
   const groups = {};
@@ -69,6 +69,11 @@ function BrowseView() {
       <Item icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
       <Item icon={<I.filter size={20} />} label="Filters & Labels" color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
       <Item icon={<I.logbook size={20} />} label="Completed" color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
+      <Item icon={<I.settings size={20} />} label="Reset Database" color="var(--text-3)" onClick={() => {
+        if (window.confirm("Are you sure you want to reset the database? This will clear all tasks, projects, and labels, and reload with seed data.")) {
+          resetDatabase();
+        }
+      }} />
       {Object.keys(groups).map((g) => (
         <div key={g}>
           <div className="section-title" style={{ padding: '20px 6px 6px' }}>{g}</div>

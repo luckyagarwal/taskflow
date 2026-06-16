@@ -41,7 +41,7 @@ function ProjectGroup({ title, projects, view, setView }) {
 }
 
 function Sidebar({ theme, onToggleTheme, style }) {
-  const { view, setView, setSearch, setQuickAdd, tasks, projects, addProject, setSidebarCollapsed } = useApp();
+  const { view, setView, setSearch, setQuickAdd, tasks, projects, addProject, setSidebarCollapsed, resetDatabase } = useApp();
   const c = Sel.counts(tasks);
   const [addingProj, setAddingProj] = useState(false);
   const [newProjName, setNewProjName] = useState('');
@@ -61,10 +61,9 @@ function Sidebar({ theme, onToggleTheme, style }) {
     <aside className="scroll" style={{ width: 280, flex: 'none', background: 'var(--bg-side)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '14px 12px 16px', ...style }}>
       {/* workspace header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 12px' }}>
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flex: 'none' }}>M</span>
+        <span style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flex: 'none' }}>C</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Maya Iyer</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Personal · Free</div>
+          <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Casex Tasks</div>
         </div>
         <button className="icon-btn" style={{ flex: 'none' }} onClick={onToggleTheme} title="Toggle theme"><I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
         <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setSidebarCollapsed(true)} title="Collapse sidebar"><I.menu size={18} /></button>
@@ -111,7 +110,11 @@ function Sidebar({ theme, onToggleTheme, style }) {
       <div style={{ flex: 1 }} />
       <div className="divider" style={{ margin: '10px 8px' }} />
       <NavItem icon={<I.logbook size={19} />} label="Completed" color="var(--today)" active={view.type === 'logbook'} onClick={() => setView({ type: 'logbook' })} />
-      <NavItem icon={<I.settings size={19} />} label="Settings" onClick={() => {}} />
+      <NavItem icon={<I.settings size={19} />} label="Reset Database" onClick={() => {
+        if (window.confirm("Are you sure you want to reset the database? This will clear all tasks, projects, and labels, and reload with seed data.")) {
+          resetDatabase();
+        }
+      }} />
     </aside>
   );
 }
