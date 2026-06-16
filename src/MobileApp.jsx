@@ -46,7 +46,7 @@ function TabBar() {
   );
 }
 
-function BrowseView() {
+function BrowseView({ onAddProject }) {
   const { setView, tasks, projects, resetDatabase } = useApp();
   const c = Sel.counts(tasks);
   
@@ -82,11 +82,21 @@ function BrowseView() {
           ))}
         </div>
       ))}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
+        <button onClick={onAddProject} style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 10,
+          background: 'var(--hover)', color: 'var(--accent)', fontWeight: 800, fontSize: 14.5,
+          border: 'none', cursor: 'pointer', transition: 'background .12s'
+        }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-strong)'}
+           onMouseLeave={(e) => e.currentTarget.style.background = 'var(--hover)'}>
+          <I.plusSm size={18} /> Add Project
+        </button>
+      </div>
     </div>
   );
 }
 
-function MobileContent({ density }) {
+function MobileContent({ density, onAddProject }) {
   const { view } = useApp();
   switch (view.type) {
     case 'today': return <V.TodayView density={density} />;
@@ -97,7 +107,7 @@ function MobileContent({ density }) {
     case 'filters': return <V.FiltersView />;
     case 'calendar': return <CalendarView density={density} compact />;
     case 'logbook': return <V.LogbookView />;
-    case 'browse': return <BrowseView />;
+    case 'browse': return <BrowseView onAddProject={onAddProject} />;
     default: return <V.TodayView density={density} />;
   }
 }
@@ -123,14 +133,68 @@ function QuickAddSheet({ onClose }) {
   );
 }
 
+function AddProjectModal({ onClose }) {
+  const { projects, addProject } = useApp();
+  const [name, setName] = useState('');
+  const [group, setGroup] = useState('Personal');
+  const [customGroup, setCustomGroup] = useState('');
+  const [isCustom, setIsCustom] = useState(false);
+
+  const uniqueGroups = Array.from(new Set(projects.map(p => p.group))).filter(Boolean);
+  if (!uniqueGroups.includes('Work')) uniqueGroups.push('Work');
+  if (!uniqueGroups.includes('Personal')) uniqueGroups.push('Personal');
+
+  const handleAdd = () => {
+    if (name.trim()) {
+      const finalGroup = isCustom ? customGroup.trim() : group;
+      addProject(name.trim(), finalGroup || 'Personal');
+      onClose();
+    }
+  };
+
+  return (
+    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', zIndex: 200 }} onMouseDown={onClose}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 300, background: 'var(--bg-elev)', borderRadius: 14, border: '1px solid var(--border)', padding: 18, boxShadow: 'var(--shadow)', animation: 'slideUp .2s ease-out' }}>
+        <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 14, color: 'var(--text)' }}>New Project</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name..."
+            style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: 14.5, outline: 'none' }} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Section</span>
+            <select value={group} onChange={(e) => {
+              setGroup(e.target.value);
+              setIsCustom(e.target.value === '__new__');
+            }} style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '8px 10px', fontSize: 14, outline: 'none', cursor: 'pointer' }}>
+              {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+              <option value="__new__">+ New Section...</option>
+            </select>
+          </div>
+
+          {isCustom && (
+            <input value={customGroup} onChange={(e) => setCustomGroup(e.target.value)} placeholder="New section name..."
+              style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: 14, outline: 'none' }} />
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
+            <button onClick={onClose} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 14, fontWeight: 700, padding: '6px 12px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAdd} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 800, padding: '6px 16px', borderRadius: 8, cursor: 'pointer' }}>Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MobileApp({ density, theme, onToggleTheme }) {
   const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch } = useApp();
+  const [addingProj, setAddingProj] = useState(false);
   return (
     <div style={{ position: 'relative', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <MobileHeader theme={theme} onToggleTheme={onToggleTheme} />
       <BackBar />
       <div className="scroll" style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ padding: '6px 16px 24px' }}><MobileContent density={density} /></div>
+        <div style={{ padding: '6px 16px 24px' }}><MobileContent density={density} onAddProject={() => setAddingProj(true)} /></div>
       </div>
 
       {/* FAB */}
@@ -152,9 +216,11 @@ export function MobileApp({ density, theme, onToggleTheme }) {
         </div>
       )}
       {quickAdd && <QuickAddSheet onClose={() => setQuickAdd(false)} />}
+      {addingProj && <AddProjectModal onClose={() => setAddingProj(false)} />}
       {search && <SearchOverlay onClose={() => setSearch(false)} />}
     </div>
   );
 }
 
 export default MobileApp;
+

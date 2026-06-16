@@ -45,14 +45,25 @@ function Sidebar({ theme, onToggleTheme, style }) {
   const c = Sel.counts(tasks);
   const [addingProj, setAddingProj] = useState(false);
   const [newProjName, setNewProjName] = useState('');
+  const [newProjGroup, setNewProjGroup] = useState('Personal');
+  const [isCustomGroup, setIsCustomGroup] = useState(false);
+  const [customGroupName, setCustomGroupName] = useState('');
 
   const groups = {};
   projects.forEach((p) => { (groups[p.group] = groups[p.group] || []).push(p); });
 
+  const uniqueGroups = Array.from(new Set(projects.map(p => p.group))).filter(Boolean);
+  if (!uniqueGroups.includes('Work')) uniqueGroups.push('Work');
+  if (!uniqueGroups.includes('Personal')) uniqueGroups.push('Personal');
+
   const handleAddProject = () => {
     if (newProjName.trim()) {
-      addProject(newProjName.trim());
+      const finalGroup = isCustomGroup ? customGroupName.trim() : newProjGroup;
+      addProject(newProjName.trim(), finalGroup || 'Personal');
       setNewProjName('');
+      setNewProjGroup('Personal');
+      setIsCustomGroup(false);
+      setCustomGroupName('');
       setAddingProj(false);
     }
   };
@@ -94,11 +105,32 @@ function Sidebar({ theme, onToggleTheme, style }) {
       ))}
 
       {addingProj ? (
-        <div style={{ padding: '4px 10px', display: 'flex', gap: 4, marginTop: 8 }}>
+        <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg-elev)', borderRadius: 8, border: '1px solid var(--border)', marginTop: 8 }}>
           <input autoFocus value={newProjName} onChange={(e) => setNewProjName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleAddProject(); if (e.key === 'Escape') setAddingProj(false); }}
             placeholder="Project name..."
-            style={{ flex: 1, border: '1.5px solid var(--accent)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '4px 8px', fontSize: 13, outline: 'none' }} />
+            style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>Section</span>
+            <select value={newProjGroup} onChange={(e) => {
+              setNewProjGroup(e.target.value);
+              setIsCustomGroup(e.target.value === '__new__');
+            }} style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '5px 6px', fontSize: 12.5, outline: 'none', cursor: 'pointer' }}>
+              {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+              <option value="__new__">+ New Section...</option>
+            </select>
+          </div>
+
+          {isCustomGroup && (
+            <input value={customGroupName} onChange={(e) => setCustomGroupName(e.target.value)}
+              placeholder="New section name..."
+              style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 12.5, outline: 'none' }} />
+          )}
+
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={() => { setAddingProj(false); setNewProjName(''); setIsCustomGroup(false); setCustomGroupName(''); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 700, padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAddProject} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12.5, fontWeight: 800, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Add</button>
+          </div>
         </div>
       ) : (
         <button onClick={() => setAddingProj(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 700, fontSize: 14, marginTop: 8, border: 'none', background: 'transparent', cursor: 'pointer' }}

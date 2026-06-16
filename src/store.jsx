@@ -63,6 +63,17 @@ export function useStore() {
 
       if (tasksCount > 0 || projectsCount > 0 || labelsCount > 0) {
         loadedTasks = await db.tasks.toArray();
+        let hasMissingPos = false;
+        loadedTasks.forEach((t, idx) => {
+          if (t.position === undefined) {
+            t.position = idx;
+            hasMissingPos = true;
+          }
+        });
+        if (hasMissingPos) {
+          await db.tasks.bulkPut(loadedTasks);
+        }
+        loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         loadedProjects = await db.projects.toArray();
         loadedLabels = await db.labels.toArray();
       } else {
@@ -82,6 +93,7 @@ export function useStore() {
           return {
             createdAt: t.createdAt || (Date.now() - (1000 - idx) * 60000),
             subtaskSort: t.subtaskSort || 'manual',
+            position: t.position !== undefined ? t.position : idx,
             ...t,
             subtasks
           };
@@ -108,6 +120,7 @@ export function useStore() {
           await db.projects.bulkPut(loadedProjects);
           await db.labels.bulkPut(loadedLabels);
         }
+        loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       }
 
       setTasks(loadedTasks);
@@ -195,16 +208,18 @@ export function useStore() {
       return lId;
     });
 
+    const minPos = tasks.length > 0 ? Math.min(...tasks.map(t => t.position ?? 0)) : 0;
     const task = Object.assign({
       id, title: 'Untitled', note: '', projectId: targetProjectId, startOffset: null, dueOffset: null,
       time: null, priority: 4, labels: finalLabels, subtasks: [], done: false, doneOffset: null,
-      recurring: null, createdAt: Date.now(), subtaskSort: 'manual'
+      recurring: null, createdAt: Date.now(), subtaskSort: 'manual',
+      position: minPos - 1
     }, partial, { projectId: targetProjectId, labels: finalLabels });
     
     setTasks((ts) => [task, ...ts]);
     db.tasks.put(task).catch(() => {});
     return id;
-  }, [projects]);
+  }, [projects, tasks]);
 
   const deleteTask = useCallback((id) => {
     setTasks((ts) => ts.filter((t) => t.id !== id));
@@ -261,13 +276,13 @@ export function useStore() {
     }));
   }, []);
 
-  const addProject = useCallback((name) => {
+  const addProject = useCallback((name, group = 'Personal') => {
     if (!name || !name.trim()) return;
     const np = {
       id: 'p_' + Date.now(),
       name: name.trim(),
       color: ['#2D7FF9', '#7C5CFC', '#14B8C4', '#1F9D55', '#E8588A', '#F5A623'][projects.length % 6],
-      group: 'Personal',
+      group: (group && group.trim()) || 'Personal',
       parent: null
     };
     setProjects((prev) => [...prev, np]);
@@ -292,10 +307,45 @@ export function useStore() {
     setView((v) => v.type === 'project' && v.id === id ? { type: 'inbox' } : v);
   }, []);
 
+  const [sorts, setSorts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('todo-proto-view-sorts');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const setViewSort = useCallback((viewKey, val) => {
+    setSorts((prev) => {
+      const next = { ...prev, [viewKey]: val };
+      localStorage.setItem('todo-proto-view-sorts', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const reorderTasks = useCallback((draggedId, targetId) => {
+    setTasks((prev) => {
+      const next = [...prev];
+      const dragIdx = next.findIndex(t => t.id === draggedId);
+      const targetIdx = next.findIndex(t => t.id === targetId);
+      if (dragIdx !== -1 && targetIdx !== -1) {
+        const [removed] = next.splice(dragIdx, 1);
+        next.splice(targetIdx, 0, removed);
+        
+        const updated = next.map((t, idx) => ({ ...t, position: idx }));
+        db.tasks.bulkPut(updated).catch(err => console.error(err));
+        return updated;
+      }
+      return prev;
+    });
+  }, []);
+
   const resetDatabase = useCallback(async () => {
     localStorage.removeItem('todo-proto-sidebar-collapsed');
     localStorage.removeItem('todo-proto-sidebar-width');
     localStorage.removeItem('todo-proto-project-sort');
+    localStorage.removeItem('todo-proto-view-sorts');
     
     await db.tasks.clear();
     await db.projects.clear();
@@ -307,6 +357,7 @@ export function useStore() {
   return {
     tasks, projects, labels: customLabels, view, selectedId, quickAdd, search, expandedIds,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded,
+    sorts, setViewSort, reorderTasks,
     setView: (v) => { setView(v); setSelectedId(null); },
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,

@@ -8,9 +8,13 @@ import { InlineComposer, Popover } from './composer.jsx';
 import { CalendarView } from './calendar.jsx';
 
 // ── Animated task group (handles complete-and-leave) ─────────
-export function TaskGroup({ tasks, density, showProject, dateMode }) {
-  const { toggleTask, setSelectedId, selectedId } = useApp();
+export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }) {
+  const { toggleTask, setSelectedId, selectedId, reorderTasks } = useApp();
   const [exiting, setExiting] = useState({});
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [draggableId, setDraggableId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
+
   const handleToggle = (task) => {
     if (task.done) { toggleTask(task.id); return; }
     setExiting((e) => ({ ...e, [task.id]: true }));
@@ -19,15 +23,72 @@ export function TaskGroup({ tasks, density, showProject, dateMode }) {
       setExiting((e) => { const n = { ...e }; delete n[task.id]; return n; });
     }, 400);
   };
+
+  const handleDragStart = (e, idx) => {
+    setDraggedIndex(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === idx) return;
+    
+    reorderTasks(tasks[draggedIndex].id, tasks[idx].id);
+    setDraggedIndex(idx);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDraggableId(null);
+  };
+
   return (
     <div>
-      {tasks.map((task) => (
-        <div className="exit-wrap" key={task.id} data-exit={exiting[task.id] ? '1' : undefined}>
-          <TaskRow task={task} density={density}
-            showProject={dateMode ? 'inDate' : showProject}
-            selected={selectedId === task.id}
-            onToggle={() => handleToggle(task)}
-            onOpen={(t) => setSelectedId(t.id)} />
+      {tasks.map((task, idx) => (
+        <div
+          className="exit-wrap"
+          key={task.id}
+          data-exit={exiting[task.id] ? '1' : undefined}
+          draggable={reorderable && draggableId === task.id}
+          onDragStart={reorderable ? (e) => handleDragStart(e, idx) : undefined}
+          onDragOver={reorderable ? (e) => handleDragOver(e, idx) : undefined}
+          onDragEnd={reorderable ? handleDragEnd : undefined}
+          onMouseEnter={reorderable ? () => setHoveredId(task.id) : undefined}
+          onMouseLeave={reorderable ? () => { if (draggableId !== task.id) setDraggableId(null); setHoveredId(null); } : undefined}
+          style={{
+            opacity: draggedIndex === idx ? 0.4 : 1,
+            cursor: (reorderable && draggableId === task.id) ? 'grabbing' : 'default',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}
+        >
+          {reorderable && (
+            <span
+              onMouseDown={() => setDraggableId(task.id)}
+              onMouseUp={() => setDraggableId(null)}
+              style={{
+                cursor: 'grab',
+                color: 'var(--text-3)',
+                opacity: hoveredId === task.id ? 0.6 : 0,
+                transition: 'opacity .15s',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 4px',
+                flexShrink: 0
+              }}
+              title="Drag to reorder"
+            >
+              <I.grip size={15} />
+            </span>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TaskRow task={task} density={density}
+              showProject={dateMode ? 'inDate' : showProject}
+              selected={selectedId === task.id}
+              onToggle={() => handleToggle(task)}
+              onOpen={(t) => setSelectedId(t.id)} />
+          </div>
         </div>
       ))}
     </div>
@@ -87,27 +148,83 @@ export function dateString(off) {
   return `${H.DOW_LONG[d.getDay()]}, ${H.MONTHS_LONG[d.getMonth()]} ${d.getDate()}`;
 }
 
-export function HeaderActions() {
+export function HeaderActions({ sortBy, setSortBy }) {
+  const [menu, setMenu] = useState(false);
+  const options = [
+    { label: 'Default Order', value: 'default' },
+    { label: 'Sort by Due Date', value: 'due' },
+    { label: 'Sort by Priority', value: 'priority' },
+    { label: 'Sort by Creation Date', value: 'created' }
+  ];
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      <button className="icon-btn" title="Sort"><I.sliders size={18} /></button>
+    <div style={{ display: 'flex', gap: 2, position: 'relative' }}>
+      <button className="icon-btn" title="Sort" onClick={() => setMenu(!menu)} style={{ background: sortBy && sortBy !== 'default' ? 'var(--hover-strong)' : undefined }}>
+        <I.sliders size={18} style={{ color: sortBy && sortBy !== 'default' ? 'var(--accent)' : undefined }} />
+      </button>
+      {menu && (
+        <Popover onClose={() => setMenu(false)} style={{ top: 34, right: 0, zIndex: 100, minWidth: 160 }}>
+          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Tasks</div>
+          {options.map((opt) => (
+            <div key={opt.value} className="pop-item" style={{
+              fontWeight: sortBy === opt.value ? 800 : 600,
+              color: sortBy === opt.value ? 'var(--accent)' : 'var(--text)',
+              justifyContent: 'space-between'
+            }} onClick={() => { setSortBy(opt.value); setMenu(false); }}>
+              {opt.label}
+              {sortBy === opt.value && <I.check size={14} style={{ color: 'var(--accent)' }} />}
+            </div>
+          ))}
+        </Popover>
+      )}
       <button className="icon-btn" title="More"><I.dots size={18} /></button>
     </div>
   );
 }
 
+export function sortTasks(items, sortBy) {
+  const itemsCopy = [...items];
+  if (sortBy === 'due') {
+    return itemsCopy.sort((a, b) => {
+      const aDue = a.dueOffset === 'someday' ? 99998 : (a.dueOffset === null ? 99999 : a.dueOffset);
+      const bDue = b.dueOffset === 'someday' ? 99998 : (b.dueOffset === null ? 99999 : b.dueOffset);
+      if (aDue !== bDue) return aDue - bDue;
+      return (a.priority - b.priority) || (b.createdAt - a.createdAt);
+    });
+  }
+  if (sortBy === 'priority') {
+    return itemsCopy.sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      const aDue = a.dueOffset === 'someday' ? 99998 : (a.dueOffset === null ? 99999 : a.dueOffset);
+      const bDue = b.dueOffset === 'someday' ? 99998 : (b.dueOffset === null ? 99999 : b.dueOffset);
+      if (aDue !== bDue) return aDue - bDue;
+      return b.createdAt - a.createdAt;
+    });
+  }
+  if (sortBy === 'created') {
+    return itemsCopy.sort((a, b) => b.createdAt - a.createdAt);
+  }
+  return itemsCopy;
+}
+
 // ── TODAY ───────────────────────────────────────────────────
 export function TodayView({ density }) {
-  const { tasks } = useApp();
+  const { tasks, sorts, setViewSort } = useApp();
+  const sortBy = sorts.today || 'default';
   const overdue = Sel.overdue(tasks);
   const todayT = Sel.dueToday(tasks);
   const total = overdue.length + todayT.length;
   const [collapsed, setCollapsed] = useState({ overdue: false, today: false });
+
+  const sortedOverdue = React.useMemo(() => sortTasks(overdue, sortBy), [overdue, sortBy]);
+  const sortedToday = React.useMemo(() => sortTasks(todayT, sortBy), [todayT, sortBy]);
+  
+  const reorderable = sortBy === 'default';
+
   return (
     <div>
       <ViewHeader icon={<span style={{ color: 'var(--today)' }}><I.today size={26} /></span>}
         title="Today" subtitle={`${dateString(0)} · ${total} ${total === 1 ? 'task' : 'tasks'}`}
-        right={<HeaderActions />} />
+        right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort('today', val)} />} />
       <InlineComposer defaultProject="inbox" defaultDue={0} />
       {total === 0 && (
         <Empty icon={<I.check size={30} />} title="You're all done for today" sub="Enjoy the calm. New tasks you add for today will show up here." />
@@ -117,14 +234,14 @@ export function TodayView({ density }) {
           <SectionHeader title="Overdue" count={overdue.length} color="var(--p1)"
             collapsible collapsed={collapsed.overdue} onToggle={() => setCollapsed(prev => ({ ...prev, overdue: !prev.overdue }))}
             right={<button style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-text)' }}>Reschedule</button>} />
-          {!collapsed.overdue && <TaskGroup tasks={overdue} density={density} showProject />}
+          {!collapsed.overdue && <TaskGroup tasks={sortedOverdue} density={density} showProject reorderable={reorderable} />}
         </>
       )}
       {todayT.length > 0 && (
         <>
           <SectionHeader title="Today" count={todayT.length} icon={<Dot color="var(--today)" size={8} />}
             collapsible collapsed={collapsed.today} onToggle={() => setCollapsed(prev => ({ ...prev, today: !prev.today }))} />
-          {!collapsed.today && <TaskGroup tasks={todayT} density={density} showProject />}
+          {!collapsed.today && <TaskGroup tasks={sortedToday} density={density} showProject reorderable={reorderable} />}
         </>
       )}
     </div>
@@ -133,16 +250,24 @@ export function TodayView({ density }) {
 
 // ── UPCOMING ────────────────────────────────────────────────
 export function UpcomingView({ density }) {
-  const { tasks } = useApp();
+  const { tasks, sorts, setViewSort } = useApp();
+  const sortBy = sorts.upcoming || 'default';
   const up = Sel.upcoming(tasks);
+  
+  const sortedUp = React.useMemo(() => sortTasks(up, sortBy), [up, sortBy]);
+  
   const groups = {};
-  up.forEach((t) => { (groups[t.dueOffset] = groups[t.dueOffset] || []).push(t); });
+  sortedUp.forEach((t) => { (groups[t.dueOffset] = groups[t.dueOffset] || []).push(t); });
   const offs = Object.keys(groups).map(Number).sort((a, b) => a - b);
   const [collapsedKeys, setCollapsedKeys] = useState({});
+  
+  const reorderable = sortBy === 'default';
+
   return (
     <div>
       <ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.upcoming size={26} /></span>}
-        title="Upcoming" subtitle={`${up.length} scheduled`} right={<HeaderActions />} />
+        title="Upcoming" subtitle={`${up.length} scheduled`}
+        right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort('upcoming', val)} />} />
       {offs.length === 0 && <Empty icon={<I.upcoming size={30} />} title="Nothing scheduled" sub="Tasks with a future date will appear here, grouped by day." />}
       {offs.map((off) => {
         const d = H.dateFromOffset(off);
@@ -156,7 +281,7 @@ export function UpcomingView({ density }) {
             {!isCollapsed && (
               <>
                 <InlineComposer defaultDue={off} />
-                <TaskGroup tasks={groups[off]} density={density} dateMode showProject />
+                <TaskGroup tasks={groups[off]} density={density} dateMode showProject reorderable={reorderable} />
               </>
             )}
           </div>
@@ -168,107 +293,38 @@ export function UpcomingView({ density }) {
 
 // ── INBOX ───────────────────────────────────────────────────
 export function InboxView({ density }) {
-  const { tasks } = useApp();
+  const { tasks, sorts, setViewSort } = useApp();
+  const sortBy = sorts.inbox || 'default';
   const items = Sel.inbox(tasks);
+  const sortedItems = React.useMemo(() => sortTasks(items, sortBy), [items, sortBy]);
+  const reorderable = sortBy === 'default';
+  
   return (
     <div>
       <ViewHeader icon={<span style={{ color: 'var(--text-2)' }}><I.inbox size={25} /></span>}
-        title="Inbox" subtitle={`${items.length} ${items.length === 1 ? 'task' : 'tasks'}`} right={<HeaderActions />} />
+        title="Inbox" subtitle={`${items.length} ${items.length === 1 ? 'task' : 'tasks'}`}
+        right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort('inbox', val)} />} />
       <InlineComposer defaultProject="inbox" />
       {items.length === 0
         ? <Empty icon={<I.inbox size={30} />} title="Inbox zero" sub="Capture anything here, then organize it into a project later." />
-        : <TaskGroup tasks={items} density={density} showProject />}
-    </div>
-  );
-}
-
-// ── PROJECT ─────────────────────────────────────────────────
-// ── PROJECT HEADER ACTIONS ──────────────────────────────────
-function ProjectHeaderActions({ sortBy, setSortBy }) {
-  const [menu, setMenu] = useState(false);
-  const opts = [
-    { value: 'default', label: 'Default (Grouped)' },
-    { value: 'due', label: 'Due Date' },
-    { value: 'priority', label: 'Priority' },
-    { value: 'created', label: 'Date Added' },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: 2, position: 'relative' }}>
-      <button className="icon-btn" title="Sort" onClick={() => setMenu(!menu)} style={{ background: sortBy !== 'default' ? 'var(--hover-strong)' : undefined }}>
-        <I.sliders size={18} style={{ color: sortBy !== 'default' ? 'var(--accent)' : undefined }} />
-      </button>
-      <button className="icon-btn" title="More"><I.dots size={18} /></button>
-      
-      {menu && (
-        <Popover onClose={() => setMenu(false)} style={{ top: 38, right: 38, minWidth: 160, zIndex: 100 }}>
-          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Tasks</div>
-          {opts.map((opt) => (
-            <div key={opt.value} className="pop-item" style={{
-              fontWeight: sortBy === opt.value ? 800 : 600,
-              color: sortBy === opt.value ? 'var(--accent)' : 'var(--text)',
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              justifyContent: 'space-between'
-            }} onClick={() => { setSortBy(opt.value); setMenu(false); }}>
-              <span>{opt.label}</span>
-              {sortBy === opt.value && <I.check size={14} style={{ color: 'var(--accent)' }} />}
-            </div>
-          ))}
-        </Popover>
-      )}
+        : <TaskGroup tasks={sortedItems} density={density} showProject reorderable={reorderable} />}
     </div>
   );
 }
 
 // ── PROJECT ─────────────────────────────────────────────────
 export function ProjectView({ projectId, density }) {
-  const { tasks, projects } = useApp();
+  const { tasks, projects, sorts, setViewSort } = useApp();
+  const sortBy = sorts[`project-${projectId}`] || 'default';
   const proj = projects.find(p => p.id === projectId) || H.projectById(projectId);
   if (!proj) return null;
 
-  const [sortBy, setSortBy] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`todo-proto-project-sort`);
-      return saved || 'default';
-    } catch {
-      return 'default';
-    }
-  });
-
   const changeSort = (newSort) => {
-    setSortBy(newSort);
-    try {
-      localStorage.setItem(`todo-proto-project-sort`, newSort);
-    } catch (e) {}
+    setViewSort(`project-${projectId}`, newSort);
   };
 
   const items = Sel.byProject(tasks, projectId);
-
-  const sortedItems = React.useMemo(() => {
-    const itemsCopy = [...items];
-    if (sortBy === 'due') {
-      return itemsCopy.sort((a, b) => {
-        const aDue = a.dueOffset === 'someday' ? 99998 : (a.dueOffset === null ? 99999 : a.dueOffset);
-        const bDue = b.dueOffset === 'someday' ? 99998 : (b.dueOffset === null ? 99999 : b.dueOffset);
-        if (aDue !== bDue) return aDue - bDue;
-        return (a.priority - b.priority) || (b.createdAt - a.createdAt);
-      });
-    }
-    if (sortBy === 'priority') {
-      return itemsCopy.sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
-        const aDue = a.dueOffset === 'someday' ? 99998 : (a.dueOffset === null ? 99999 : a.dueOffset);
-        const bDue = b.dueOffset === 'someday' ? 99998 : (b.dueOffset === null ? 99999 : b.dueOffset);
-        if (aDue !== bDue) return aDue - bDue;
-        return b.createdAt - a.createdAt;
-      });
-    }
-    if (sortBy === 'created') {
-      return itemsCopy.sort((a, b) => b.createdAt - a.createdAt);
-    }
-    return itemsCopy;
-  }, [items, sortBy]);
+  const sortedItems = React.useMemo(() => sortTasks(items, sortBy), [items, sortBy]);
 
   const scheduled = items.filter((t) => t.dueOffset !== null && t.dueOffset !== 'someday');
   const someday = items.filter((t) => t.dueOffset === 'someday');
@@ -286,7 +342,7 @@ export function ProjectView({ projectId, density }) {
     <div>
       <ViewHeader icon={<Dot color={proj.color} size={14} />} title={proj.name}
         subtitle={`${proj.group} · ${items.length} open · ${doneCount} done`}
-        right={<ProjectHeaderActions sortBy={sortBy} setSortBy={changeSort} />} />
+        right={<HeaderActions sortBy={sortBy} setSortBy={changeSort} />} />
       <InlineComposer defaultProject={projectId} />
       {items.length === 0 && <Empty icon={<I.check size={30} />} title="No open tasks" sub="Everything here is done. Nice work." />}
       
@@ -296,21 +352,21 @@ export function ProjectView({ projectId, density }) {
             <>
               <SectionHeader title="Scheduled" count={scheduled.length}
                 collapsible collapsed={collapsed.scheduled} onToggle={() => setCollapsed(prev => ({ ...prev, scheduled: !prev.scheduled }))} />
-              {!collapsed.scheduled && <TaskGroup tasks={scheduled} density={density} showProject={false} />}
+              {!collapsed.scheduled && <TaskGroup tasks={scheduled} density={density} showProject={false} reorderable />}
             </>
           )}
           {anytime.length > 0 && (
             <>
               <SectionHeader title="Anytime" count={anytime.length}
                 collapsible collapsed={collapsed.anytime} onToggle={() => setCollapsed(prev => ({ ...prev, anytime: !prev.anytime }))} />
-              {!collapsed.anytime && <TaskGroup tasks={anytime} density={density} showProject={false} />}
+              {!collapsed.anytime && <TaskGroup tasks={anytime} density={density} showProject={false} reorderable />}
             </>
           )}
           {someday.length > 0 && (
             <>
               <SectionHeader title="Someday" count={someday.length}
                 collapsible collapsed={collapsed.someday} onToggle={() => setCollapsed(prev => ({ ...prev, someday: !prev.someday }))} />
-              {!collapsed.someday && <TaskGroup tasks={someday} density={density} showProject={false} />}
+              {!collapsed.someday && <TaskGroup tasks={someday} density={density} showProject={false} reorderable />}
             </>
           )}
         </>
@@ -328,17 +384,22 @@ export function ProjectView({ projectId, density }) {
 
 // ── LABEL ───────────────────────────────────────────────────
 export function LabelView({ labelId, density }) {
-  const { tasks, labels } = useApp();
+  const { tasks, labels, sorts, setViewSort } = useApp();
+  const sortBy = sorts[`label-${labelId}`] || 'default';
   const label = labels.find(l => l.id === labelId) || H.labelById(labelId);
   if (!label) return null;
   const items = Sel.byLabel(tasks, labelId);
+  const sortedItems = React.useMemo(() => sortTasks(items, sortBy), [items, sortBy]);
+  const reorderable = sortBy === 'default';
+  
   return (
     <div>
       <ViewHeader icon={<span style={{ color: label.color }}><I.tag size={24} /></span>} title={label.name}
-        color={label.color} subtitle={`${items.length} ${items.length === 1 ? 'task' : 'tasks'} labeled`} right={<HeaderActions />} />
+        color={label.color} subtitle={`${items.length} ${items.length === 1 ? 'task' : 'tasks'} labeled`}
+        right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort(`label-${labelId}`, val)} />} />
       {items.length === 0
         ? <Empty icon={<I.tag size={30} />} title="No tasks with this label" />
-        : <TaskGroup tasks={items} density={density} showProject />}
+        : <TaskGroup tasks={sortedItems} density={density} showProject reorderable={reorderable} />}
     </div>
   );
 }
@@ -371,7 +432,7 @@ export function FiltersView() {
 
 // ── LOGBOOK ─────────────────────────────────────────────────
 export function LogbookView() {
-  const { tasks, toggleTask, setSelectedId, expandedIds, toggleExpand } = useApp();
+  const { tasks, toggleTask, setSelectedId } = useApp();
   const done = Sel.done(tasks);
   const groups = {};
   done.forEach((t) => { const k = t.doneOffset || 0; (groups[k] = groups[k] || []).push(t); });
