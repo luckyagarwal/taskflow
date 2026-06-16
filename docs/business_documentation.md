@@ -26,7 +26,7 @@ The atomic unit of work. Every task contains:
 * **Temporal bounds**: Optional start date, due date, time, and recurrence rules (e.g. `every day`).
 * **Categorization**: Optional tags/labels and exactly one Project.
 * **Reminders**: Specific alerts scheduled for the task.
-* **Subtasks**: Child task items with their own status, priority, dates, titles, and descriptions.
+* **Subtasks**: Child task items with their own status, priority, dates, and titles.
 
 ### Projects & Sections
 To maintain scalability, tasks are organized into a strict hierarchy:

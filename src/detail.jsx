@@ -53,34 +53,12 @@ function SubtaskItem({
   sortMode
 }) {
   const { updateSubtask, deleteSubtask } = useApp();
-  const [menu, setMenu] = useState(null); // 'due' | 'prio' | 'status' | 'start'
+  const [menu, setMenu] = useState(null);
   const [hovered, setHovered] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(s.title);
-  const [editNote, setEditNote] = useState(s.note || '');
-
-  React.useEffect(() => {
-    setEditTitle(s.title);
-    setEditNote(s.note || '');
-  }, [s.title, s.note]);
-
   const dueLbl = H.dueLabel(s.dueOffset);
   const startLbl = H.dueLabel(s.startOffset);
   const prioOpt = PRIO.find((p) => p.p === s.priority) || PRIO[3];
   const TONE = { overdue: 'var(--p1)', today: 'var(--today)', soon: 'var(--p3)', future: 'var(--text-2)' };
-
-  const handleSave = () => {
-    if (editTitle.trim()) {
-      updateSubtask(taskId, s.id, { title: editTitle.trim(), note: editNote.trim() });
-      setIsEditing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditTitle(s.title);
-    setEditNote(s.note || '');
-    setIsEditing(false);
-  };
 
   return (
     <div
@@ -137,57 +115,34 @@ function SubtaskItem({
         )}
       </div>
 
-      {/* 2. Subtask Title & Note Inline Editor */}
-      {isEditing ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <textarea
-            autoFocus
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSave();
-              }
-              if (e.key === 'Escape') {
-                handleCancel();
-              }
-            }}
-            placeholder="Subtask title..."
-            rows={1}
-            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 600, padding: '4px 6px', borderRadius: 4, fontFamily: 'inherit' }}
-          />
-          <textarea
-            value={editNote}
-            onChange={(e) => setEditNote(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                handleCancel();
-              }
-            }}
-            placeholder="Add description..."
-            rows={1}
-            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'var(--bg)', color: 'var(--text-2)', fontSize: 12.5, fontWeight: 500, padding: '4px 6px', borderRadius: 4, fontFamily: 'inherit' }}
-          />
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-            <button onClick={handleCancel} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12, fontWeight: 700, padding: '2px 6px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleSave} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 800, padding: '2px 10px', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-          </div>
-        </div>
-      ) : (
-        <div onClick={() => setIsEditing(true)} style={{ flex: 1, minWidth: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: s.done ? 'var(--text-3)' : 'var(--text)', textDecoration: s.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {s.title}
-          </span>
-          {s.note && (
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-3)', marginTop: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {s.note}
-            </span>
-          )}
-        </div>
-      )}
+      {/* 2. Subtask Title (Editable Inline) */}
+      <textarea
+        value={s.title}
+        onChange={(e) => updateSubtask(taskId, s.id, { title: e.target.value })}
+        placeholder="Subtask title..."
+        rows={1}
+        ref={(el) => {
+          if (el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+          }
+        }}
+        onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+        style={{
+          flex: 1,
+          border: 'none',
+          outline: 'none',
+          resize: 'none',
+          background: 'transparent',
+          fontSize: 14,
+          fontWeight: 600,
+          color: s.done ? 'var(--text-3)' : 'var(--text)',
+          textDecoration: s.done ? 'line-through' : 'none',
+          fontFamily: 'inherit',
+          padding: 0,
+          margin: 0,
+        }}
+      />
 
       {/* 3. Priority Popover */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>

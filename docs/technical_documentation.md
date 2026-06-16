@@ -88,7 +88,6 @@ interface Task {
 interface Subtask {
   id: string;              // "s" + index
   title: string;           // Subtask name
-  note?: string;           // Subtask description
   done: boolean;           // Completion flag
   status: string;          // planned, inprogress, blocked, waiting, done
   priority: number;        // Subtask priority
@@ -147,7 +146,7 @@ State is served using a React Context. The `useStore` custom hook handles databa
 * `addSection(name)`: Saves a new section.
 * `addReminder(taskId, timestamp)`: Registers a reminder timestamp to a task.
 * `deleteReminder(taskId, reminderId)`: Deletes a reminder.
-* `updateSubtask(taskId, subId, patch)`: Edits properties (title, note, dates) of a nested subtask.
+* `updateSubtask(taskId, subId, patch)`: Edits properties (title, status, priority, dates) of a nested subtask.
 
 ---
 
