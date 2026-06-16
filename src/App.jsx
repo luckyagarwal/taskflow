@@ -20,9 +20,20 @@ function NavItem({ icon, label, count, active, color, onClick }) {
   );
 }
 
-function ProjectGroup({ title, projects, view, setView }) {
+function ProjectGroup({ title, projects = [], view, setView }) {
   const [open, setOpen] = useState(true);
-  const { tasks } = useApp();
+  const { tasks, addProject } = useApp();
+  const [addingProj, setAddingProj] = useState(false);
+  const [projName, setProjName] = useState('');
+
+  const handleAdd = () => {
+    if (projName.trim()) {
+      addProject(projName.trim(), title);
+      setProjName('');
+      setAddingProj(false);
+    }
+  };
+
   return (
     <div style={{ marginTop: 14 }}>
       <button onClick={() => setOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '4px 10px', color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>
@@ -36,35 +47,40 @@ function ProjectGroup({ title, projects, view, setView }) {
             active={view.type === 'project' && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })} />
         );
       })}
+      {open && projects.length === 0 && (
+        <div style={{ padding: '4px 8px 4px 28px', fontSize: 12.5, color: 'var(--text-3)', fontStyle: 'italic' }}>
+          No projects
+        </div>
+      )}
+      {open && (
+        addingProj ? (
+          <div style={{ padding: '4px 8px 4px 28px', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAddingProj(false); setProjName(''); } }}
+              placeholder="Project name..."
+              style={{ flex: 1, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '3px 6px', fontSize: 12, outline: 'none' }} />
+          </div>
+        ) : (
+          <button onClick={() => setAddingProj(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 8px 6px 28px', fontSize: 12.5, color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+            <I.plusSm size={14} /> Add project
+          </button>
+        )
+      )}
     </div>
   );
 }
 
 function Sidebar({ theme, onToggleTheme, style }) {
-  const { view, setView, setSearch, setQuickAdd, tasks, projects, addProject, setSidebarCollapsed, resetDatabase } = useApp();
+  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, resetDatabase } = useApp();
   const c = Sel.counts(tasks);
-  const [addingProj, setAddingProj] = useState(false);
-  const [newProjName, setNewProjName] = useState('');
-  const [newProjGroup, setNewProjGroup] = useState('Personal');
-  const [isCustomGroup, setIsCustomGroup] = useState(false);
-  const [customGroupName, setCustomGroupName] = useState('');
+  const [addingSec, setAddingSec] = useState(false);
+  const [newSecName, setNewSecName] = useState('');
 
-  const groups = {};
-  projects.forEach((p) => { (groups[p.group] = groups[p.group] || []).push(p); });
-
-  const uniqueGroups = Array.from(new Set(projects.map(p => p.group))).filter(Boolean);
-  if (!uniqueGroups.includes('Work')) uniqueGroups.push('Work');
-  if (!uniqueGroups.includes('Personal')) uniqueGroups.push('Personal');
-
-  const handleAddProject = () => {
-    if (newProjName.trim()) {
-      const finalGroup = isCustomGroup ? customGroupName.trim() : newProjGroup;
-      addProject(newProjName.trim(), finalGroup || 'Personal');
-      setNewProjName('');
-      setNewProjGroup('Personal');
-      setIsCustomGroup(false);
-      setCustomGroupName('');
-      setAddingProj(false);
+  const handleAddSection = () => {
+    if (newSecName.trim()) {
+      addSection(newSecName.trim());
+      setNewSecName('');
+      setAddingSec(false);
     }
   };
 
@@ -100,42 +116,28 @@ function Sidebar({ theme, onToggleTheme, style }) {
         <NavItem icon={<I.filter size={19} />} label="Filters & Labels" active={view.type === 'filters' || view.type === 'label'} color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
       </nav>
 
-      {Object.keys(groups).map((g) => (
-        <ProjectGroup key={g} title={g} projects={groups[g]} view={view} setView={setView} />
-      ))}
+      {sections.map((sec) => {
+        const secProjects = projects.filter(p => p.group === sec.name);
+        return (
+          <ProjectGroup key={sec.id} title={sec.name} projects={secProjects} view={view} setView={setView} />
+        );
+      })}
 
-      {addingProj ? (
+      {addingSec ? (
         <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg-elev)', borderRadius: 8, border: '1px solid var(--border)', marginTop: 8 }}>
-          <input autoFocus value={newProjName} onChange={(e) => setNewProjName(e.target.value)}
-            placeholder="Project name..."
+          <input autoFocus value={newSecName} onChange={(e) => setNewSecName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddSection(); if (e.key === 'Escape') { setAddingSec(false); setNewSecName(''); } }}
+            placeholder="Section name..."
             style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>Section</span>
-            <select value={newProjGroup} onChange={(e) => {
-              setNewProjGroup(e.target.value);
-              setIsCustomGroup(e.target.value === '__new__');
-            }} style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '5px 6px', fontSize: 12.5, outline: 'none', cursor: 'pointer' }}>
-              {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
-              <option value="__new__">+ New Section...</option>
-            </select>
-          </div>
-
-          {isCustomGroup && (
-            <input value={customGroupName} onChange={(e) => setCustomGroupName(e.target.value)}
-              placeholder="New section name..."
-              style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 12.5, outline: 'none' }} />
-          )}
-
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={() => { setAddingProj(false); setNewProjName(''); setIsCustomGroup(false); setCustomGroupName(''); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 700, padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleAddProject} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12.5, fontWeight: 800, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Add</button>
+            <button onClick={() => { setAddingSec(false); setNewSecName(''); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 700, padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAddSection} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12.5, fontWeight: 800, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Add</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setAddingProj(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 700, fontSize: 14, marginTop: 8, border: 'none', background: 'transparent', cursor: 'pointer' }}
+        <button onClick={() => setAddingSec(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 700, fontSize: 14, marginTop: 8, border: 'none', background: 'transparent', cursor: 'pointer' }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-          <I.plusSm size={18} /> Add project
+          <I.plusSm size={18} /> Add section
         </button>
       )}
 
@@ -175,7 +177,7 @@ function MainContent({ density, narrow }) {
 export function DesktopApp({ density, theme, onToggleTheme, frameW = 1320 }) {
   const {
     selectedId, setSelectedId, search, setSearch, quickAdd, setQuickAdd,
-    sidebarWidth, setSidebarWidth, sidebarCollapsed
+    sidebarWidth, setSidebarWidth, sidebarCollapsed, toasts
   } = useApp();
   const narrow = frameW < 1080;
   const [detailWidth, setDetailWidth] = useState(372);
@@ -279,6 +281,15 @@ export function DesktopApp({ density, theme, onToggleTheme, frameW = 1320 }) {
       )}
       {search && <SearchOverlay onClose={() => setSearch(false)} />}
       {quickAdd && <QuickAddModal onClose={() => setQuickAdd(false)} />}
+      {toasts && toasts.length > 0 && (
+        <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {toasts.map(t => (
+            <div key={t.id} style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '12px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13.5, color: 'var(--text)', animation: 'slideUp .2s ease-out' }}>
+              {t.msg}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

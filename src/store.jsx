@@ -16,6 +16,8 @@ export function useStore() {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [customLabels, setCustomLabels] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [toasts, setToasts] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   const KEY_SIDEBAR_COLLAPSED = 'todo-proto-sidebar-collapsed';
@@ -52,16 +54,18 @@ export function useStore() {
       const tasksCount = await db.tasks.count();
       const projectsCount = await db.projects.count();
       const labelsCount = await db.labels.count();
+      const sectionsCount = await db.sections.count();
       
       let loadedTasks = [];
       let loadedProjects = [];
       let loadedLabels = [];
+      let loadedSections = [];
 
       const KEY_TASKS = 'todo-proto-tasks';
       const KEY_PROJECTS = 'todo-proto-projects';
       const KEY_LABELS = 'todo-proto-labels';
 
-      if (tasksCount > 0 || projectsCount > 0 || labelsCount > 0) {
+      if (tasksCount > 0 || projectsCount > 0 || labelsCount > 0 || sectionsCount > 0) {
         loadedTasks = await db.tasks.toArray();
         let hasMissingPos = false;
         loadedTasks.forEach((t, idx) => {
@@ -76,6 +80,15 @@ export function useStore() {
         loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         loadedProjects = await db.projects.toArray();
         loadedLabels = await db.labels.toArray();
+        loadedSections = await db.sections.toArray();
+
+        if (loadedSections.length === 0) {
+          const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
+          if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
+          if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
+          loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g }));
+          await db.sections.bulkPut(loadedSections);
+        }
       } else {
         const localTasks = localStorage.getItem(KEY_TASKS);
         const localProjects = localStorage.getItem(KEY_PROJECTS);
@@ -121,11 +134,18 @@ export function useStore() {
           await db.labels.bulkPut(loadedLabels);
         }
         loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+        const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
+        if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
+        if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
+        loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g }));
+        await db.sections.bulkPut(loadedSections);
       }
 
       setTasks(loadedTasks);
       setProjects(loadedProjects);
       setCustomLabels(loadedLabels);
+      setSections(loadedSections);
       setLoaded(true);
     }
     
@@ -383,6 +403,92 @@ export function useStore() {
     });
   }, []);
 
+  const addSection = useCallback((name) => {
+    if (!name || !name.trim()) return null;
+    const cleanName = name.trim();
+    if (sections.some(s => s.name.toLowerCase() === cleanName.toLowerCase())) return null;
+    
+    const newSec = {
+      id: 'sec_' + Date.now(),
+      name: cleanName
+    };
+    setSections((prev) => [...prev, newSec]);
+    db.sections.put(newSec).catch(() => {});
+    return newSec;
+  }, [sections]);
+
+  const addToast = useCallback((msg) => {
+    const id = 'toast_' + Date.now();
+    setToasts((prev) => [...prev, { id, msg }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const addReminder = useCallback((taskId, timestamp) => {
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const reminders = t.reminders || [];
+      const newRem = { id: 'rem_' + Date.now(), time: timestamp, fired: false };
+      const updated = { ...t, reminders: [...reminders, newRem] };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
+  const deleteReminder = useCallback((taskId, reminderId) => {
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const reminders = t.reminders || [];
+      const updated = { ...t, reminders: reminders.filter(r => r.id !== reminderId) };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
+  const markReminderFired = useCallback((taskId, reminderId) => {
+    setTasks((ts) => ts.map((t) => {
+      if (t.id !== taskId) return t;
+      const reminders = t.reminders || [];
+      const updated = { ...t, reminders: reminders.map(r => r.id === reminderId ? { ...r, fired: true } : r) };
+      db.tasks.put(updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      tasks.forEach((t) => {
+        if (t.done) return;
+        const activeRems = t.reminders || [];
+        activeRems.forEach((r) => {
+          if (!r.fired && r.time <= now) {
+            markReminderFired(t.id, r.id);
+            addToast(`Reminder: ${t.title}`);
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification(t.title, { body: t.note || 'Task Reminder' });
+            }
+            try {
+              const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+              const osc = audioCtx.createOscillator();
+              const gain = audioCtx.createGain();
+              osc.connect(gain);
+              gain.connect(audioCtx.destination);
+              osc.type = 'sine';
+              osc.frequency.value = 880;
+              gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+              osc.start();
+              osc.stop(audioCtx.currentTime + 0.15);
+            } catch (e) {}
+          }
+        });
+      });
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [tasks, markReminderFired, addToast]);
+
+
   const resetDatabase = useCallback(async () => {
     localStorage.removeItem('todo-proto-sidebar-collapsed');
     localStorage.removeItem('todo-proto-sidebar-width');
@@ -392,12 +498,13 @@ export function useStore() {
     await db.tasks.clear();
     await db.projects.clear();
     await db.labels.clear();
+    await db.sections.clear();
     
     window.location.reload();
   }, []);
 
   return {
-    tasks, projects, labels: customLabels, view, selectedId, quickAdd, search, expandedIds,
+    tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded,
     sorts, setViewSort, reorderTasks,
     setView: (v) => { setView(v); setSelectedId(null); },
@@ -405,6 +512,11 @@ export function useStore() {
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
     addProject, deleteProject, toggleExpand, resetDatabase,
     addLabel, updateLabel, deleteLabel,
+    addSection,
+    toasts,
+    addReminder,
+    deleteReminder,
+    markReminderFired,
   };
 }
 
