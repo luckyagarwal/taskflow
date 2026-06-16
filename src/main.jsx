@@ -56,7 +56,8 @@ createRoot(document.getElementById("root")).render(<Root />);
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    const swPath = `${import.meta.env.BASE_URL}sw.js`;
+    navigator.serviceWorker.register(swPath)
       .then((reg) => console.log('SW registered:', reg))
       .catch((err) => console.error('SW registration failed:', err));
   });
