@@ -98,14 +98,28 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const compact = density === 'compact';
   const card = density === 'card';
   const labels = task.labels || [];
+  const statusChoices = {
+    inprogress: { label: 'In Progress', color: 'var(--p2)' },
+    blocked: { label: 'Blocked', color: 'var(--p1)' },
+    waiting: { label: 'Waiting', color: 'var(--p3)' }
+  };
   const hasMeta = (task.dueOffset !== null && task.dueOffset !== undefined && showProject !== 'inDate') ||
     (task.startOffset !== null && task.startOffset !== undefined && showProject !== 'inDate') ||
-    labels.length || (task.subtasks && task.subtasks.length) || task.note;
+    labels.length || (task.subtasks && task.subtasks.length) || task.note ||
+    (task.status && statusChoices[task.status]);
 
   const pad = card ? '11px 13px' : compact ? '6px 8px' : '10px 8px';
 
   const meta = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: compact ? 1 : 4 }}>
+      {task.status && statusChoices[task.status] && (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: statusChoices[task.status].color, fontWeight: 700, fontSize: 12 }}>
+          {task.status === 'inprogress' && <span style={{ width: 10, height: 10, borderRadius: 99, border: '2px solid var(--p2)', position: 'relative', overflow: 'hidden', display: 'inline-block', flexShrink: 0 }}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'var(--p2)' }} /></span>}
+          {task.status === 'blocked' && <I.x size={10} style={{ color: 'var(--p1)', flexShrink: 0 }} />}
+          {task.status === 'waiting' && <I.repeat size={10} style={{ color: 'var(--p3)', flexShrink: 0 }} />}
+          {statusChoices[task.status].label}
+        </span>
+      )}
       {showProject !== 'inDate' && <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} />}
       <SubProgress subtasks={task.subtasks} />
       {task.note ? <I.note size={13} style={{ color: 'var(--text-3)' }} /> : null}

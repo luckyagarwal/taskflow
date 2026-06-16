@@ -212,11 +212,24 @@ function MetaRow({ icon, label, children, onClick, accent }) {
 }
 
 export function TaskEditor({ taskId, inline, mobile }) {
-  const { tasks, updateTask, toggleTask, addSubtask, projects, labels: customLabels } = useApp();
+  const { tasks, updateTask, toggleTask, addSubtask, projects, labels: customLabels, addLabel } = useApp();
   const task = tasks.find((t) => t.id === taskId);
   const [menu, setMenu] = useState(null);
   const [newSub, setNewSub] = useState('');
   const [subtasksCollapsed, setSubtasksCollapsed] = useState(false);
+  const [creatingLabel, setCreatingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+
+  const handleCreateLabel = () => {
+    if (newLabelName.trim()) {
+      const newId = addLabel(newLabelName.trim());
+      if (newId) {
+        updateTask(task.id, { labels: [...(task.labels || []), newId] });
+      }
+      setNewLabelName('');
+      setCreatingLabel(false);
+    }
+  };
 
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [draggableId, setDraggableId] = useState(null);
@@ -375,6 +388,33 @@ export function TaskEditor({ taskId, inline, mobile }) {
 
       {/* meta */}
       <div style={{ marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+        {/* Status */}
+        <div style={{ position: 'relative' }}>
+          <MetaRow icon={<StatusIcon status={task.status || 'planned'} priority={task.priority} size={18} />} label="Status" onClick={() => setMenu(menu === 'status' ? null : 'status')}>
+            <span style={{ fontWeight: 800, fontSize: 14, color: STATUS_CHOICES[task.status || 'planned'].color }}>
+              {STATUS_CHOICES[task.status || 'planned'].label}
+            </span>
+          </MetaRow>
+          {menu === 'status' && (
+            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160, zIndex: 100 }}>
+              <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Status</div>
+              {Object.entries(STATUS_CHOICES).map(([k, v]) => (
+                <div key={k} className="pop-item" style={{ gap: 8 }} onClick={() => {
+                  updateTask(task.id, {
+                    status: k,
+                    done: k === 'done',
+                    doneOffset: k === 'done' ? 0 : null
+                  });
+                  setMenu(null);
+                }}>
+                  <StatusIcon status={k} priority={task.priority} size={16} />
+                  <span>{v.label}</span>
+                </div>
+              ))}
+            </Popover>
+          )}
+        </div>
+
         {/* Start Date */}
         <div style={{ position: 'relative' }}>
           <MetaRow icon={<I.calendar size={18} />} label="Start date" accent={startLbl ? TONE[startLbl.tone] : null} onClick={() => setMenu(menu === 'start' ? null : 'start')}>
@@ -382,7 +422,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Set start date</span>}
           </MetaRow>
           {menu === 'start' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200 }}>
+            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200, zIndex: 100 }}>
               <WhenPicker value={task.startOffset} onChange={(val) => {
                 updateTask(task.id, { startOffset: val });
               }} onClose={() => setMenu(null)} showTimeField={false} />
@@ -397,7 +437,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Set date</span>}
           </MetaRow>
           {menu === 'due' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200 }}>
+            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200, zIndex: 100 }}>
               <WhenPicker value={task.dueOffset} time={task.time} onChange={(val, newTime) => {
                 updateTask(task.id, { dueOffset: val, time: newTime });
               }} onClose={() => setMenu(null)} />
@@ -411,7 +451,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
             <span style={{ fontWeight: 800, fontSize: 14, color: task.priority < 4 ? prioOpt.color : 'var(--text-3)' }}>{task.priority < 4 ? prioOpt.label : 'None'}</span>
           </MetaRow>
           {menu === 'prio' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160 }}>
+            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160, zIndex: 100 }}>
               {PRIO.map((p) => (
                 <div key={p.p} className="pop-item" onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
                   <I.flag size={16} sw={2} style={{ color: p.color }} />{p.label}
@@ -428,7 +468,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Add labels</span>}
           </MetaRow>
           {menu === 'label' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 180 }}>
+            <Popover onClose={() => { setMenu(null); setCreatingLabel(false); }} style={{ top: 44, right: 12, minWidth: 180, zIndex: 100 }}>
               {customLabels.map((l) => {
                 const on = task.labels.includes(l.id);
                 return (
@@ -438,6 +478,26 @@ export function TaskEditor({ taskId, inline, mobile }) {
                   </div>
                 );
               })}
+              <div className="divider" style={{ margin: '4px 0' }} />
+              {creatingLabel ? (
+                <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6 }} onClick={(e) => e.stopPropagation()}>
+                  <input autoFocus value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)}
+                    placeholder="Label name..."
+                    style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '4px 6px', fontSize: 12, outline: 'none' }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateLabel();
+                      if (e.key === 'Escape') setCreatingLabel(false);
+                    }} />
+                  <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setCreatingLabel(false)} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleCreateLabel} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4, cursor: 'pointer' }}>Create</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pop-item" style={{ color: 'var(--accent)', fontWeight: 700 }} onClick={(e) => { e.stopPropagation(); setCreatingLabel(true); }}>
+                  <I.plusSm size={14} /> Create label...
+                </div>
+              )}
             </Popover>
           )}
         </div>

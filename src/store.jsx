@@ -150,9 +150,10 @@ export function useStore() {
       let updated;
       if (!t.done && t.recurring) {
         const nextDue = advanceRecurring(t.dueOffset, t.recurring);
-        updated = { ...t, dueOffset: nextDue, done: false };
+        updated = { ...t, dueOffset: nextDue, done: false, status: 'planned' };
       } else {
-        updated = { ...t, done: !t.done, doneOffset: !t.done ? 0 : null };
+        const nextDone = !t.done;
+        updated = { ...t, done: nextDone, doneOffset: nextDone ? 0 : null, status: nextDone ? 'done' : 'planned' };
       }
       db.tasks.put(updated).catch(() => {});
       return updated;
@@ -213,7 +214,7 @@ export function useStore() {
       id, title: 'Untitled', note: '', projectId: targetProjectId, startOffset: null, dueOffset: null,
       time: null, priority: 4, labels: finalLabels, subtasks: [], done: false, doneOffset: null,
       recurring: null, createdAt: Date.now(), subtaskSort: 'manual',
-      position: minPos - 1
+      position: minPos - 1, status: 'planned'
     }, partial, { projectId: targetProjectId, labels: finalLabels });
     
     setTasks((ts) => [task, ...ts]);
@@ -341,6 +342,47 @@ export function useStore() {
     });
   }, []);
 
+  const addLabel = useCallback((name) => {
+    if (!name || !name.trim()) return null;
+    const newTagId = 'l_' + Date.now() + Math.random().toString(36).substr(2, 4);
+    const newTag = {
+      id: newTagId,
+      name: name.trim(),
+      color: ['#7C5CFC', '#1F9D55', '#F5A623', '#9AA0A6', '#2D7FF9', '#E8588A'][Math.floor(Math.random() * 6)]
+    };
+    setCustomLabels((prev) => {
+      const next = [...prev, newTag];
+      db.labels.put(newTag).catch(() => {});
+      return next;
+    });
+    return newTagId;
+  }, []);
+
+  const updateLabel = useCallback((id, patch) => {
+    setCustomLabels((prev) => prev.map((l) => {
+      if (l.id !== id) return l;
+      const updated = { ...l, ...patch };
+      db.labels.put(updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
+  const deleteLabel = useCallback((id) => {
+    setCustomLabels((prev) => prev.filter((l) => l.id !== id));
+    db.labels.delete(id).catch(() => {});
+    setTasks((prev) => {
+      const next = prev.map((t) => {
+        if ((t.labels || []).includes(id)) {
+          const updated = { ...t, labels: t.labels.filter((x) => x !== id) };
+          db.tasks.put(updated).catch(() => {});
+          return updated;
+        }
+        return t;
+      });
+      return next;
+    });
+  }, []);
+
   const resetDatabase = useCallback(async () => {
     localStorage.removeItem('todo-proto-sidebar-collapsed');
     localStorage.removeItem('todo-proto-sidebar-width');
@@ -362,6 +404,7 @@ export function useStore() {
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
     addProject, deleteProject, toggleExpand, resetDatabase,
+    addLabel, updateLabel, deleteLabel,
   };
 }
 

@@ -406,23 +406,91 @@ export function LabelView({ labelId, density }) {
 
 // ── LABELS INDEX (filters) ──────────────────────────────────
 export function FiltersView() {
-  const { tasks, setView, labels } = useApp();
+  const { tasks, setView, labels, updateLabel, deleteLabel } = useApp();
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState('');
+
+  const colors = ['#7C5CFC', '#1F9D55', '#F5A623', '#9AA0A6', '#2D7FF9', '#E8588A'];
+
+  const startEdit = (l) => {
+    setEditingId(l.id);
+    setEditName(l.name);
+    setEditColor(l.color);
+  };
+
+  const handleSave = (id) => {
+    if (editName.trim()) {
+      updateLabel(id, { name: editName.trim(), color: editColor });
+      setEditingId(null);
+    }
+  };
+
   return (
     <div>
       <ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.filter size={24} /></span>} title="Filters & Labels" subtitle="Slice your tasks any way you like" />
       <div className="section-title" style={{ padding: '8px 8px' }}>Labels</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 12 }}>
         {labels.map((l) => {
           const n = tasks.filter((t) => !t.done && (t.labels || []).includes(l.id)).length;
+          const isEditing = editingId === l.id;
+
+          if (isEditing) {
+            return (
+              <div key={l.id} style={{
+                display: 'flex', flexDirection: 'column', gap: 8, padding: '14px', borderRadius: 12,
+                border: '1.5px solid var(--accent)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow-sm)'
+              }}>
+                <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Label name..."
+                  style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSave(l.id);
+                    if (e.key === 'Escape') setEditingId(null);
+                  }} />
+                
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {colors.map(c => (
+                    <button key={c} onClick={() => setEditColor(c)} style={{
+                      width: 18, height: 18, borderRadius: 999, background: c, border: editColor === c ? '2px solid var(--text)' : 'none', cursor: 'pointer', padding: 0
+                    }} />
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
+                  <button onClick={() => setEditingId(null)} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => handleSave(l.id)} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Save</button>
+                </div>
+              </div>
+            );
+          }
+
           return (
-            <button key={l.id} onClick={() => setView({ type: 'label', id: l.id })} style={{
-              display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', borderRadius: 12,
-              border: '1px solid var(--border)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow-sm)', textAlign: 'left',
+            <div key={l.id} style={{
+              display: 'flex', alignItems: 'center', gap: 11, padding: '10px 14px', borderRadius: 12,
+              border: '1px solid var(--border)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow-sm)',
             }}>
-              <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 9, color: l.color, background: `color-mix(in srgb, ${l.color} 14%, transparent)` }}><I.tag size={17} /></span>
-              <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1 }}>{l.name}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-3)' }}>{n}</span>
-            </button>
+              <button onClick={() => setView({ type: 'label', id: l.id })} style={{
+                flex: 1, display: 'flex', alignItems: 'center', gap: 11, border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', padding: 0, overflow: 'hidden'
+              }}>
+                <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 9, color: l.color, background: `color-mix(in srgb, ${l.color} 14%, transparent)`, flexShrink: 0 }}><I.tag size={17} /></span>
+                <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{l.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-3)', paddingRight: 4 }}>{n}</span>
+              </button>
+              
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <button className="icon-btn row-hover" title="Edit Label" onClick={() => startEdit(l)} style={{ width: 26, height: 26 }}>
+                  <I.edit size={14} style={{ color: 'var(--text-3)' }} />
+                </button>
+                <button className="icon-btn row-hover" title="Delete Label" onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete the label "${l.name}"? It will be removed from all tasks.`)) {
+                    deleteLabel(l.id);
+                  }
+                }} style={{ width: 26, height: 26 }}>
+                  <I.trash size={14} style={{ color: 'var(--p1)' }} />
+                </button>
+              </div>
+            </div>
           );
         })}
       </div>
