@@ -30,6 +30,7 @@ This document outlines the changes to support empty sections, inline subtask tit
 ### 3. Inline Subtask Title Editing
 * Subtask titles in the detail view are rendered as borderless, auto-resizing textareas that auto-save on input (`onChange`).
 * All options (status checkbox, priority flag, start date, due date) are interactive inline via popovers.
+* Subtask deletion occurs instantly *without* confirmation prompt.
 
 ### 4. Parent Task inline editing inside `TaskRow` (Main List Page)
 * Clicking blank space in `TaskRow` opens the Detail Pane (`onOpen(task)`). Clicking inputs/buttons stops propagation.
@@ -41,7 +42,8 @@ This document outlines the changes to support empty sections, inline subtask tit
   * Calendar icon (WhenPicker popover)
   * Tag icon (Labels popover)
   * Flag icon (Priority popover)
-  * Trash icon (deletes task)
+  * Trash icon (deletes task after confirmation prompt `window.confirm`)
+* Deleting a main task always requires confirmation; deleting subtasks does not.
 
 ### 5. Background Reminders Service
 * A background poller runs every 10 seconds.
