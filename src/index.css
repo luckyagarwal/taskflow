@@ -165,6 +165,12 @@ input, textarea { font-family: inherit; }
 .pop-item:active { background: var(--hover); }
 .nav-item:active { background: var(--hover); }
 
+/* Phone widths: flat full-width list rows with dividers (native feel) */
+@media (max-width: 767px) {
+  .task-row { border-radius: 0; }
+  .exit-wrap + .exit-wrap .task-row { border-top: 1px solid var(--border); }
+}
+
 /* Touch devices: neutralize :hover so styles don't stick after a tap */
 @media (hover: none) {
   .checkbox:hover .cb-check { opacity: 0; }
@@ -180,7 +186,10 @@ input, textarea { font-family: inherit; }
 .divider { height: 1px; background: var(--border); }
 .scrim { position: absolute; inset: 0; background: var(--scrim); animation: fadeIn .15s ease; }
 
-html, body { margin: 0; height: 100%; background: #0c0c0e; }
+html, body { margin: 0; height: 100%; background: #0c0c0e; overscroll-behavior: none; }
+/* Native-app feel: no double-tap zoom, no pull-to-refresh / pan bounce */
+.app-root { touch-action: manipulation; }
+.scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 #root { height: 100%; }
 body { font-family: 'Nunito', system-ui, sans-serif; }
 

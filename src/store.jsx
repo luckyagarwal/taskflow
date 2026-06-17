@@ -45,6 +45,11 @@ export function useStore() {
     } catch (e) {
       console.error(e);
     }
+    // Keep the browser status bar / chrome in sync with the theme.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#242427' : '#ffffff');
+    const sb = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (sb) sb.setAttribute('content', theme === 'dark' ? 'black' : 'default');
   }, [theme]);
 
   useEffect(() => {

@@ -135,7 +135,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   // task detail instead. The popover menus (opened from meta chips) still work.
   const showActions = !narrow && !!(selected || menu);
   const compact = density === 'compact';
-  const card = density === 'card';
+  // On phone widths a "card" list becomes flat full-width rows with dividers
+  // (native list feel) instead of separated bordered boxes.
+  const card = density === 'card' && !narrow;
   const labels = task.labels || [];
 
   const statusChoices = {
