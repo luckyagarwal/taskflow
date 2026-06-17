@@ -242,7 +242,14 @@ export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject, 
       {selectMenu && (
         <Popover onClose={() => setSelectMenu(false)} style={{ top: 34, right: 0, zIndex: 100, minWidth: 180 }}>
           <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Select & Edit</div>
-          
+
+          {!hasSelection && targetItems.length > 0 && (
+            <div className="pop-item" onClick={() => { toggleMultiSelect(targetItems[0].id); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+              <span style={{ display: 'flex', color: 'var(--accent)' }}><I.check size={15} /></span>
+              <span>Select Tasks</span>
+            </div>
+          )}
+
           <div className="pop-item" onClick={handleSelectAll} style={{ fontWeight: 600, gap: 8 }}>
             <span style={{ display: 'flex', color: 'var(--accent)' }}>
               {allSelected ? <I.x size={15} /> : <I.check size={15} />}
@@ -762,7 +769,8 @@ export function SettingsView() {
           </div>
         </div>
 
-        {/* Layout Density Section */}
+        {/* Layout Density Section — desktop only (mobile uses a fixed native list density) */}
+        {!narrow && (
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
           <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <I.grid size={16} /> Layout Density
@@ -794,6 +802,7 @@ export function SettingsView() {
             ))}
           </div>
         </div>
+        )}
 
         {/* Backup & Recovery Section */}
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>

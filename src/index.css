@@ -107,6 +107,8 @@ input, textarea { font-family: inherit; }
 .task-row .row-hover { opacity: 0; transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
 .task-row.is-selected .row-hover { opacity: 1; }
 .task-row.is-done .task-title { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--text-3); }
+/* List note: clean 2-line clamp with ellipsis instead of a hard mid-word cut */
+.task-note-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
 
 /* card density */
 .task-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); }

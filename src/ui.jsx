@@ -236,9 +236,14 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const isMultiSelected = multiSelectedIds.includes(task.id);
   const anyMultiSelected = multiSelectedIds.length > 0;
 
-  // Long-press to enter multi-select on touch (no hover affordance on mobile).
+  // Touch gestures: long-press → multi-select; horizontal swipe → quick actions
+  // (swipe right = complete, swipe left = schedule). Vertical drag stays a scroll.
   const lpTimer = React.useRef(null);
   const lpFired = React.useRef(false);
+  const sw = React.useRef({ x: 0, y: 0, mode: null, swallow: false });
+  const [dragX, setDragX] = React.useState(0);
+  const swipeEnabled = narrow && !anyMultiSelected && !selected;
+
   const startLongPress = () => {
     if (!toggleMultiSelect) return;
     lpFired.current = false;
@@ -249,7 +254,42 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     }, 420);
   };
   const cancelLongPress = () => { if (lpTimer.current) clearTimeout(lpTimer.current); };
+
+  const onRowTouchStart = (e) => {
+    startLongPress();
+    const t = e.touches[0];
+    sw.current = { x: t.clientX, y: t.clientY, mode: null, swallow: false };
+  };
+  const onRowTouchMove = (e) => {
+    const t = e.touches[0];
+    const dx = t.clientX - sw.current.x;
+    const dy = t.clientY - sw.current.y;
+    if (sw.current.mode === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      sw.current.mode = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      cancelLongPress();
+    }
+    if (sw.current.mode === 'h' && swipeEnabled) {
+      cancelLongPress();
+      setDragX(Math.max(-110, Math.min(110, dx)));
+    } else if (sw.current.mode === 'v') {
+      cancelLongPress();
+    }
+  };
+  const onRowTouchEnd = () => {
+    cancelLongPress();
+    if (sw.current.mode === 'h' && swipeEnabled) {
+      const TH = 66;
+      const x = dragX;
+      if (Math.abs(x) > 10) sw.current.swallow = true;
+      setDragX(0);
+      if (x > TH) { onToggle && onToggle(); if (navigator.vibrate) navigator.vibrate(10); }
+      else if (x < -TH) { setMenu('due'); }
+    }
+    sw.current.mode = null;
+  };
+
   const handleRowClick = () => {
+    if (sw.current.swallow) { sw.current.swallow = false; return; } // swallow click after a swipe
     if (lpFired.current) { lpFired.current = false; return; } // swallow click that ends a long-press
     if (anyMultiSelected && toggleMultiSelect) { toggleMultiSelect(task.id); return; }
     if (onOpen) onOpen(task);
@@ -259,12 +299,23 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     <div
       data-task-id={task.id}
       className={'task-row no-sel' + ((selected || isMultiSelected) ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
-      style={{ padding: pad, marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column' }}
+      style={{ marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: narrow ? 'hidden' : undefined, padding: narrow ? 0 : pad }}
       onClick={handleRowClick}
-      onTouchStart={startLongPress}
-      onTouchMove={cancelLongPress}
-      onTouchEnd={cancelLongPress}
+      onTouchStart={onRowTouchStart}
+      onTouchMove={onRowTouchMove}
+      onTouchEnd={onRowTouchEnd}
       onContextMenu={(e) => { if (narrow) e.preventDefault(); }}>
+      {narrow && dragX !== 0 && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: dragX > 0 ? 'flex-start' : 'flex-end', padding: '0 24px', background: dragX > 0 ? 'var(--today)' : 'var(--accent)', color: '#fff' }}>
+          {dragX > 0 ? <I.check size={22} sw={2.5} /> : <I.calendar size={20} />}
+        </div>
+      )}
+      <div style={{
+        padding: narrow ? pad : 0,
+        background: narrow ? ((selected || isMultiSelected) ? 'var(--active)' : (card ? 'var(--bg-elev)' : 'var(--bg)')) : undefined,
+        transform: (narrow && dragX) ? `translateX(${dragX}px)` : undefined,
+        transition: dragX === 0 ? 'transform .22s cubic-bezier(.2,0,.2,1)' : 'none',
+      }}>
       <div style={{ display: 'flex', width: '100%', alignItems: 'start', gap: 12 }}>
         <div style={{ paddingTop: compact ? 1 : 1.5, flexShrink: 0 }}>
           <Checkbox done={task.done} priority={task.priority} size={compact ? 18 : (narrow ? 24 : 20)} onToggle={onToggle} />
@@ -308,7 +359,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               cursor: selected ? 'text' : 'pointer',
             }}
           />
-          {(task.note || selected) && (
+          {selected ? (
             <textarea
               value={task.note || ''}
               onChange={(e) => updateTask(task.id, { note: e.target.value })}
@@ -335,7 +386,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 marginTop: narrow ? 3 : 2,
               }}
             />
-          )}
+          ) : task.note ? (
+            <div className="task-note-clamp" style={{ fontSize: narrow ? '14px' : '12.5px', color: 'var(--text-3)', lineHeight: 1.4, marginTop: narrow ? 3 : 2 }}>{task.note}</div>
+          ) : null}
           {hasMeta && (compact ? null : meta)}
           {compact && hasMeta && meta}
         </div>
@@ -543,6 +596,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
