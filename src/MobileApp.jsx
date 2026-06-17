@@ -28,8 +28,8 @@ function MobileHeader() {
     }}>
       <span style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flex: 'none' }}>C</span>
       <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Casex Tasks</span>
-      <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={() => setSearch(true)}><I.search size={20} /></button>
-      <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><I.sun size={19} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={19} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
+      <button className="icon-btn" style={{ border: 'none', background: 'transparent', width: 40, height: 40 }} onClick={() => setSearch(true)}><I.search size={21} /></button>
+      <button className="icon-btn" style={{ border: 'none', background: 'transparent', width: 40, height: 40 }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><I.sun size={20} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={20} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
     </div>
   );
 }

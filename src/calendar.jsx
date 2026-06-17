@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
-import { TaskRow, Empty, Dot } from './ui.jsx';
+import { TaskRow, Empty, Dot, useIsNarrow } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
 
 export function CalendarView({ density, compact }) {
   const { tasks, setSelectedId, toggleTask, selectedId } = useApp();
+  const narrow = useIsNarrow();
   const today = H.startOfToday();
   const [monthShift, setMonthShift] = useState(0);
   const [selOff, setSelOff] = useState(0);
@@ -42,7 +43,7 @@ export function CalendarView({ density, compact }) {
           </div>
         } />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-elev)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-elev)' }}>
         {H.DOW.map((d) => (
           <div key={d} style={{ textAlign: 'center', padding: '9px 0', fontSize: 11.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{d}</div>
         ))}
@@ -54,7 +55,8 @@ export function CalendarView({ density, compact }) {
           const dayTasks = byOffset[off] || [];
           return (
             <button key={i} onClick={() => setSelOff(off)} style={{
-              position: 'relative', minHeight: compact ? 64 : 92, padding: '6px 7px', textAlign: 'left',
+              position: 'relative', minHeight: narrow ? 52 : (compact ? 64 : 92), padding: narrow ? '6px 0 5px' : '6px 7px',
+              textAlign: narrow ? 'center' : 'left',
               borderRight: (i % 7 !== 6) ? '1px solid var(--border)' : 'none',
               borderBottom: i < 35 ? '1px solid var(--border)' : 'none',
               background: isSel ? 'var(--active)' : 'transparent',
@@ -66,21 +68,32 @@ export function CalendarView({ density, compact }) {
                 fontSize: 12.5, fontWeight: isToday ? 800 : 700,
                 background: isToday ? 'var(--accent)' : 'transparent', color: isToday ? '#fff' : 'var(--text)',
               }}>{d.getDate()}</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
-                {dayTasks.slice(0, compact ? 2 : 3).map((t) => {
-                  const proj = t.projectId !== 'inbox' ? H.projectById(t.projectId) : null;
-                  const c = H.priorityColor(t.priority) || (proj ? proj.color : 'var(--text-3)');
-                  return (
-                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 99, background: c, flex: 'none' }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
-                    </div>
-                  );
-                })}
-                {dayTasks.length > (compact ? 2 : 3) && (
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)' }}>+{dayTasks.length - (compact ? 2 : 3)} more</span>
-                )}
-              </div>
+              {narrow ? (
+                // Mobile: dots only — cells are too narrow for titles. Tap a day to see its list below.
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginTop: 4, minHeight: 7 }}>
+                  {dayTasks.slice(0, 4).map((t) => {
+                    const proj = t.projectId !== 'inbox' ? H.projectById(t.projectId) : null;
+                    const c = H.priorityColor(t.priority) || (proj ? proj.color : 'var(--text-3)');
+                    return <span key={t.id} style={{ width: 5, height: 5, borderRadius: 99, background: c }} />;
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                  {dayTasks.slice(0, compact ? 2 : 3).map((t) => {
+                    const proj = t.projectId !== 'inbox' ? H.projectById(t.projectId) : null;
+                    const c = H.priorityColor(t.priority) || (proj ? proj.color : 'var(--text-3)');
+                    return (
+                      <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: 99, background: c, flex: 'none' }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+                      </div>
+                    );
+                  })}
+                  {dayTasks.length > (compact ? 2 : 3) && (
+                    <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)' }}>+{dayTasks.length - (compact ? 2 : 3)} more</span>
+                  )}
+                </div>
+              )}
             </button>
           );
         })}

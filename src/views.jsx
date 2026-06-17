@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
-import { TaskRow, Empty, Dot, Ring } from './ui.jsx';
+import { TaskRow, Empty, Dot, Ring, useIsNarrow } from './ui.jsx';
 import { InlineComposer, Popover } from './composer.jsx';
 import { CalendarView } from './calendar.jsx';
 
@@ -697,6 +697,7 @@ export function LogbookView() {
 // ── SETTINGS ────────────────────────────────────────────────
 export function SettingsView() {
   const { theme, setTheme, density, setDensity, resetDatabase, exportDatabase, importDatabase } = useApp();
+  const narrow = useIsNarrow();
   const fileInputRef = React.useRef(null);
 
   const handleImportClick = () => {
@@ -887,7 +888,8 @@ export function SettingsView() {
           </div>
         </div>
 
-        {/* Keyboard Shortcuts Reference */}
+        {/* Keyboard Shortcuts Reference — desktop only (no physical keyboard on mobile) */}
+        {!narrow && (
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
           <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <I.keyboard size={16} /> Keyboard Shortcuts Reference
@@ -932,6 +934,7 @@ export function SettingsView() {
             ))}
           </div>
         </div>
+        )}
 
       </div>
     </div>
