@@ -90,6 +90,7 @@ input, textarea { font-family: inherit; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes panelIn { from { transform: translateX(14px); } to { transform: translateX(0); } }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes strike { from { background-size: 0 1.5px; } to { background-size: 100% 1.5px; } }
 
 /* components.css — component-level styles, hover/interaction states */
@@ -154,6 +155,19 @@ input, textarea { font-family: inherit; }
 .pop { position: absolute; z-index: 60; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 6px; animation: slideUp .14s ease; }
 .pop-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; white-space: nowrap; }
 .pop-item:hover { background: var(--hover); }
+
+/* Mobile bottom-sheet variant of Popover (pickers: due, priority, labels, project) */
+.sheet-scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 1000; animation: fadeIn .15s ease; }
+.pop-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+  background: var(--bg-elev); border-top-left-radius: 20px; border-top-right-radius: 20px;
+  box-shadow: var(--shadow-lg); padding: 6px 10px calc(14px + env(safe-area-inset-bottom));
+  max-height: 75vh; overflow-y: auto; overscroll-behavior: contain;
+  animation: sheetUp .26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sheet-handle { width: 38px; height: 5px; border-radius: 99px; background: var(--border-2); margin: 8px auto 12px; }
+/* Roomier touch rows for picker items inside the sheet */
+.pop-sheet .pop-item { height: 46px; font-size: 15px; }
 
 /* segmented control inside the dark preview chrome (no theme vars there) */
 .dark-seg .seg { background: #0e0e10; }
@@ -238,5 +252,14 @@ body { font-family: 'Nunito', system-ui, sans-serif; }
     width: calc(100% - 32px);
     justify-content: space-between;
   }
+}
+
+/* Mobile contextual action bar (multi-select) — full width over the tab bar */
+.bulk-bar-mobile {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+  background: var(--bg-elev); border-top: 1px solid var(--border-2);
+  box-shadow: var(--shadow-lg);
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  animation: sheetUp .26s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

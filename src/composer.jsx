@@ -25,13 +25,41 @@ export const PRIO = [
   { p: 4, label: 'Priority 4', color: 'var(--text-3)' },
 ];
 
+// True on phone-width viewports (kept local to avoid a circular import with ui.jsx).
+function usePopoverNarrow() {
+  const q = '(max-width: 767px)';
+  const [n, setN] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const f = (e) => setN(e.matches);
+    m.addEventListener('change', f);
+    return () => m.removeEventListener('change', f);
+  }, []);
+  return n;
+}
+
 export function Popover({ children, onClose, style }) {
   const ref = useRef(null);
+  const narrow = usePopoverNarrow();
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener('mousedown', h, true);
     return () => document.removeEventListener('mousedown', h, true);
   }, [onClose]);
+
+  // On mobile, present every picker as a bottom sheet instead of a desktop-anchored
+  // popover — native app feel for editing due date, priority, labels, project, etc.
+  if (narrow) {
+    return (
+      <>
+        <div className="sheet-scrim" onMouseDown={onClose} />
+        <div className="pop-sheet" ref={ref} onMouseDown={(e) => e.stopPropagation()}>
+          <div className="sheet-handle" />
+          {children}
+        </div>
+      </>
+    );
+  }
   return <div className="pop" ref={ref} style={style}>{children}</div>;
 }
 

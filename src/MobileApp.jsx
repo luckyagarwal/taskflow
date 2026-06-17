@@ -328,9 +328,10 @@ function AddProjectModal({ onClose }) {
 }
 
 export function MobileApp() {
-  const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density } = useApp();
+  const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density, multiSelectedIds } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [addingSec, setAddingSec] = useState(false);
+  const selecting = !!(multiSelectedIds && multiSelectedIds.length > 0);
   return (
     <div style={{ position: 'relative', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       <MobileHeader />
@@ -341,13 +342,15 @@ export function MobileApp() {
         </div>
       </div>
 
-      {/* FAB */}
-      <button onClick={() => setQuickAdd(true)} style={{
-        position: 'absolute', right: 18, bottom: 96, width: 56, height: 56, borderRadius: 18,
-        background: 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center',
-        boxShadow: '0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent)', zIndex: 50,
-        border: 'none', cursor: 'pointer',
-      }}><I.plus size={26} /></button>
+      {/* FAB — hidden during multi-select (contextual action bar takes over) */}
+      {!selecting && (
+        <button onClick={() => setQuickAdd(true)} style={{
+          position: 'absolute', right: 18, bottom: 96, width: 56, height: 56, borderRadius: 18,
+          background: 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center',
+          boxShadow: '0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent)', zIndex: 50,
+          border: 'none', cursor: 'pointer',
+        }}><I.plus size={26} /></button>
+      )}
 
       <TabBar />
 

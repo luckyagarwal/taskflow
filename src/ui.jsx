@@ -554,10 +554,44 @@ export function Ring({ value, total, size = 22, color = 'var(--accent)' }) {
 // ── Bulk actions bar ────────────────────────────────────────
 export function BulkActionBar() {
   const { multiSelectedIds, clearMultiSelect, bulkComplete, bulkDelete } = useApp();
+  const narrow = useIsNarrow();
 
   if (!multiSelectedIds || multiSelectedIds.length === 0) return null;
 
   const count = multiSelectedIds.length;
+
+  const confirmDelete = () => {
+    if (window.confirm(`Are you sure you want to delete these ${count} tasks?`)) bulkDelete();
+  };
+
+  // Mobile: a full-width contextual action bar over the tab bar (native pattern).
+  if (narrow) {
+    return (
+      <div className="bulk-bar-mobile" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+            {count} task{count > 1 ? 's' : ''} selected
+          </span>
+          <button onClick={clearMultiSelect} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 15, fontWeight: 700, padding: '4px 4px', cursor: 'pointer' }}>Cancel</button>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => bulkComplete()} style={{
+            flex: 1, height: 48, fontSize: 15, fontWeight: 800, color: '#fff', background: 'var(--accent)',
+            border: 'none', borderRadius: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}>
+            <I.check size={17} sw={2.5} style={{ color: '#fff' }} /> Complete
+          </button>
+          <button onClick={confirmDelete} style={{
+            flex: 1, height: 48, fontSize: 15, fontWeight: 800, color: 'var(--p1)',
+            background: 'color-mix(in srgb, var(--p1) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--p1) 26%, transparent)',
+            borderRadius: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}>
+            <I.trash size={16} /> Delete
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bulk-bar" onClick={(e) => e.stopPropagation()}>
