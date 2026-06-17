@@ -10,7 +10,7 @@ import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { InlineComposer } from './composer.jsx';
 
-const STATUS_PAD = 50; // clear the iOS status bar / island
+const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers the notch/island in standalone mode
 
 function MobileHeader() {
   const { setSearch, theme, setTheme } = useApp();
@@ -353,8 +353,8 @@ export function MobileApp() {
 
       {selectedId && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'var(--bg)', animation: 'panelIn .2s ease' }}>
-          <div style={{ height: STATUS_PAD - 8 }} />
-          <div style={{ height: `calc(100% - ${STATUS_PAD - 8}px)` }}>
+          <div style={{ height: `max(env(safe-area-inset-top), ${STATUS_PAD - 8}px)` }} />
+          <div style={{ height: `calc(100% - max(env(safe-area-inset-top), ${STATUS_PAD - 8}px))` }}>
             <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} mobile />
           </div>
         </div>
