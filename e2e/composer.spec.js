@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 // Regression for the parsing-preview fix: typing natural-language tokens must
 // light up the composer's Date / Priority / Label / Project pills live.
 test("composer preview pills reflect parsed tokens", async ({ page }) => {
-  await page.goto("/taskApp/");
+  await page.goto("/");
 
   // Open the first inline "Add task" composer.
   await page.getByRole("button", { name: "Add task" }).first().click();
