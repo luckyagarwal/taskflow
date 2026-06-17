@@ -236,12 +236,35 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const isMultiSelected = multiSelectedIds.includes(task.id);
   const anyMultiSelected = multiSelectedIds.length > 0;
 
+  // Long-press to enter multi-select on touch (no hover affordance on mobile).
+  const lpTimer = React.useRef(null);
+  const lpFired = React.useRef(false);
+  const startLongPress = () => {
+    if (!toggleMultiSelect) return;
+    lpFired.current = false;
+    lpTimer.current = setTimeout(() => {
+      lpFired.current = true;
+      toggleMultiSelect(task.id);
+      if (navigator.vibrate) navigator.vibrate(12);
+    }, 420);
+  };
+  const cancelLongPress = () => { if (lpTimer.current) clearTimeout(lpTimer.current); };
+  const handleRowClick = () => {
+    if (lpFired.current) { lpFired.current = false; return; } // swallow click that ends a long-press
+    if (anyMultiSelected && toggleMultiSelect) { toggleMultiSelect(task.id); return; }
+    if (onOpen) onOpen(task);
+  };
+
   return (
     <div
       data-task-id={task.id}
       className={'task-row no-sel' + ((selected || isMultiSelected) ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
       style={{ padding: pad, marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column' }}
-      onClick={() => onOpen && onOpen(task)}>
+      onClick={handleRowClick}
+      onTouchStart={startLongPress}
+      onTouchMove={cancelLongPress}
+      onTouchEnd={cancelLongPress}
+      onContextMenu={(e) => { if (narrow) e.preventDefault(); }}>
       <div style={{ display: 'flex', width: '100%', alignItems: 'start', gap: 12 }}>
         <div style={{ paddingTop: compact ? 1 : 1.5, flexShrink: 0 }}>
           <Checkbox done={task.done} priority={task.priority} size={compact ? 18 : (narrow ? 24 : 20)} onToggle={onToggle} />

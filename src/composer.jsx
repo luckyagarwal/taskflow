@@ -176,6 +176,7 @@ const Switch = ({ checked, onChange, label }) => {
 };
 
 export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onClose, showTimeField = true }) {
+  const narrow = usePopoverNarrow();
   const initStart = startOffset !== undefined ? startOffset : null;
   const initDue = dueOffset !== undefined ? dueOffset : (value !== undefined ? value : null);
 
@@ -281,14 +282,14 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: 230, padding: '2px 0' }} onClick={(e) => e.stopPropagation()}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: narrow ? '100%' : 230, padding: narrow ? '0 4px' : '2px 0' }} onClick={(e) => e.stopPropagation()}>
       {/* Date display buttons */}
-      <div style={{ display: 'flex', gap: 6, padding: '8px 12px 4px' }}>
+      <div style={{ display: 'flex', gap: 8, padding: narrow ? '4px 8px 8px' : '8px 12px 4px' }}>
         <button
           type="button"
           onClick={() => setActiveField('start')}
           style={{
-            flex: 1, padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+            flex: 1, padding: narrow ? '10px 10px' : '5px 8px', borderRadius: narrow ? 10 : 6, fontSize: narrow ? 14 : 12, fontWeight: 700,
             border: `1.5px solid ${activeField === 'start' ? 'var(--accent)' : 'var(--border)'}`,
             background: activeField === 'start' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
             color: activeField === 'start' ? 'var(--accent-text)' : 'var(--text-2)',
@@ -307,7 +308,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
               type="button"
               onClick={() => setActiveField('due')}
               style={{
-                flex: 1, padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                flex: 1, padding: narrow ? '10px 10px' : '5px 8px', borderRadius: narrow ? 10 : 6, fontSize: narrow ? 14 : 12, fontWeight: 700,
                 border: `1.5px solid ${activeField === 'due' ? 'var(--accent)' : 'var(--border)'}`,
                 background: activeField === 'due' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
                 color: activeField === 'due' ? 'var(--accent-text)' : 'var(--text-2)',
@@ -339,13 +340,13 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
             key={opt.label}
             type="button"
             className="pop-item"
-            style={{ height: 28, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}
+            style={{ height: narrow ? 48 : 28, fontSize: narrow ? 16 : 13, display: 'flex', alignItems: 'center', gap: narrow ? 12 : 8, padding: narrow ? '0 10px' : '0 8px' }}
             onClick={(e) => {
               e.stopPropagation();
               handleQuickOpt(opt);
             }}
           >
-            <span style={{ color: opt.color, display: 'grid', placeItems: 'center', width: 14 }}>{opt.icon}</span>
+            <span style={{ color: opt.color, display: 'grid', placeItems: 'center', width: narrow ? 20 : 14 }}>{narrow ? React.cloneElement(opt.icon, { size: 18 }) : opt.icon}</span>
             <span style={{ flex: 1, textAlign: 'left', fontWeight: 600 }}>{opt.label}</span>
           </button>
         ))}
