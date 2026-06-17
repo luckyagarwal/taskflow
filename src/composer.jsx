@@ -496,6 +496,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
   const finalDueOpt = finalDue === 'someday'
     ? { label: 'Someday', color: '#E8588A' }
     : (DUE_OPTIONS.find((d) => d.off === finalDue) || (finalDue !== null ? { label: H.dueLabel(finalDue)?.text, color: 'var(--today)' } : null));
+  const finalPrioOpt = PRIO.find((p) => p.p === finalPrio) || prioOpt;
 
   return (
     <div style={{
@@ -517,9 +518,9 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         <div style={{ position: 'relative' }}>
           <PillBtn
             icon={<I.calendar size={15} sw={2} />}
-            label={(start !== null || due !== null) ? H.dateRangeLabel(start, due, time) : 'Date'}
-            color={(dueOpt || (start !== null ? { color: 'var(--today)' } : null))?.color || 'var(--text-2)'}
-            active={start !== null || due !== null}
+            label={(start !== null || finalDue !== null) ? H.dateRangeLabel(start, finalDue, finalTime) : 'Date'}
+            color={(finalDueOpt || (start !== null ? { color: 'var(--today)' } : null))?.color || 'var(--text-2)'}
+            active={start !== null || finalDue !== null}
             onClick={() => setMenu(menu === 'due' ? null : 'due')}
           />
           {menu === 'due' && (
@@ -540,7 +541,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         </div>
 
         <div style={{ position: 'relative' }}>
-          <PillBtn icon={<I.flag size={15} sw={2} />} label={prio < 4 ? `P${prio}` : 'Priority'} color={prioOpt.color} active={prio < 4} onClick={() => setMenu(menu === 'prio' ? null : 'prio')} />
+          <PillBtn icon={<I.flag size={15} sw={2} />} label={finalPrio < 4 ? `P${finalPrio}` : 'Priority'} color={finalPrioOpt.color} active={finalPrio < 4} onClick={() => setMenu(menu === 'prio' ? null : 'prio')} />
           {menu === 'prio' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, left: 0, minWidth: 160 }}>
               {PRIO.map((p) => (
@@ -553,7 +554,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         </div>
 
         <div style={{ position: 'relative' }}>
-          <PillBtn icon={<I.tag size={15} sw={2} />} label={labels.length ? `${labels.length} label${labels.length > 1 ? 's' : ''}` : 'Label'} color="#7C5CFC" active={labels.length > 0} onClick={() => setMenu(menu === 'label' ? null : 'label')} />
+          <PillBtn icon={<I.tag size={15} sw={2} />} label={finalLabels.length ? `${finalLabels.length} label${finalLabels.length > 1 ? 's' : ''}` : 'Label'} color="#7C5CFC" active={finalLabels.length > 0} onClick={() => setMenu(menu === 'label' ? null : 'label')} />
           {menu === 'label' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, left: 0, minWidth: 180 }}>
               {storeLabels.map((l) => (
@@ -571,7 +572,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
             display: 'inline-flex', alignItems: 'center', gap: 7, height: 30, padding: '0 10px', borderRadius: 8,
             fontSize: 13, fontWeight: 700, color: 'var(--text-2)', border: '1.5px solid var(--border-2)',
           }}>
-            <Dot color={proj.color} />{proj.name}<I.chevD size={14} />
+            <Dot color={finalProj.color} />{finalProj.name}<I.chevD size={14} />
           </button>
           {menu === 'proj' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, right: 0, minWidth: 200 }}>
