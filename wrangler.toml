@@ -16,4 +16,4 @@ compatibility_date = "2024-09-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "taskflow-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "ce6fa773-3672-4ffc-8052-302a9f59ea58"
