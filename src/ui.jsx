@@ -5,6 +5,20 @@ import { H } from './data.js';
 import { useApp } from './store.jsx';
 import { Popover, WhenPicker, PRIO } from './composer.jsx';
 
+// True on phone-width viewports — used to reflow task rows so the project
+// label drops below the title instead of stealing a fixed right column.
+export function useIsNarrow() {
+  const q = '(max-width: 767px)';
+  const [narrow, setNarrow] = React.useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  React.useEffect(() => {
+    const mq = window.matchMedia(q);
+    const fn = (e) => setNarrow(e.matches);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return narrow;
+}
+
 // ── Circular priority checkbox ───────────────────────────────
 export function Checkbox({ done, priority = 4, onToggle, size = 20 }) {
   const pc = H.priorityColor(priority);
@@ -117,6 +131,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const showActions = !!(selected || menu);
 
   const proj = task.projectId && task.projectId !== 'inbox' ? (projects.find(p => p.id === task.projectId) || H.projectById(task.projectId)) : null;
+  const narrow = useIsNarrow();
   const compact = density === 'compact';
   const card = density === 'card';
   const labels = task.labels || [];
@@ -137,15 +152,24 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     done: { label: 'Done', icon: <I.check size={14} style={{ color: 'var(--today)' }} /> }
   };
 
+  const projInMeta = narrow && showProject && showProject !== 'inDate' && !!proj;
   const hasMeta = (task.dueOffset !== null && task.dueOffset !== undefined && showProject !== 'inDate') ||
     (task.startOffset !== null && task.startOffset !== undefined && showProject !== 'inDate') ||
     labels.length || (task.subtasks && task.subtasks.length) || task.note ||
-    (task.status && statusChoices[task.status]);
+    (task.status && statusChoices[task.status]) || projInMeta;
 
   const pad = card ? '11px 13px' : compact ? '6px 8px' : '10px 8px';
 
   const meta = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: compact ? 1 : 4 }}>
+      {projInMeta && (
+        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
+            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 700, fontSize: 12 }}>
+            <Dot color={proj.color} size={8} />{proj.name}
+          </button>
+        </div>
+      )}
       {task.status && statusChoices[task.status] && (
         <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setMenu(menu === 'status' ? null : 'status')} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: statusChoices[task.status].color, fontWeight: 700, fontSize: 12 }}>
@@ -292,6 +316,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: 0, position: 'relative' }}>
           {showProject && proj && (
             <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+              {!narrow && (
               <span
                 onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
                 style={{
@@ -311,6 +336,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               >
                 {proj.name}<Dot color={proj.color} />
               </span>
+              )}
               {menu === 'proj_badge' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 22, right: 0, zIndex: 100, minWidth: 180 }}>
                   <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
