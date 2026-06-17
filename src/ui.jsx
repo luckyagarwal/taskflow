@@ -112,11 +112,11 @@ export function Segmented({ value, onChange, options }) {
 // ── Task row ────────────────────────────────────────────────
 // density: 'comfortable' | 'compact' | 'card'
 export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true }) {
-  const { updateTask, deleteTask, labels: customLabels, multiSelectedIds = [], toggleMultiSelect } = useApp();
+  const { updateTask, deleteTask, labels: customLabels, multiSelectedIds = [], toggleMultiSelect, projects } = useApp();
   const [menu, setMenu] = React.useState(null);
   const showActions = !!(selected || menu);
 
-  const proj = task.projectId && task.projectId !== 'inbox' ? H.projectById(task.projectId) : null;
+  const proj = task.projectId && task.projectId !== 'inbox' ? (projects.find(p => p.id === task.projectId) || H.projectById(task.projectId)) : null;
   const compact = density === 'compact';
   const card = density === 'card';
   const labels = task.labels || [];
@@ -291,20 +291,48 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: 0, position: 'relative' }}>
           {showProject && proj && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: 'var(--text-2)',
-              fontWeight: 700,
-              fontSize: 12.5,
-              whiteSpace: 'nowrap',
-              opacity: showActions ? 0 : 1,
-              transform: showActions ? 'translateX(-8px)' : 'translateX(0)',
-              transition: 'opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}>
-              {proj.name}<Dot color={proj.color} />
-            </span>
+            <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+              <span
+                onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: 'var(--text-2)',
+                  fontWeight: 700,
+                  fontSize: 12.5,
+                  whiteSpace: 'nowrap',
+                  opacity: showActions ? 0 : 1,
+                  transform: showActions ? 'translateX(-8px)' : 'translateX(0)',
+                  transition: 'opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+                  cursor: 'pointer'
+                }}
+                title="Change project"
+              >
+                {proj.name}<Dot color={proj.color} />
+              </span>
+              {menu === 'proj_badge' && (
+                <Popover onClose={() => setMenu(null)} style={{ top: 22, right: 0, zIndex: 100, minWidth: 180 }}>
+                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
+                  
+                  {/* Inbox */}
+                  <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
+                    <I.inbox size={14} />
+                    <span>Inbox</span>
+                    {(!task.projectId || task.projectId === 'inbox') && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                  </div>
+                  
+                  {/* Projects */}
+                  {projects.map((p) => (
+                    <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+                      <Dot color={p.color} size={8} />
+                      <span>{p.name}</span>
+                      {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                    </div>
+                  ))}
+                </Popover>
+              )}
+            </div>
           )}
 
           {/* Hover Action Bar */}
@@ -369,6 +397,34 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                       </div>
                     );
                   })}
+                </Popover>
+              )}
+            </div>
+
+            {/* Project Trigger */}
+            <div style={{ position: 'relative' }}>
+              <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'proj_btn' ? null : 'proj_btn')} title="Set project">
+                <I.folder size={15} />
+              </button>
+              {menu === 'proj_btn' && (
+                <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 180 }}>
+                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
+                  
+                  {/* Inbox */}
+                  <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
+                    <I.inbox size={14} />
+                    <span>Inbox</span>
+                    {(!task.projectId || task.projectId === 'inbox') && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                  </div>
+                  
+                  {/* Projects */}
+                  {projects.map((p) => (
+                    <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+                      <Dot color={p.color} size={8} />
+                      <span>{p.name}</span>
+                      {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                    </div>
+                  ))}
                 </Popover>
               )}
             </div>

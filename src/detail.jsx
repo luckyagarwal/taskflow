@@ -294,6 +294,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
   const dueLbl = H.dueLabel(task.dueOffset);
   const startLbl = H.dueLabel(task.startOffset);
   const prioOpt = PRIO.find((p) => p.p === task.priority) || PRIO[3];
+  const proj = task.projectId !== 'inbox' ? (projects.find(p => p.id === task.projectId) || H.projectById(task.projectId)) : null;
   const subDone = task.subtasks.filter((s) => s.done).length;
 
   const TONE = { overdue: 'var(--p1)', today: 'var(--today)', soon: 'var(--p3)', future: 'var(--text-2)' };
@@ -488,6 +489,36 @@ export function TaskEditor({ taskId, inline, mobile }) {
               {PRIO.map((p) => (
                 <div key={p.p} className="pop-item" onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
                   <I.flag size={16} sw={2} style={{ color: p.color }} />{p.label}
+                </div>
+              ))}
+            </Popover>
+          )}
+        </div>
+
+        {/* Project */}
+        <div style={{ position: 'relative' }}>
+          <MetaRow icon={proj ? <Dot color={proj.color} size={10} /> : <I.inbox size={18} />} label="Project" onClick={() => setMenu(menu === 'project' ? null : 'project')}>
+            <span style={{ fontWeight: 800, fontSize: 14, color: proj ? 'var(--text)' : 'var(--text-3)' }}>
+              {proj ? proj.name : 'Inbox'}
+            </span>
+          </MetaRow>
+          {menu === 'project' && (
+            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 180, zIndex: 100 }}>
+              <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
+              
+              {/* Inbox */}
+              <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
+                <I.inbox size={14} />
+                <span>Inbox</span>
+                {(!task.projectId || task.projectId === 'inbox') && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+              </div>
+              
+              {/* Projects */}
+              {projects.map((p) => (
+                <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+                  <Dot color={p.color} size={8} />
+                  <span>{p.name}</span>
+                  {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
                 </div>
               ))}
             </Popover>
