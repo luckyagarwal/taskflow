@@ -171,11 +171,32 @@ function MainContent({ density, narrow }) {
   );
 }
 
+const getSelectedTaskSectionId = (task, view) => {
+  if (!task) return null;
+  if (view.type === 'today') {
+    const isOverdue = task.dueOffset !== null && task.dueOffset < 0 && !task.done;
+    return isOverdue ? 'today-overdue' : 'today-today';
+  }
+  if (view.type === 'upcoming') {
+    return `upcoming-${task.dueOffset}`;
+  }
+  if (view.type === 'project') {
+    if (task.dueOffset === 'someday') return 'project-someday';
+    if (task.dueOffset !== null) return 'project-scheduled';
+    return 'project-anytime';
+  }
+  if (view.type === 'logbook') {
+    return `logbook-${task.doneOffset || 0}`;
+  }
+  return null;
+};
+
 export function DesktopApp({ frameW = 1320 }) {
   const {
     selectedId, setSelectedId, search, setSearch, quickAdd, setQuickAdd,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, toasts,
-    view, setView, tasks, updateTask, deleteTask, density
+    view, setView, tasks, updateTask, deleteTask, density,
+    toggleTask, updateSubtask, collapsedSections, setCollapsedSections, toggleSection
   } = useApp();
   const narrow = frameW < 1080;
   const [detailWidth, setDetailWidth] = useState(372);
@@ -221,6 +242,75 @@ export function DesktopApp({ frameW = 1320 }) {
 
       // Block single-character/nav shortcuts while typing in inputs
       if (isEditing) return;
+
+      // Notion-style section collapse/expand: Cmd+Enter or Cmd+Option+T
+      if ((e.metaKey && e.key === 'Enter') || (e.metaKey && e.altKey && e.code === 'KeyT')) {
+        e.preventDefault();
+        if (selectedId) {
+          const task = tasks.find(t => t.id === selectedId);
+          const secId = getSelectedTaskSectionId(task, view);
+          if (secId) {
+            toggleSection(secId);
+            return;
+          }
+        } else if (e.metaKey && e.altKey && e.code === 'KeyT') {
+          // Toggle all sections in the active view
+          let viewSections = [];
+          if (view.type === 'today') {
+            viewSections = ['today-overdue', 'today-today'];
+          } else if (view.type === 'upcoming') {
+            const offsets = Array.from(new Set(tasks.map(t => t.dueOffset).filter(off => off !== null && off !== 'someday')));
+            viewSections = offsets.map(off => `upcoming-${off}`);
+          } else if (view.type === 'project') {
+            viewSections = ['project-scheduled', 'project-anytime', 'project-someday'];
+          } else if (view.type === 'logbook') {
+            const doneOffsets = Array.from(new Set(tasks.filter(t => t.done).map(t => t.doneOffset || 0)));
+            viewSections = doneOffsets.map(off => `logbook-${off}`);
+          }
+
+          if (viewSections.length > 0) {
+            const anyExpanded = viewSections.some(secId => !collapsedSections.includes(secId));
+            if (anyExpanded) {
+              setCollapsedSections(prev => Array.from(new Set([...prev, ...viewSections])));
+            } else {
+              setCollapsedSections(prev => prev.filter(secId => !viewSections.includes(secId)));
+            }
+          }
+          return;
+        }
+      }
+
+      // Mac-style complete all / untoggle all: Cmd + Option + C / U
+      if (e.metaKey && e.altKey && (e.code === 'KeyC' || e.code === 'KeyU')) {
+        e.preventDefault();
+        const nextDone = e.code === 'KeyC';
+        
+        if (selectedId) {
+          const task = tasks.find(t => t.id === selectedId);
+          if (task && task.subtasks) {
+            task.subtasks.forEach(sub => {
+              if (sub.done !== nextDone) {
+                updateSubtask(selectedId, sub.id, { done: nextDone });
+              }
+            });
+          }
+        } else {
+          // Toggle all visible tasks
+          const visibleIds = Array.from(document.querySelectorAll('.task-row'))
+            .map(row => row.getAttribute('data-task-id'))
+            .filter(Boolean);
+          
+          if (visibleIds.length > 0) {
+            visibleIds.forEach(id => {
+              const t = tasks.find(item => item.id === id);
+              if (t && t.done !== nextDone) {
+                toggleTask(t.id);
+              }
+            });
+          }
+        }
+        return;
+      }
 
       // 2. Navigation via Cmd + 1..6
       if (e.metaKey || e.ctrlKey) {
@@ -322,7 +412,7 @@ export function DesktopApp({ frameW = 1320 }) {
       document.removeEventListener('keydown', handleKeyDown);
       if (lastKeyGTimeout) clearTimeout(lastKeyGTimeout);
     };
-  }, [selectedId, search, quickAdd, view, tasks, setView, setSearch, setQuickAdd, setSelectedId, updateTask, deleteTask]);
+  }, [selectedId, search, quickAdd, view, tasks, setView, setSearch, setQuickAdd, setSelectedId, updateTask, deleteTask, toggleTask, updateSubtask, collapsedSections, setCollapsedSections, toggleSection]);
 
   const startResize = (e) => {
     e.preventDefault();
