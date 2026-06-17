@@ -7,7 +7,7 @@ import { TaskRow, Empty, Dot } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
 
 export function CalendarView({ density, compact }) {
-  const { tasks, setSelectedId, toggleTask } = useApp();
+  const { tasks, setSelectedId, toggleTask, selectedId } = useApp();
   const today = H.startOfToday();
   const [monthShift, setMonthShift] = useState(0);
   const [selOff, setSelOff] = useState(0);
@@ -94,7 +94,7 @@ export function CalendarView({ density, compact }) {
         {selTasks.length === 0
           ? <Empty icon={<I.calendar size={28} />} title="Nothing scheduled" sub="Pick another day or add a task for this date." />
           : selTasks.map((t) => (
-            <TaskRow key={t.id} task={t} density={density} showProject onToggle={() => toggleTask(t.id)} onOpen={(x) => setSelectedId(x.id)} />
+            <TaskRow key={t.id} task={t} density={density} showProject onToggle={() => toggleTask(t.id)} onOpen={(x) => setSelectedId(x.id)} selected={selectedId === t.id} />
           ))}
       </div>
     </div>

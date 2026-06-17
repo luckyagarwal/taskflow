@@ -101,17 +101,14 @@ input, textarea { font-family: inherit; }
 
 /* ── Task row ─────────────────────────────────────────── */
 .task-row { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: 12px; cursor: pointer; border-radius: 10px; transition: background .12s; }
-.task-row:hover { background: var(--hover); }
 .task-row.is-selected { background: var(--active); }
-.task-row .grip { opacity: 0; }
-.task-row:hover .grip { opacity: 1; }
-.task-row .row-hover { opacity: 0; transition: opacity .12s; }
-.task-row:hover .row-hover { opacity: 1; }
+.task-row .row-hover { opacity: 0; transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
+.task-row.is-selected .row-hover { opacity: 1; }
 .task-row.is-done .task-title { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--text-3); }
 
 /* card density */
 .task-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); }
-.task-card:hover { background: var(--bg-elev); border-color: var(--border-2); box-shadow: var(--shadow-md); }
+.task-card.is-selected { border-color: var(--border-2); box-shadow: var(--shadow-md); }
 
 /* dividers for compact */
 .divrow + .divrow { border-top: 1px solid var(--border); }
@@ -186,5 +183,35 @@ body { font-family: 'Nunito', system-ui, sans-serif; }
 @keyframes expandIn {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Bulk Actions Bar ─────────────────────────────────────── */
+.bulk-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elev);
+  border: 1.5px solid var(--border-2);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  z-index: 1000;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@media (max-width: 600px) {
+  .bulk-bar {
+    bottom: 84px;
+    padding: 8px 14px;
+    gap: 10px;
+    width: calc(100% - 32px);
+    justify-content: space-between;
+  }
 }
 

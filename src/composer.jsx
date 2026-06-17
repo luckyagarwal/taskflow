@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H, parseTask } from './data.js';
 import { useApp } from './store.jsx';
-import { Dot } from './ui.jsx';
+import { Dot, DueBadge } from './ui.jsx';
 
 export const DUE_OPTIONS = [
   { label: 'Today', off: 0, color: 'var(--today)', icon: (p) => <I.today {...p} /> },
@@ -35,7 +35,7 @@ export function Popover({ children, onClose, style }) {
   return <div className="pop" ref={ref} style={style}>{children}</div>;
 }
 
-export function MiniCalendar({ value, onChange }) {
+export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
   const today = H.startOfToday();
   const [monthShift, setMonthShift] = useState(0);
 
@@ -82,23 +82,45 @@ export function MiniCalendar({ value, onChange }) {
           const off = offOf(d);
           const inMonth = d.getMonth() === month;
           const isToday = off === 0;
-          const isSel = off === value;
+
+          const isStart = startValue !== null && off === startValue;
+          const isDue = dueValue !== null && off === dueValue;
+          const inRange = startValue !== null && dueValue !== null && off > startValue && off < dueValue;
+
+          let bg = 'transparent';
+          let color = isToday ? 'var(--accent-text)' : 'var(--text)';
+          let borderRadius = '6px';
+
+          if (isStart || isDue) {
+            bg = 'var(--accent)';
+            color = '#fff';
+            if (isStart && dueValue !== null && dueValue > startValue) {
+              borderRadius = '6px 0 0 6px';
+            } else if (isDue && startValue !== null && dueValue > startValue) {
+              borderRadius = '0 6px 6px 0';
+            }
+          } else if (inRange) {
+            bg = 'var(--active)';
+            color = 'var(--accent-text)';
+            borderRadius = '0';
+          }
+
           return (
             <button
               key={idx}
               type="button"
               onClick={(e) => { e.stopPropagation(); onChange(off); }}
               style={{
-                width: 24, height: 24, borderRadius: 6, display: 'grid', placeItems: 'center',
+                width: 24, height: 24, borderRadius, display: 'grid', placeItems: 'center',
                 fontSize: 11, fontWeight: 700,
-                background: isSel ? 'var(--accent)' : 'transparent',
-                color: isSel ? '#fff' : (isToday ? 'var(--accent-text)' : 'var(--text)'),
+                background: bg,
+                color,
                 opacity: inMonth ? 1 : 0.35,
-                border: isToday && !isSel ? '1.5px solid var(--accent)' : 'none',
+                border: isToday && !isStart && !isDue ? '1.5px solid var(--accent)' : 'none',
                 cursor: 'pointer',
               }}
-              onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = 'var(--hover)'; }}
-              onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={(e) => { if (!isStart && !isDue && !inRange) e.currentTarget.style.background = 'var(--hover)'; }}
+              onMouseLeave={(e) => { if (!isStart && !isDue && !inRange) e.currentTarget.style.background = 'transparent'; }}
             >
               {d.getDate()}
             </button>
@@ -109,8 +131,32 @@ export function MiniCalendar({ value, onChange }) {
   );
 }
 
-export function WhenPicker({ value, time, onChange, onClose, showTimeField = true }) {
+const Switch = ({ checked, onChange, label }) => {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}>
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)' }}>{label}</span>
+      <div style={{ position: 'relative', width: 32, height: 18, background: checked ? 'var(--accent)' : 'var(--border-2)', borderRadius: 999, transition: 'background-color 0.2s' }}>
+        <input type="checkbox" checked={checked} onChange={onChange} style={{ opacity: 0, width: 0, height: 0 }} />
+        <div style={{
+          position: 'absolute', top: 2, left: checked ? 16 : 2, width: 14, height: 14,
+          borderRadius: 999, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+          transition: 'left 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+        }} />
+      </div>
+    </label>
+  );
+};
+
+export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onClose, showTimeField = true }) {
+  const initStart = startOffset !== undefined ? startOffset : null;
+  const initDue = dueOffset !== undefined ? dueOffset : (value !== undefined ? value : null);
+
+  const [start, setStart] = useState(initStart);
+  const [due, setDue] = useState(initDue);
   const [timeVal, setTimeVal] = useState(time || '');
+  const [hasEnd, setHasEnd] = useState(initStart !== null && initDue !== null && initStart !== initDue);
+  const [includeTime, setIncludeTime] = useState(!!time);
+  const [activeField, setActiveField] = useState(initStart !== null && initStart !== initDue ? 'due' : 'start');
 
   const quickOpts = [
     { label: 'Today', off: 0, color: 'var(--today)', icon: <I.today size={14} /> },
@@ -125,13 +171,139 @@ export function WhenPicker({ value, time, onChange, onClose, showTimeField = tru
     { label: 'Clear', off: null, color: 'var(--text-3)', icon: <I.x size={14} /> },
   ];
 
-  const handleTimeChange = (newVal) => {
-    setTimeVal(newVal);
-    onChange(value, newVal || null);
+  const updateDates = (newStart, newDue, newTime, nextHasEnd, nextIncludeTime) => {
+    let finalStart = newStart;
+    let finalDue = newDue;
+    let finalTime = nextIncludeTime ? (newTime || timeVal || '12:00') : null;
+
+    if (nextHasEnd) {
+      if (finalStart === null && finalDue !== null) {
+        finalStart = finalDue;
+      } else if (finalStart !== null && finalDue === null) {
+        finalDue = finalStart;
+      } else if (finalStart === null && finalDue === null) {
+        finalStart = 0;
+        finalDue = 1;
+      }
+      if (finalStart > finalDue) {
+        const temp = finalStart;
+        finalStart = finalDue;
+        finalDue = temp;
+      }
+    } else {
+      finalStart = null;
+      if (finalDue === null && finalStart !== null) {
+        finalDue = finalStart;
+      }
+    }
+
+    setStart(finalStart);
+    setDue(finalDue);
+    setTimeVal(finalTime || '');
+    onChange(finalStart, finalDue, finalTime);
+  };
+
+  const handleEndToggle = (e) => {
+    const nextHasEnd = e.target.checked;
+    setHasEnd(nextHasEnd);
+    if (nextHasEnd) {
+      const currentStart = start !== null ? start : (due !== null ? due : 0);
+      const currentDue = due !== null ? (due > currentStart ? due : currentStart + 1) : currentStart + 1;
+      setActiveField('due');
+      updateDates(currentStart, currentDue, timeVal, true, includeTime);
+    } else {
+      updateDates(null, due !== null ? due : start, timeVal, false, includeTime);
+    }
+  };
+
+  const handleTimeToggle = (e) => {
+    const nextIncludeTime = e.target.checked;
+    setIncludeTime(nextIncludeTime);
+    updateDates(start, due, nextIncludeTime ? (timeVal || '12:00') : null, hasEnd, nextIncludeTime);
+  };
+
+  const handleQuickOpt = (opt) => {
+    if (opt.off === null || opt.off === 'someday') {
+      updateDates(null, opt.off, null, false, false);
+      setHasEnd(false);
+      setIncludeTime(false);
+      onClose();
+      return;
+    }
+
+    const targetTime = opt.time !== undefined ? opt.time : (includeTime ? timeVal : null);
+
+    if (hasEnd) {
+      if (activeField === 'start') {
+        updateDates(opt.off, due, targetTime, true, includeTime || !!opt.time);
+        setActiveField('due');
+      } else {
+        updateDates(start, opt.off, targetTime, true, includeTime || !!opt.time);
+      }
+      if (opt.time !== undefined) {
+        setIncludeTime(true);
+      }
+    } else {
+      updateDates(null, opt.off, targetTime, false, includeTime || !!opt.time);
+      if (opt.time !== undefined) {
+        setIncludeTime(true);
+      }
+      onClose();
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: 200, padding: '2px 0' }} onClick={(e) => e.stopPropagation()}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: 230, padding: '2px 0' }} onClick={(e) => e.stopPropagation()}>
+      {/* Date display buttons */}
+      <div style={{ display: 'flex', gap: 6, padding: '8px 12px 4px' }}>
+        <button
+          type="button"
+          onClick={() => setActiveField('start')}
+          style={{
+            flex: 1, padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+            border: `1.5px solid ${activeField === 'start' ? 'var(--accent)' : 'var(--border)'}`,
+            background: activeField === 'start' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
+            color: activeField === 'start' ? 'var(--accent-text)' : 'var(--text-2)',
+            textAlign: 'center',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ fontSize: 9, opacity: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>Start Date</div>
+          {start !== null ? H.dueLabel(start).text : (due !== null && !hasEnd ? H.dueLabel(due).text : 'Select date')}
+        </button>
+
+        {hasEnd && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', color: 'var(--text-3)' }}><I.arrowR size={14} /></div>
+            <button
+              type="button"
+              onClick={() => setActiveField('due')}
+              style={{
+                flex: 1, padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                border: `1.5px solid ${activeField === 'due' ? 'var(--accent)' : 'var(--border)'}`,
+                background: activeField === 'due' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
+                color: activeField === 'due' ? 'var(--accent-text)' : 'var(--text-2)',
+                textAlign: 'center',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ fontSize: 9, opacity: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>End Date</div>
+              {due !== null ? H.dueLabel(due).text : 'Select date'}
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="divider" style={{ margin: '4px 0' }} />
+
+      {/* Toggles */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Switch checked={hasEnd} onChange={handleEndToggle} label="End date" />
+        {showTimeField && <Switch checked={includeTime} onChange={handleTimeToggle} label="Include time" />}
+      </div>
+
+      <div className="divider" style={{ margin: '4px 0' }} />
+
       {/* Quick options */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '2px 4px' }}>
         {quickOpts.map((opt) => (
@@ -142,8 +314,7 @@ export function WhenPicker({ value, time, onChange, onClose, showTimeField = tru
             style={{ height: 28, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}
             onClick={(e) => {
               e.stopPropagation();
-              onChange(opt.off, opt.time !== undefined ? opt.time : (opt.off === null || opt.off === 'someday' ? null : time));
-              onClose();
+              handleQuickOpt(opt);
             }}
           >
             <span style={{ color: opt.color, display: 'grid', placeItems: 'center', width: 14 }}>{opt.icon}</span>
@@ -155,9 +326,26 @@ export function WhenPicker({ value, time, onChange, onClose, showTimeField = tru
       <div className="divider" style={{ margin: '4px 0' }} />
 
       {/* Mini calendar */}
-      <MiniCalendar value={typeof value === 'number' ? value : null} onChange={(off) => { onChange(off, time); onClose(); }} />
+      <MiniCalendar
+        startValue={start}
+        dueValue={hasEnd ? due : null}
+        activeField={activeField}
+        onChange={(off) => {
+          if (hasEnd) {
+            if (activeField === 'start') {
+              updateDates(off, due, timeVal, true, includeTime);
+              setActiveField('due');
+            } else {
+              updateDates(start, off, timeVal, true, includeTime);
+            }
+          } else {
+            updateDates(null, off, timeVal, false, includeTime);
+            onClose();
+          }
+        }}
+      />
 
-      {showTimeField && (
+      {includeTime && showTimeField && (
         <>
           <div className="divider" style={{ margin: '4px 0' }} />
           {/* Time input */}
@@ -167,7 +355,7 @@ export function WhenPicker({ value, time, onChange, onClose, showTimeField = tru
             <input
               type="time"
               value={timeVal}
-              onChange={(e) => handleTimeChange(e.target.value)}
+              onChange={(e) => updateDates(start, due, e.target.value, hasEnd, includeTime)}
               style={{
                 flex: 1,
                 border: '1px solid var(--border-2)',
@@ -181,6 +369,23 @@ export function WhenPicker({ value, time, onChange, onClose, showTimeField = tru
             />
           </div>
         </>
+      )}
+
+      {(hasEnd || includeTime) && (
+        <div style={{ padding: '4px 12px 6px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '4px 12px', borderRadius: 6, background: 'var(--accent)', color: '#fff',
+              fontSize: 12, fontWeight: 700, transition: 'opacity 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = 0.85}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = 1}
+          >
+            Done
+          </button>
+        </div>
       )}
     </div>
   );
@@ -198,11 +403,12 @@ function PillBtn({ icon, label, color, active, onClick }) {
   );
 }
 
-export function InlineComposer({ defaultProject = 'inbox', defaultDue = null, variant = 'inline', autoOpen = false, onDone }) {
+export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, defaultDue = null, variant = 'inline', autoOpen = false, onDone }) {
   const { addTask, setView, projects, labels: storeLabels } = useApp();
   const [open, setOpen] = useState(autoOpen);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
+  const [start, setStart] = useState(defaultStart);
   const [due, setDue] = useState(defaultDue);
   const [time, setTime] = useState(null);
   const [prio, setPrio] = useState(4);
@@ -222,13 +428,14 @@ export function InlineComposer({ defaultProject = 'inbox', defaultDue = null, va
     }
   }, [title, projects, storeLabels]);
 
-  const reset = () => { setTitle(''); setNote(''); setDue(defaultDue); setTime(null); setPrio(4); setLabels([]); setProject(defaultProject); setParsed(null); };
+  const reset = () => { setTitle(''); setNote(''); setStart(defaultStart); setDue(defaultDue); setTime(null); setPrio(4); setLabels([]); setProject(defaultProject); setParsed(null); };
   const submit = (keepOpen) => {
     if (!title.trim()) return;
     const taskData = parseTask(title, projects, storeLabels);
     addTask({
       title: taskData.content,
       note: note.trim(),
+      startOffset: start,
       dueOffset: taskData.dueOffset !== null ? taskData.dueOffset : due,
       time: taskData.time || time || null,
       priority: taskData.priority !== 4 ? taskData.priority : prio,
@@ -243,6 +450,10 @@ export function InlineComposer({ defaultProject = 'inbox', defaultDue = null, va
   const close = () => { setOpen(false); reset(); setMenu(null); onDone && onDone(); };
 
   if (!open) {
+    const defaultDueOpt = defaultDue === 'someday'
+      ? { label: 'Someday', color: '#E8588A' }
+      : (defaultDue !== null ? { label: H.dueLabel(defaultDue)?.text, color: 'var(--text-2)' } : null);
+
     return (
       <button onClick={() => setOpen(true)} className="no-sel" style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 8px',
@@ -253,7 +464,18 @@ export function InlineComposer({ defaultProject = 'inbox', defaultDue = null, va
         <span style={{ display: 'grid', placeItems: 'center', width: 20, height: 20, borderRadius: 999, color: 'var(--accent)' }}>
           <I.plusSm size={18} />
         </span>
-        Add task
+        <span style={{ flex: 1, textAlign: 'left' }}>Add task</span>
+        {defaultDueOpt && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 12, fontWeight: 700, color: defaultDueOpt.color,
+            padding: '2px 8px', borderRadius: 99, background: 'var(--hover)',
+            marginRight: 4
+          }}>
+            <I.calendar size={12} />
+            {defaultDueOpt.label}
+          </span>
+        )}
       </button>
     );
   }
@@ -262,7 +484,18 @@ export function InlineComposer({ defaultProject = 'inbox', defaultDue = null, va
     ? { label: 'Someday', color: '#E8588A' }
     : (DUE_OPTIONS.find((d) => d.off === due) || (due !== null ? { label: H.dueLabel(due).text, color: 'var(--today)' } : null));
   const prioOpt = PRIO.find((p) => p.p === prio);
-  const proj = project === 'inbox' ? { name: 'Inbox', color: 'var(--text-3)' } : (projects.find(p => p.id === project) || H.projectById(project));
+  const proj = project === 'inbox' ? { id: 'inbox', name: 'Inbox', color: 'var(--text-3)' } : (projects.find(p => p.id === project) || H.projectById(project));
+
+  const finalDue = (parsed && parsed.dueOffset !== null) ? parsed.dueOffset : due;
+  const finalTime = (parsed && parsed.time) ? parsed.time : time;
+  const finalLabels = (parsed && parsed.labels.length) ? parsed.labels : labels;
+  const finalPrio = (parsed && parsed.priority !== 4) ? parsed.priority : prio;
+  const finalProj = (parsed && parsed.projectId) ? (parsed.projectId.startsWith('__new__') ? { name: parsed.projectId.replace('__new__', ''), color: '#7C5CFC' } : (projects.find(p => p.id === parsed.projectId) || H.projectById(parsed.projectId))) : proj;
+  const finalRecurring = parsed?.recurring;
+
+  const finalDueOpt = finalDue === 'someday'
+    ? { label: 'Someday', color: '#E8588A' }
+    : (DUE_OPTIONS.find((d) => d.off === finalDue) || (finalDue !== null ? { label: H.dueLabel(finalDue)?.text, color: 'var(--today)' } : null));
 
   return (
     <div style={{
@@ -278,62 +511,30 @@ export function InlineComposer({ defaultProject = 'inbox', defaultDue = null, va
         placeholder="Description"
         style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)', marginTop: 4 }} />
 
-      {parsed && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8, padding: '4px 2px' }}>
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--text-3)', display: 'inline-flex', alignItems: 'center' }}>Preview:</span>
-          {parsed.dueOffset !== null && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--hover)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: 'var(--today)' }}>
-              <I.calendar size={11} />
-              {H.dueLabel(parsed.dueOffset).text}
-            </span>
-          )}
-          {parsed.time && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--hover)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: 'var(--text-2)' }}>
-              <I.clock size={11} />
-              {parsed.time}
-            </span>
-          )}
-          {parsed.priority !== 4 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--hover)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: PRIO.find(p => p.p === parsed.priority)?.color || 'var(--text-3)' }}>
-              <I.flag size={11} />
-              P{parsed.priority}
-            </span>
-          )}
-          {parsed.projectId && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--hover)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>
-              <Dot color={parsed.projectId.startsWith('__new__') ? '#7C5CFC' : (projects.find(p => p.id === parsed.projectId) || {color:'#7C5CFC'}).color} size={6} />
-              {parsed.projectId.startsWith('__new__') ? parsed.projectId.replace('__new__', '') : (projects.find(p => p.id === parsed.projectId) || {name:''}).name}
-            </span>
-          )}
-          {parsed.labels.map(lId => {
-            const isNew = lId.startsWith('__new__');
-            const name = isNew ? lId.replace('__new__', '') : (storeLabels.find(l => l.id === lId) || {name:''}).name;
-            const color = isNew ? '#7C5CFC' : (storeLabels.find(l => l.id === lId) || {color:'#7C5CFC'}).color;
-            return (
-              <span key={lId} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--hover)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, color }}>
-                <span style={{ width: 4, height: 4, borderRadius: 99, background: color }} />
-                {name}
-              </span>
-            );
-          })}
-          {parsed.recurring && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--hover)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: 'var(--accent-text)' }}>
-              <I.repeat size={11} />
-              {parsed.recurring.type === 'weekday' ? `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][parsed.recurring.dow]}` : `Every ${parsed.recurring.type}`}
-            </span>
-          )}
-        </div>
-      )}
+
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, position: 'relative' }}>
         <div style={{ position: 'relative' }}>
-          <PillBtn icon={<I.calendar size={15} sw={2} />} label={due !== null && dueOpt ? dueOpt.label : 'Due date'} color={dueOpt ? dueOpt.color : 'var(--text-2)'} active={due !== null} onClick={() => setMenu(menu === 'due' ? null : 'due')} />
+          <PillBtn
+            icon={<I.calendar size={15} sw={2} />}
+            label={(start !== null || due !== null) ? H.dateRangeLabel(start, due, time) : 'Date'}
+            color={(dueOpt || (start !== null ? { color: 'var(--today)' } : null))?.color || 'var(--text-2)'}
+            active={start !== null || due !== null}
+            onClick={() => setMenu(menu === 'due' ? null : 'due')}
+          />
           {menu === 'due' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, left: 0, minWidth: 200 }}>
-              <WhenPicker value={due} time={time} onChange={(val, newTime) => {
-                setDue(val);
-                setTime(newTime);
-              }} onClose={() => setMenu(null)} />
+              <WhenPicker
+                startOffset={start}
+                dueOffset={due}
+                time={time}
+                onChange={(startVal, dueVal, newTime) => {
+                  setStart(startVal);
+                  setDue(dueVal);
+                  setTime(newTime);
+                }}
+                onClose={() => setMenu(null)}
+              />
             </Popover>
           )}
         </div>

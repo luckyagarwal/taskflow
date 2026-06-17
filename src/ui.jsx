@@ -50,14 +50,30 @@ export function LabelChip({ id, small }) {
 const TONE = { overdue: 'var(--p1)', today: 'var(--today)', soon: 'var(--p3)', future: 'var(--text-2)' };
 
 export function DueBadge({ offset, time, small, startOffset }) {
-  const label = H.dateRangeLabel(startOffset, offset, time);
-  if (!label) return null;
-  const d = H.dueLabel(offset) || H.dueLabel(startOffset);
-  const c = TONE[d.tone] || 'var(--text-2)';
+  const labelText = H.dateRangeLabel(startOffset, offset, time);
+  if (!labelText) return null;
+
+  const mainOffset = offset !== null && offset !== undefined ? offset : startOffset;
+  const mainLbl = H.dueLabel(mainOffset);
+  const color = mainLbl ? (TONE[mainLbl.tone] || 'var(--text-2)') : 'var(--text-2)';
+  const fontSize = small ? 11.5 : 12.5;
+
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: c, fontWeight: 700, fontSize: small ? 12 : 12.5 }}>
-      <I.calendar size={13} sw={2} />
-      {label}
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+      fontSize,
+      fontWeight: 700,
+      color,
+      padding: small ? '2px 7px' : '2.5px 8.5px',
+      borderRadius: 99,
+      background: 'var(--hover)',
+      border: '1px solid var(--border)',
+      whiteSpace: 'nowrap'
+    }}>
+      <I.calendar size={small ? 12 : 13} sw={2} />
+      <span>{labelText}</span>
     </span>
   );
 }
@@ -96,9 +112,9 @@ export function Segmented({ value, onChange, options }) {
 // ── Task row ────────────────────────────────────────────────
 // density: 'comfortable' | 'compact' | 'card'
 export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true }) {
-  const { updateTask, deleteTask, labels: customLabels } = useApp();
+  const { updateTask, deleteTask, labels: customLabels, multiSelectedIds = [], toggleMultiSelect } = useApp();
   const [menu, setMenu] = React.useState(null);
-  const [hovered, setHovered] = React.useState(false);
+  const showActions = !!(selected || menu);
 
   const proj = task.projectId && task.projectId !== 'inbox' ? H.projectById(task.projectId) : null;
   const compact = density === 'compact';
@@ -156,8 +172,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           </button>
           {menu === 'due' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 24, left: 0, zIndex: 100, minWidth: 200 }}>
-              <WhenPicker value={task.dueOffset} time={task.time} onChange={(val, newTime) => {
-                updateTask(task.id, { dueOffset: val, time: newTime });
+              <WhenPicker startOffset={task.startOffset} dueOffset={task.dueOffset} time={task.time} onChange={(startVal, dueVal, newTime) => {
+                updateTask(task.id, { startOffset: startVal, dueOffset: dueVal, time: newTime });
               }} onClose={() => setMenu(null)} />
             </Popover>
           )}
@@ -189,12 +205,13 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     </div>
   );
 
+  const isMultiSelected = multiSelectedIds.includes(task.id);
+  const anyMultiSelected = multiSelectedIds.length > 0;
+
   return (
     <div
-      className={'task-row no-sel' + (selected ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
+      className={'task-row no-sel' + ((selected || isMultiSelected) ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
       style={{ padding: pad, marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setMenu(null); }}
       onClick={() => onOpen && onOpen(task)}>
       <div style={{ display: 'flex', width: '100%', alignItems: 'start', gap: 12 }}>
         <div style={{ paddingTop: compact ? 1 : 1.5, flexShrink: 0 }}>
@@ -204,6 +221,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
         <div style={{ flex: 1, minWidth: 0 }}>
           <textarea
             value={task.title}
+            readOnly={!selected}
             onChange={(e) => updateTask(task.id, { title: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -211,7 +229,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 e.target.blur();
               }
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={selected ? (e) => e.stopPropagation() : undefined}
             placeholder="Task title..."
             rows={1}
             ref={(el) => {
@@ -234,9 +252,11 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               fontFamily: 'inherit',
               padding: 0,
               margin: 0,
+              pointerEvents: selected ? 'auto' : 'none',
+              cursor: selected ? 'text' : 'pointer',
             }}
           />
-          {(task.note || hovered) && (
+          {(task.note || selected) && (
             <textarea
               value={task.note || ''}
               onChange={(e) => updateTask(task.id, { note: e.target.value })}
@@ -268,96 +288,150 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           {compact && hasMeta && meta}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: 0, position: 'relative' }}>
           {showProject && proj && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: 'var(--text-2)',
+              fontWeight: 700,
+              fontSize: 12.5,
+              whiteSpace: 'nowrap',
+              opacity: showActions ? 0 : 1,
+              transform: showActions ? 'translateX(-8px)' : 'translateX(0)',
+              transition: 'opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}>
               {proj.name}<Dot color={proj.color} />
             </span>
           )}
 
           {/* Hover Action Bar */}
-          {hovered && (
-            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-              {/* Due Date Trigger */}
-              <div style={{ position: 'relative' }}>
-                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'due_btn' ? null : 'due_btn')} title="Set due date">
-                  <I.calendar size={15} />
-                </button>
-                {menu === 'due_btn' && (
-                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 200 }}>
-                    <WhenPicker value={task.dueOffset} time={task.time} onChange={(val, newTime) => {
-                      updateTask(task.id, { dueOffset: val, time: newTime });
-                    }} onClose={() => setMenu(null)} />
-                  </Popover>
-                )}
-              </div>
-
-              {/* Priority Trigger */}
-              <div style={{ position: 'relative' }}>
-                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'prio_btn' ? null : 'prio_btn')} title="Set priority">
-                  <I.flag size={15} />
-                </button>
-                {menu === 'prio_btn' && (
-                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 140 }}>
-                    {PRIO.map((p) => (
-                      <div key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
-                        <I.flag size={14} sw={2} style={{ color: p.color }} />{p.label}
-                      </div>
-                    ))}
-                  </Popover>
-                )}
-              </div>
-
-              {/* Labels Trigger */}
-              <div style={{ position: 'relative' }}>
-                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'label_btn' ? null : 'label_btn')} title="Add labels">
-                  <I.tag size={15} />
-                </button>
-                {menu === 'label_btn' && (
-                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 180 }}>
-                    {customLabels.map((l) => {
-                      const on = task.labels.includes(l.id);
-                      return (
-                        <div key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
-                          <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
-                          {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                        </div>
-                      );
-                    })}
-                  </Popover>
-                )}
-              </div>
-
-              {/* Status Trigger */}
-              <div style={{ position: 'relative' }}>
-                <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'status_btn' ? null : 'status_btn')} title="Set status">
-                  <I.repeat size={15} />
-                </button>
-                {menu === 'status_btn' && (
-                  <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 160 }}>
-                    {Object.entries(STATUS_CHOICES).map(([k, v]) => (
-                      <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
-                        {v.icon}{v.label}
-                      </div>
-                    ))}
-                  </Popover>
-                )}
-              </div>
-
-              {/* Delete Trigger */}
-              <button className="icon-btn" style={{ width: 28, height: 28, color: 'var(--p1)' }} onClick={() => {
-                if (window.confirm("Are you sure you want to delete this task?")) {
-                  deleteTask(task.id);
-                }
-              }} title="Delete task">
-                <I.trash size={15} />
+          <div style={{
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            position: 'absolute',
+            right: 36,
+            opacity: showActions ? 1 : 0,
+            transform: showActions ? 'translateX(0)' : 'translateX(8px)',
+            transition: 'opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+            pointerEvents: showActions ? 'auto' : 'none',
+            background: selected ? 'var(--active)' : 'var(--hover)',
+            boxShadow: `-8px 0 8px -4px ${selected ? 'var(--active)' : 'var(--hover)'}`,
+            paddingLeft: 8,
+            zIndex: 10
+          }} onClick={(e) => e.stopPropagation()}>
+            {/* Due Date Trigger */}
+            <div style={{ position: 'relative' }}>
+              <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'due_btn' ? null : 'due_btn')} title="Set due date">
+                <I.calendar size={15} />
               </button>
+              {menu === 'due_btn' && (
+                <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 200 }}>
+                  <WhenPicker startOffset={task.startOffset} dueOffset={task.dueOffset} time={task.time} onChange={(startVal, dueVal, newTime) => {
+                    updateTask(task.id, { startOffset: startVal, dueOffset: dueVal, time: newTime });
+                  }} onClose={() => setMenu(null)} />
+                </Popover>
+              )}
             </div>
-          )}
 
-          <button className="icon-btn row-hover" style={{ width: 28, height: 28 }} onClick={(e) => { e.stopPropagation(); onOpen && onOpen(task); }} aria-label="More">
-            <I.dots size={17} />
-          </button>
+            {/* Priority Trigger */}
+            <div style={{ position: 'relative' }}>
+              <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'prio_btn' ? null : 'prio_btn')} title="Set priority">
+                <I.flag size={15} />
+              </button>
+              {menu === 'prio_btn' && (
+                <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 140 }}>
+                  {PRIO.map((p) => (
+                    <div key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
+                      <I.flag size={14} sw={2} style={{ color: p.color }} />{p.label}
+                    </div>
+                  ))}
+                </Popover>
+              )}
+            </div>
+
+            {/* Labels Trigger */}
+            <div style={{ position: 'relative' }}>
+              <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'label_btn' ? null : 'label_btn')} title="Add labels">
+                <I.tag size={15} />
+              </button>
+              {menu === 'label_btn' && (
+                <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 180 }}>
+                  {customLabels.map((l) => {
+                    const on = task.labels.includes(l.id);
+                    return (
+                      <div key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
+                        <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
+                        {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                      </div>
+                    );
+                  })}
+                </Popover>
+              )}
+            </div>
+
+            {/* Status Trigger */}
+            <div style={{ position: 'relative' }}>
+              <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMenu(menu === 'status_btn' ? null : 'status_btn')} title="Set status">
+                <I.repeat size={15} />
+              </button>
+              {menu === 'status_btn' && (
+                <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 160 }}>
+                  {Object.entries(STATUS_CHOICES).map(([k, v]) => (
+                    <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
+                      {v.icon}{v.label}
+                    </div>
+                  ))}
+                </Popover>
+              )}
+            </div>
+
+            {/* Delete Trigger */}
+            <button className="icon-btn" style={{ width: 28, height: 28, color: 'var(--p1)' }} onClick={() => {
+              if (window.confirm("Are you sure you want to delete this task?")) {
+                deleteTask(task.id);
+              }
+            }} title="Delete task">
+              <I.trash size={15} />
+            </button>
+          </div>
+
+          {toggleMultiSelect && (
+            <button
+              className="icon-btn row-hover"
+              style={{
+                width: 28,
+                height: 28,
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                color: isMultiSelected ? 'var(--accent)' : 'var(--text-3)',
+                opacity: (isMultiSelected || anyMultiSelected) ? 1 : undefined,
+                pointerEvents: 'auto',
+                zIndex: 11
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleMultiSelect(task.id);
+              }}
+              title={isMultiSelected ? "Deselect task" : "Select task"}
+            >
+              <div style={{
+                width: 18,
+                height: 18,
+                borderRadius: 999,
+                border: `2px solid ${isMultiSelected ? 'var(--accent)' : 'var(--border-2)'}`,
+                background: isMultiSelected ? 'var(--accent)' : 'transparent',
+                display: 'grid',
+                placeItems: 'center',
+                transition: 'all .15s'
+              }}>
+                {isMultiSelected && <I.check size={11} sw={3} style={{ color: '#fff' }} />}
+              </div>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -387,5 +461,87 @@ export function Ring({ value, total, size = 22, color = 'var(--accent)' }) {
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="2.5"
         strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset .3s' }} />
     </svg>
+  );
+}
+
+// ── Bulk actions bar ────────────────────────────────────────
+export function BulkActionBar() {
+  const { multiSelectedIds, clearMultiSelect, bulkComplete, bulkDelete } = useApp();
+
+  if (!multiSelectedIds || multiSelectedIds.length === 0) return null;
+
+  const count = multiSelectedIds.length;
+
+  return (
+    <div className="bulk-bar" onClick={(e) => e.stopPropagation()}>
+      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+        {count} task{count > 1 ? 's' : ''} selected
+      </span>
+
+      <div style={{ width: 1, height: 20, background: 'var(--border)' }} />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button
+          className="btn"
+          onClick={() => bulkComplete()}
+          style={{
+            height: 32,
+            padding: '0 12px',
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#fff',
+            background: 'var(--accent)',
+            border: 'none',
+            borderRadius: 8,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <I.check size={14} sw={2.5} style={{ color: '#fff' }} /> Mark Completed
+        </button>
+
+        <button
+          className="btn"
+          onClick={() => {
+            if (window.confirm(`Are you sure you want to delete these ${count} tasks?`)) {
+              bulkDelete();
+            }
+          }}
+          style={{
+            height: 32,
+            padding: '0 12px',
+            fontSize: 13,
+            fontWeight: 700,
+            color: 'var(--p1)',
+            background: 'color-mix(in srgb, var(--p1) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--p1) 20%, transparent)',
+            borderRadius: 8,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <I.trash size={14} /> Delete Selected
+        </button>
+
+        <button
+          className="btn btn-ghost"
+          onClick={clearMultiSelect}
+          style={{
+            height: 32,
+            padding: '0 12px',
+            fontSize: 13,
+            fontWeight: 700,
+            borderRadius: 8,
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }

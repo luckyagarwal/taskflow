@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
-import { Dot } from './ui.jsx';
+import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { CalendarView } from './calendar.jsx';
 import { TaskDetail } from './detail.jsx';
@@ -12,14 +12,14 @@ import { InlineComposer } from './composer.jsx';
 
 const STATUS_PAD = 50; // clear the iOS status bar / island
 
-function MobileHeader({ theme, onToggleTheme }) {
-  const { setSearch } = useApp();
+function MobileHeader() {
+  const { setSearch, theme, setTheme } = useApp();
   return (
     <div style={{ flex: 'none', padding: `${STATUS_PAD}px 16px 8px`, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg)' }}>
       <span style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flex: 'none' }}>C</span>
       <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Casex Tasks</span>
       <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={() => setSearch(true)}><I.search size={20} /></button>
-      <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={onToggleTheme}><I.sun size={19} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={19} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
+      <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><I.sun size={19} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={19} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
     </div>
   );
 }
@@ -35,9 +35,18 @@ function Tab({ icon, label, active, onClick }) {
 
 function TabBar() {
   const { view, setView, setSearch } = useApp();
-  const browseActive = ['browse', 'project', 'inbox', 'calendar', 'logbook', 'filters', 'label'].includes(view.type);
+  const browseActive = ['browse', 'project', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   return (
-    <div style={{ flex: 'none', display: 'flex', alignItems: 'center', borderTop: '1px solid var(--border)', background: 'var(--bg)', paddingBottom: 22 }}>
+    <div style={{
+      flex: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      borderTop: '1px solid var(--border-2)',
+      background: 'var(--bg-elev)',
+      paddingBottom: 22,
+      boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.05)',
+      zIndex: 50
+    }}>
       <Tab icon={<I.today size={22} />} label="Today" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
       <Tab icon={<I.upcoming size={22} />} label="Upcoming" active={view.type === 'upcoming'} onClick={() => setView({ type: 'upcoming' })} />
       <Tab icon={<I.grid size={22} />} label="Browse" active={browseActive} onClick={() => setView({ type: 'browse' })} />
@@ -66,11 +75,7 @@ function BrowseView({ onAddProject, onAddSection }) {
       <Item icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
       <Item icon={<I.filter size={20} />} label="Filters & Labels" color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
       <Item icon={<I.logbook size={20} />} label="Completed" color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
-      <Item icon={<I.settings size={20} />} label="Reset Database" color="var(--text-3)" onClick={() => {
-        if (window.confirm("Are you sure you want to reset the database? This will clear all tasks, projects, and labels, and reload with seed data.")) {
-          resetDatabase();
-        }
-      }} />
+      <Item icon={<I.settings size={20} />} label="Settings" color="var(--text-3)" onClick={() => setView({ type: 'settings' })} />
       {sections.map((sec) => {
         const secProjects = projects.filter(p => p.group === sec.name);
         return (
@@ -119,6 +124,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
     case 'filters': return <V.FiltersView />;
     case 'calendar': return <CalendarView density={density} compact />;
     case 'logbook': return <V.LogbookView />;
+    case 'settings': return <V.SettingsView />;
     case 'browse': return <BrowseView onAddProject={onAddProject} onAddSection={onAddSection} />;
     default: return <V.TodayView density={density} />;
   }
@@ -126,7 +132,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
 
 function BackBar() {
   const { view, setView } = useApp();
-  const showBack = ['project', 'inbox', 'calendar', 'logbook', 'filters', 'label'].includes(view.type);
+  const showBack = ['project', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   if (!showBack) return null;
   return (
     <button onClick={() => setView({ type: 'browse' })} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px 0', color: 'var(--accent)', fontWeight: 700, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}>
@@ -231,13 +237,13 @@ function AddProjectModal({ onClose }) {
   );
 }
 
-export function MobileApp({ density, theme, onToggleTheme }) {
-  const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts } = useApp();
+export function MobileApp() {
+  const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [addingSec, setAddingSec] = useState(false);
   return (
     <div style={{ position: 'relative', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <MobileHeader theme={theme} onToggleTheme={onToggleTheme} />
+      <MobileHeader />
       <BackBar />
       <div className="scroll" style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '6px 16px 24px' }}>
@@ -264,6 +270,7 @@ export function MobileApp({ density, theme, onToggleTheme }) {
         </div>
       )}
       {quickAdd && <QuickAddSheet onClose={() => setQuickAdd(false)} />}
+      <BulkActionBar />
       {addingProj && <AddProjectModal onClose={() => setAddingProj(false)} />}
       {addingSec && <AddSectionModal onClose={() => setAddingSec(false)} />}
       {search && <SearchOverlay onClose={() => setSearch(false)} />}

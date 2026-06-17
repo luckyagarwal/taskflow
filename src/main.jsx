@@ -6,17 +6,8 @@ import { AppProvider, useStore } from "./store.jsx";
 import "./index.css";
 
 function Root() {
-  const LS = 'todo-proto-prefs';
-  const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch (e) { return {}; } };
-  const prefs = loadPrefs();
-
-  const [theme, setTheme] = useState(prefs.theme || 'light');
   const [width, setWidth] = useState(window.innerWidth);
   const store = useStore();
-
-  useEffect(() => {
-    localStorage.setItem(LS, JSON.stringify({ ...loadPrefs(), theme }));
-  }, [theme]);
 
   // Window resize handler to switch layouts dynamically
   useEffect(() => {
@@ -25,13 +16,12 @@ function Root() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-
   if (!store.loaded) {
+    const savedTheme = localStorage.getItem('todo-proto-theme') || 'light';
     return (
       <div style={{
         display: 'grid', placeItems: 'center', height: '100vh', width: '100vw',
-        background: theme === 'dark' ? '#141416' : '#f7f6f4', color: theme === 'dark' ? '#ededee' : '#25241f',
+        background: savedTheme === 'dark' ? '#141416' : '#f7f6f4', color: savedTheme === 'dark' ? '#ededee' : '#25241f',
         fontSize: 16, fontWeight: 800, fontFamily: 'sans-serif'
       }}>
         Loading Casex Tasks...
@@ -41,11 +31,11 @@ function Root() {
 
   return (
     <AppProvider value={store}>
-      <div className="app-root" data-theme={theme} style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <div className="app-root" data-theme={store.theme} style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
         {width < 768 ? (
-          <MobileApp density="card" theme={theme} onToggleTheme={toggleTheme} />
+          <MobileApp />
         ) : (
-          <DesktopApp density="card" theme={theme} onToggleTheme={toggleTheme} frameW={width} />
+          <DesktopApp frameW={width} />
         )}
       </div>
     </AppProvider>

@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
-import { Dot } from './ui.jsx';
+import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { CalendarView } from './calendar.jsx';
 import { TaskDetail } from './detail.jsx';
@@ -70,8 +70,8 @@ function ProjectGroup({ title, projects = [], view, setView }) {
   );
 }
 
-function Sidebar({ theme, onToggleTheme, style }) {
-  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, resetDatabase } = useApp();
+function Sidebar({ style }) {
+  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, theme, setTheme } = useApp();
   const c = Sel.counts(tasks);
   const [addingSec, setAddingSec] = useState(false);
   const [newSecName, setNewSecName] = useState('');
@@ -92,7 +92,7 @@ function Sidebar({ theme, onToggleTheme, style }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Casex Tasks</div>
         </div>
-        <button className="icon-btn" style={{ flex: 'none' }} onClick={onToggleTheme} title="Toggle theme"><I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
+        <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme"><I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
         <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setSidebarCollapsed(true)} title="Collapse sidebar"><I.menu size={18} /></button>
       </div>
 
@@ -144,11 +144,7 @@ function Sidebar({ theme, onToggleTheme, style }) {
       <div style={{ flex: 1 }} />
       <div className="divider" style={{ margin: '10px 8px' }} />
       <NavItem icon={<I.logbook size={19} />} label="Completed" color="var(--today)" active={view.type === 'logbook'} onClick={() => setView({ type: 'logbook' })} />
-      <NavItem icon={<I.settings size={19} />} label="Reset Database" onClick={() => {
-        if (window.confirm("Are you sure you want to reset the database? This will clear all tasks, projects, and labels, and reload with seed data.")) {
-          resetDatabase();
-        }
-      }} />
+      <NavItem icon={<I.settings size={19} />} label="Settings" active={view.type === 'settings'} onClick={() => setView({ type: 'settings' })} />
     </aside>
   );
 }
@@ -165,6 +161,7 @@ function MainContent({ density, narrow }) {
     case 'filters': content = <V.FiltersView />; break;
     case 'calendar': content = <CalendarView density={density} />; break;
     case 'logbook': content = <V.LogbookView />; break;
+    case 'settings': content = <V.SettingsView />; break;
     default: content = <V.TodayView density={density} />;
   }
   return (
@@ -174,15 +171,158 @@ function MainContent({ density, narrow }) {
   );
 }
 
-export function DesktopApp({ density, theme, onToggleTheme, frameW = 1320 }) {
+export function DesktopApp({ frameW = 1320 }) {
   const {
     selectedId, setSelectedId, search, setSearch, quickAdd, setQuickAdd,
-    sidebarWidth, setSidebarWidth, sidebarCollapsed, toasts
+    sidebarWidth, setSidebarWidth, sidebarCollapsed, toasts,
+    view, setView, tasks, updateTask, deleteTask, density
   } = useApp();
   const narrow = frameW < 1080;
   const [detailWidth, setDetailWidth] = useState(372);
   const isResizingRef = useRef(false);
   const isSidebarResizingRef = useRef(false);
+
+  React.useEffect(() => {
+    let lastKeyG = false;
+    let lastKeyGTimeout = null;
+
+    const handleKeyDown = (e) => {
+      const isEditing = document.activeElement && (
+        document.activeElement.tagName === 'INPUT' ||
+        document.activeElement.tagName === 'TEXTAREA' ||
+        document.activeElement.isContentEditable
+      );
+
+      // 1. Command/Search Menu (Cmd/Ctrl + K)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearch(prev => !prev);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (search) {
+          setSearch(false);
+          return;
+        }
+        if (quickAdd) {
+          setQuickAdd(false);
+          return;
+        }
+        if (document.activeElement && document.activeElement !== document.body) {
+          document.activeElement.blur();
+          return;
+        }
+        if (selectedId) {
+          setSelectedId(null);
+          return;
+        }
+      }
+
+      // Block single-character/nav shortcuts while typing in inputs
+      if (isEditing) return;
+
+      // 2. Navigation via Cmd + 1..6
+      if (e.metaKey || e.ctrlKey) {
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= 6) {
+          e.preventDefault();
+          const routes = ['inbox', 'today', 'upcoming', 'calendar', 'filters', 'logbook'];
+          setView({ type: routes[num - 1] });
+          return;
+        }
+      }
+
+      // 3. Quick Add Task modal (q)
+      if (e.key === 'q' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setQuickAdd(true);
+        return;
+      }
+
+      // 4. "g" sequence shortcuts (g i, g t, g u, g c, g f, g l)
+      if (e.key === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        lastKeyG = true;
+        if (lastKeyGTimeout) clearTimeout(lastKeyGTimeout);
+        lastKeyGTimeout = setTimeout(() => { lastKeyG = false; }, 1000);
+        return;
+      }
+
+      if (lastKeyG && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const key = e.key.toLowerCase();
+        const routes = {
+          i: 'inbox',
+          t: 'today',
+          u: 'upcoming',
+          c: 'calendar',
+          f: 'filters',
+          l: 'logbook'
+        };
+        if (routes[key]) {
+          e.preventDefault();
+          setView({ type: routes[key] });
+          lastKeyG = false;
+          return;
+        }
+      }
+
+      // 5. Arrow Up / Down selection
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const rows = Array.from(document.querySelectorAll('.task-row'));
+        if (rows.length === 0) return;
+
+        e.preventDefault();
+        const selectedIndex = rows.findIndex(row => row.classList.contains('is-selected'));
+        let nextIndex = 0;
+
+        if (selectedIndex !== -1) {
+          if (e.key === 'ArrowDown') {
+            nextIndex = (selectedIndex + 1) % rows.length;
+          } else {
+            nextIndex = (selectedIndex - 1 + rows.length) % rows.length;
+          }
+        } else {
+          nextIndex = e.key === 'ArrowDown' ? 0 : rows.length - 1;
+        }
+
+        const targetRow = rows[nextIndex];
+        if (targetRow) {
+          targetRow.click();
+          targetRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        return;
+      }
+
+      // 6. Selected Task Operations
+      if (selectedId) {
+        // Space to toggle completion
+        if (e.key === ' ' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          const task = tasks.find(t => t.id === selectedId);
+          if (task) {
+            updateTask(task.id, { done: !task.done });
+          }
+          return;
+        }
+
+        // Delete/Backspace to remove
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          if (window.confirm("Are you sure you want to delete this task?")) {
+            deleteTask(selectedId);
+            setSelectedId(null);
+          }
+          return;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (lastKeyGTimeout) clearTimeout(lastKeyGTimeout);
+    };
+  }, [selectedId, search, quickAdd, view, tasks, setView, setSearch, setQuickAdd, setSelectedId, updateTask, deleteTask]);
 
   const startResize = (e) => {
     e.preventDefault();
@@ -228,7 +368,7 @@ export function DesktopApp({ density, theme, onToggleTheme, frameW = 1320 }) {
     <div style={{ display: 'flex', height: '100%', background: 'var(--bg)', position: 'relative' }}>
       {!sidebarCollapsed && (
         <>
-          <Sidebar theme={theme} onToggleTheme={onToggleTheme} style={{ width: sidebarWidth }} />
+          <Sidebar style={{ width: sidebarWidth }} />
           {/* Sidebar Resize Handle */}
           <div
             onMouseDown={startSidebarResize}
@@ -281,6 +421,7 @@ export function DesktopApp({ density, theme, onToggleTheme, frameW = 1320 }) {
       )}
       {search && <SearchOverlay onClose={() => setSearch(false)} />}
       {quickAdd && <QuickAddModal onClose={() => setQuickAdd(false)} />}
+      <BulkActionBar />
       {toasts && toasts.length > 0 && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {toasts.map(t => (

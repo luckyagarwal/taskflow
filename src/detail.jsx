@@ -160,40 +160,27 @@ function SubtaskItem({
         )}
       </div>
 
-      {/* 4. Start Date Popover */}
+      {/* 4. Date Popover */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => setMenu(menu === 'start' ? null : 'start')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: startLbl ? TONE[startLbl.tone] : 'var(--text-3)' }} title="Start Date">
-          <I.calendar size={14} style={{ opacity: startLbl ? 1 : 0.6 }} />
-        </button>
-        {startLbl && (
-          <span style={{ fontSize: 11, fontWeight: 750, color: TONE[startLbl.tone], marginLeft: 2, marginRight: 2 }}>
-            S: {startLbl.text}
-          </span>
-        )}
-        {menu === 'start' && (
-          <Popover onClose={() => setMenu(null)} style={{ top: 24, right: 0, zIndex: 100, minWidth: 200 }}>
-            <WhenPicker value={s.startOffset} onChange={(val) => {
-              updateSubtask(taskId, s.id, { startOffset: val });
-            }} onClose={() => setMenu(null)} showTimeField={false} />
-          </Popover>
-        )}
-      </div>
-
-      {/* 5. Due Date Popover */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => setMenu(menu === 'due' ? null : 'due')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: dueLbl ? TONE[dueLbl.tone] : 'var(--text-3)' }} title="Due Date">
+        <button onClick={() => setMenu(menu === 'date' ? null : 'date')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)' }} title="Date">
           <I.calendar size={14} />
         </button>
-        {dueLbl && (
-          <span style={{ fontSize: 11, fontWeight: 750, color: TONE[dueLbl.tone], marginLeft: 2, marginRight: 2 }}>
-            D: {dueLbl.text}
+        {(startLbl || dueLbl) && (
+          <span style={{ fontSize: 11, fontWeight: 750, color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)', marginLeft: 2, marginRight: 2 }}>
+            {H.dateRangeLabel(s.startOffset, s.dueOffset, null)}
           </span>
         )}
-        {menu === 'due' && (
+        {menu === 'date' && (
           <Popover onClose={() => setMenu(null)} style={{ top: 24, right: 0, zIndex: 100, minWidth: 200 }}>
-            <WhenPicker value={s.dueOffset} onChange={(val) => {
-              updateSubtask(taskId, s.id, { dueOffset: val });
-            }} onClose={() => setMenu(null)} showTimeField={false} />
+            <WhenPicker
+              startOffset={s.startOffset}
+              dueOffset={s.dueOffset}
+              onChange={(startVal, dueVal, newTime) => {
+                updateSubtask(taskId, s.id, { startOffset: startVal, dueOffset: dueVal });
+              }}
+              onClose={() => setMenu(null)}
+              showTimeField={false}
+            />
           </Popover>
         )}
       </div>
@@ -444,32 +431,33 @@ export function TaskEditor({ taskId, inline, mobile }) {
           )}
         </div>
 
-        {/* Start Date */}
+        {/* Date / Date Range */}
         <div style={{ position: 'relative' }}>
-          <MetaRow icon={<I.calendar size={18} />} label="Start date" accent={startLbl ? TONE[startLbl.tone] : null} onClick={() => setMenu(menu === 'start' ? null : 'start')}>
-            {startLbl ? <span style={{ fontWeight: 800, fontSize: 14, color: TONE[startLbl.tone] }}>{startLbl.text}</span>
-              : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Set start date</span>}
+          <MetaRow
+            icon={<I.calendar size={18} />}
+            label="Date"
+            accent={dueLbl ? TONE[dueLbl.tone] : (startLbl ? TONE[startLbl.tone] : null)}
+            onClick={() => setMenu(menu === 'date' ? null : 'date')}
+          >
+            {(task.startOffset !== null || task.dueOffset !== null) ? (
+              <span style={{ fontWeight: 800, fontSize: 14, color: dueLbl ? TONE[dueLbl.tone] : TONE[startLbl.tone] }}>
+                {H.dateRangeLabel(task.startOffset, task.dueOffset, task.time)}
+              </span>
+            ) : (
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Empty</span>
+            )}
           </MetaRow>
-          {menu === 'start' && (
+          {menu === 'date' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200, zIndex: 100 }}>
-              <WhenPicker value={task.startOffset} onChange={(val) => {
-                updateTask(task.id, { startOffset: val });
-              }} onClose={() => setMenu(null)} showTimeField={false} />
-            </Popover>
-          )}
-        </div>
-
-        {/* Due Date */}
-        <div style={{ position: 'relative' }}>
-          <MetaRow icon={<I.calendar size={18} />} label="Due date" accent={dueLbl ? TONE[dueLbl.tone] : null} onClick={() => setMenu(menu === 'due' ? null : 'due')}>
-            {dueLbl ? <span style={{ fontWeight: 800, fontSize: 14, color: TONE[dueLbl.tone] }}>{dueLbl.text}{task.time ? ` · ${fmtTime(task.time)}` : ''}</span>
-              : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Set date</span>}
-          </MetaRow>
-          {menu === 'due' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200, zIndex: 100 }}>
-              <WhenPicker value={task.dueOffset} time={task.time} onChange={(val, newTime) => {
-                updateTask(task.id, { dueOffset: val, time: newTime });
-              }} onClose={() => setMenu(null)} />
+              <WhenPicker
+                startOffset={task.startOffset}
+                dueOffset={task.dueOffset}
+                time={task.time}
+                onChange={(startVal, dueVal, newTime) => {
+                  updateTask(task.id, { startOffset: startVal, dueOffset: dueVal, time: newTime });
+                }}
+                onClose={() => setMenu(null)}
+              />
             </Popover>
           )}
         </div>
