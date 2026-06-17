@@ -52,7 +52,7 @@ function SubtaskItem({
   handleDragStart, handleDragOver, handleDragEnd,
   sortMode
 }) {
-  const { updateSubtask, deleteSubtask } = useApp();
+  const { updateSubtask, deleteSubtask, tasks } = useApp();
   const [menu, setMenu] = useState(null);
   const [hovered, setHovered] = useState(false);
   const dueLbl = H.dueLabel(s.dueOffset);
@@ -101,7 +101,23 @@ function SubtaskItem({
 
       {/* 1. Status Dropdown / Checkbox */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => setMenu(menu === 'status' ? null : 'status')} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', cursor: 'pointer' }}>
+        <button onClick={(e) => {
+          if (e.altKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextDone = !s.done;
+            const parentTask = tasks.find(t => t.id === taskId);
+            if (parentTask && parentTask.subtasks) {
+              parentTask.subtasks.forEach(sub => {
+                if (sub.done !== nextDone) {
+                  updateSubtask(taskId, sub.id, { done: nextDone });
+                }
+              });
+            }
+          } else {
+            setMenu(menu === 'status' ? null : 'status');
+          }
+        }} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', cursor: 'pointer' }}>
           <StatusIcon status={s.status || 'planned'} priority={s.priority} size={18} />
         </button>
         {menu === 'status' && (

@@ -13,7 +13,7 @@ export function Checkbox({ done, priority = 4, onToggle, size = 20 }) {
   return (
     <button
       className={'checkbox no-sel' + (done ? ' is-done' : '')}
-      onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
+      onClick={(e) => { e.stopPropagation(); onToggle && onToggle(e); }}
       aria-label={done ? 'Mark incomplete' : 'Complete task'}
       style={{
         width: size, height: size,
@@ -210,6 +210,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
 
   return (
     <div
+      data-task-id={task.id}
       className={'task-row no-sel' + ((selected || isMultiSelected) ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
       style={{ padding: pad, marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column' }}
       onClick={() => onOpen && onOpen(task)}>
