@@ -10,21 +10,41 @@ import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { QuickAddModal } from './composer.jsx';
 
-function NavItem({ icon, label, count, active, color, onClick }) {
+function NavItem({ icon, label, count, active, color, onClick, onDelete }) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <button className={'nav-item' + (active ? ' is-active' : '')} onClick={onClick} style={{ border: 'none', background: 'transparent', width: '100%', textAlign: 'left' }}>
+    <button 
+      className={'nav-item' + (active ? ' is-active' : '')} 
+      onClick={onClick} 
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ border: 'none', background: 'transparent', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center' }}
+    >
       <span className="nav-ico" style={{ color: active ? undefined : (color || 'var(--text-3)'), display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-      {count ? <span className="nav-count">{count}</span> : null}
+      {onDelete && hovered ? (
+        <span 
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s' }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--p1)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+          title="Delete"
+        >
+          <I.trash size={14} />
+        </span>
+      ) : count ? (
+        <span className="nav-count">{count}</span>
+      ) : null}
     </button>
   );
 }
 
 function ProjectGroup({ title, projects = [], view, setView }) {
   const [open, setOpen] = useState(true);
-  const { tasks, addProject } = useApp();
+  const { tasks, addProject, deleteProject, deleteSection, sections } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [projName, setProjName] = useState('');
+  const [headerHovered, setHeaderHovered] = useState(false);
 
   const handleAdd = () => {
     if (projName.trim()) {
@@ -34,17 +54,48 @@ function ProjectGroup({ title, projects = [], view, setView }) {
     }
   };
 
+  const handleSectionDelete = () => {
+    const sec = sections.find(s => s.name === title);
+    if (!sec) return;
+    if (window.confirm(`Are you sure you want to delete the section "${title}" and all its projects? Tasks will be moved to Inbox.`)) {
+      deleteSection(sec.id);
+    }
+  };
+
   return (
     <div style={{ marginTop: 14 }}>
-      <button onClick={() => setOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '4px 10px', color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-        <span style={{ transition: 'transform .15s', transform: open ? 'none' : 'rotate(-90deg)' }}><I.chevD size={15} /></span>
-        <span className="section-title">{title}</span>
-      </button>
+      <div 
+        onMouseEnter={() => setHeaderHovered(true)} 
+        onMouseLeave={() => setHeaderHovered(false)} 
+        style={{ display: 'flex', alignItems: 'center', width: '100%', paddingRight: 10 }}
+      >
+        <button onClick={() => setOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '4px 10px', color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+          <span style={{ transition: 'transform .15s', transform: open ? 'none' : 'rotate(-90deg)' }}><I.chevD size={15} /></span>
+          <span className="section-title">{title}</span>
+        </button>
+        {headerHovered && (
+          <span 
+            onClick={(e) => { e.stopPropagation(); handleSectionDelete(); }}
+            style={{ display: 'grid', placeItems: 'center', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', padding: 4 }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--p1)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+            title="Delete section"
+          >
+            <I.trash size={14} />
+          </span>
+        )}
+      </div>
       {open && projects.map((p) => {
         const n = Sel.byProject(tasks, p.id).length;
+        const handleProjDelete = () => {
+          if (window.confirm(`Are you sure you want to delete the project "${p.name}"? Tasks will be moved to Inbox.`)) {
+            deleteProject(p.id);
+          }
+        };
         return (
           <NavItem key={p.id} icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
-            active={view.type === 'project' && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })} />
+            active={view.type === 'project' && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })}
+            onDelete={handleProjDelete} />
         );
       })}
       {open && projects.length === 0 && (

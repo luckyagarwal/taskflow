@@ -169,7 +169,7 @@ export function dateString(off) {
   return `${H.DOW_LONG[d.getDay()]}, ${H.MONTHS_LONG[d.getMonth()]} ${d.getDate()}`;
 }
 
-export function HeaderActions({ sortBy, setSortBy, items = [] }) {
+export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject }) {
   const { multiSelectedIds = [], toggleMultiSelect, clearMultiSelect, bulkDelete, bulkComplete } = useApp();
   const [sortMenu, setSortMenu] = useState(false);
   const [selectMenu, setSelectMenu] = useState(false);
@@ -265,6 +265,16 @@ export function HeaderActions({ sortBy, setSortBy, items = [] }) {
               }} style={{ fontWeight: 600, color: 'var(--p1)', gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--p1)' }}><I.trash size={15} /></span>
                 <span>Delete Selected</span>
+              </div>
+            </>
+          )}
+
+          {onDeleteProject && (
+            <>
+              <div className="divider" style={{ margin: '4px 0' }} />
+              <div className="pop-item" onClick={() => { onDeleteProject(); setSelectMenu(false); }} style={{ fontWeight: 600, color: 'var(--p1)', gap: 8 }}>
+                <span style={{ display: 'flex', color: 'var(--p1)' }}><I.trash size={15} /></span>
+                <span>Delete Project</span>
               </div>
             </>
           )}
@@ -425,7 +435,7 @@ export function InboxView({ density }) {
 
 // ── PROJECT ─────────────────────────────────────────────────
 export function ProjectView({ projectId, density }) {
-  const { tasks, projects, sorts, setViewSort, collapsedSections, toggleSection } = useApp();
+  const { tasks, projects, sorts, setViewSort, collapsedSections, toggleSection, deleteProject } = useApp();
   const sortBy = sorts[`project-${projectId}`] || 'default';
   const proj = projects.find(p => p.id === projectId) || H.projectById(projectId);
   if (!proj) return null;
@@ -449,11 +459,17 @@ export function ProjectView({ projectId, density }) {
     created: 'Date Added'
   }[sortBy];
 
+  const handleDeleteProject = () => {
+    if (window.confirm(`Are you sure you want to delete the project "${proj.name}"? Tasks will be moved to Inbox.`)) {
+      deleteProject(projectId);
+    }
+  };
+
   return (
     <div>
       <ViewHeader icon={<Dot color={proj.color} size={14} />} title={proj.name}
         subtitle={`${proj.group} · ${items.length} open · ${doneCount} done`}
-        right={<HeaderActions sortBy={sortBy} setSortBy={changeSort} items={items} />} />
+        right={<HeaderActions sortBy={sortBy} setSortBy={changeSort} items={items} onDeleteProject={handleDeleteProject} />} />
       <InlineComposer defaultProject={projectId} />
       {items.length === 0 && <Empty icon={<I.check size={30} />} title="No open tasks" sub="Everything here is done. Nice work." />}
       

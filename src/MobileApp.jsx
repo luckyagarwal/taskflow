@@ -66,7 +66,7 @@ function TabBar() {
 }
 
 function BrowseView({ onAddProject, onAddSection }) {
-  const { setView, tasks, projects, sections, resetDatabase } = useApp();
+  const { setView, tasks, projects, sections, resetDatabase, deleteSection } = useApp();
   const c = Sel.counts(tasks);
 
   const Item = ({ icon, label, count, color, onClick }) => (
@@ -90,7 +90,21 @@ function BrowseView({ onAddProject, onAddSection }) {
         const secProjects = projects.filter(p => p.group === sec.name);
         return (
           <div key={sec.id}>
-            <div className="section-title" style={{ padding: '20px 6px 6px' }}>{sec.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 6px 6px' }}>
+              <div className="section-title" style={{ padding: 0 }}>{sec.name}</div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Are you sure you want to delete the section "${sec.name}" and all its projects? Tasks will be moved to Inbox.`)) {
+                    deleteSection(sec.id);
+                  }
+                }}
+                style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}
+                title="Delete section"
+              >
+                <I.trash size={14} />
+              </button>
+            </div>
             {secProjects.length === 0 ? (
               <div style={{ padding: '10px 6px', fontSize: 13.5, color: 'var(--text-3)', fontStyle: 'italic' }}>
                 No projects

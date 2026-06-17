@@ -118,13 +118,37 @@ export function useStore() {
         loadedLabels = await db.labels.toArray();
         loadedSections = await db.sections.toArray();
 
+        let hasMissingProjPos = false;
+        loadedProjects.forEach((p, idx) => {
+          if (p.position === undefined) {
+            p.position = idx;
+            hasMissingProjPos = true;
+          }
+        });
+        if (hasMissingProjPos) {
+          await db.projects.bulkPut(loadedProjects);
+        }
+        loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
         if (loadedSections.length === 0) {
           const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
           if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
           if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
-          loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g }));
+          loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
           await db.sections.bulkPut(loadedSections);
+        } else {
+          let hasMissingSecPos = false;
+          loadedSections.forEach((s, idx) => {
+            if (s.position === undefined) {
+              s.position = idx;
+              hasMissingSecPos = true;
+            }
+          });
+          if (hasMissingSecPos) {
+            await db.sections.bulkPut(loadedSections);
+          }
         }
+        loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       } else {
         const localTasks = localStorage.getItem(KEY_TASKS);
         const localProjects = localStorage.getItem(KEY_PROJECTS);
@@ -150,7 +174,7 @@ export function useStore() {
 
         if (localTasks || localProjects || localLabels) {
           loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : normalize(DATA.tasks);
-          loadedProjects = localProjects ? JSON.parse(localProjects) : DATA.projects.map(p => ({ ...p }));
+          loadedProjects = (localProjects ? JSON.parse(localProjects) : DATA.projects).map((p, idx) => ({ position: idx, ...p }));
           loadedLabels = localLabels ? JSON.parse(localLabels) : DATA.labels.map(l => ({ ...l }));
 
           await db.tasks.bulkPut(loadedTasks);
@@ -162,7 +186,7 @@ export function useStore() {
           localStorage.removeItem(KEY_LABELS);
         } else {
           loadedTasks = normalize(DATA.tasks);
-          loadedProjects = DATA.projects.map(p => ({ ...p }));
+          loadedProjects = DATA.projects.map((p, idx) => ({ ...p, position: idx }));
           loadedLabels = DATA.labels.map(l => ({ ...l }));
 
           await db.tasks.bulkPut(loadedTasks);
@@ -170,12 +194,14 @@ export function useStore() {
           await db.labels.bulkPut(loadedLabels);
         }
         loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
         const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
         if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
         if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
-        loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g }));
+        loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
         await db.sections.bulkPut(loadedSections);
+        loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       }
 
       setTasks(loadedTasks);
@@ -384,7 +410,8 @@ export function useStore() {
       name: name.trim(),
       color: ['#2D7FF9', '#7C5CFC', '#14B8C4', '#1F9D55', '#E8588A', '#F5A623'][projects.length % 6],
       group: (group && group.trim()) || 'Personal',
-      parent: null
+      parent: null,
+      position: projects.length
     };
     setProjects((prev) => [...prev, np]);
     db.projects.put(np).catch(() => {});
@@ -406,6 +433,39 @@ export function useStore() {
       return next;
     });
     setView((v) => v.type === 'project' && v.id === id ? { type: 'inbox' } : v);
+  }, []);
+
+  const updateProject = useCallback((id, patch) => {
+    setProjects((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      const updated = { ...p, ...patch };
+      db.projects.put(updated).catch(() => {});
+      return updated;
+    }));
+  }, []);
+
+  const reorderProjects = useCallback((draggedId, targetId) => {
+    setProjects((prev) => {
+      const next = [...prev];
+      const dragIdx = next.findIndex(p => p.id === draggedId);
+      const targetIdx = next.findIndex(p => p.id === targetId);
+      if (dragIdx !== -1 && targetIdx !== -1) {
+        const [removed] = next.splice(dragIdx, 1);
+        next.splice(targetIdx, 0, removed);
+
+        // If target project has a different group/section, update the dragged project's group!
+        if (removed.group !== next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group) {
+          const newGroup = next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group || removed.group;
+          removed.group = newGroup;
+          db.projects.put(removed).catch(() => {});
+        }
+
+        const updated = next.map((p, idx) => ({ ...p, position: idx }));
+        db.projects.bulkPut(updated).catch(err => console.error(err));
+        return updated;
+      }
+      return prev;
+    });
   }, []);
 
   const [sorts, setSorts] = useState(() => {
@@ -490,12 +550,98 @@ export function useStore() {
     
     const newSec = {
       id: 'sec_' + Date.now(),
-      name: cleanName
+      name: cleanName,
+      position: sections.length
     };
     setSections((prev) => [...prev, newSec]);
     db.sections.put(newSec).catch(() => {});
     return newSec;
   }, [sections]);
+
+  const deleteSection = useCallback((id) => {
+    setSections((prev) => {
+      const secToDelete = prev.find((s) => s.id === id);
+      if (!secToDelete) return prev;
+      
+      const newSecs = prev.filter((s) => s.id !== id);
+      db.sections.delete(id).catch(() => {});
+      
+      // Also delete projects belonging to this section
+      setProjects((pPrev) => {
+        const projsInSec = pPrev.filter((p) => p.group === secToDelete.name);
+        const nextProjs = pPrev.filter((p) => p.group !== secToDelete.name);
+        
+        projsInSec.forEach((p) => {
+          db.projects.delete(p.id).catch(() => {});
+        });
+        
+        // Update tasks of these deleted projects to 'inbox'
+        setTasks((tPrev) => {
+          const nextTasks = tPrev.map((t) => {
+            const isTaskInDeletedProject = projsInSec.some((p) => p.id === t.projectId);
+            if (isTaskInDeletedProject) {
+              const updated = { ...t, projectId: 'inbox' };
+              db.tasks.put(updated).catch(() => {});
+              return updated;
+            }
+            return t;
+          });
+          return nextTasks;
+        });
+
+        return nextProjs;
+      });
+
+      return newSecs;
+    });
+  }, []);
+
+  const updateSection = useCallback((id, patch) => {
+    setSections((prev) => {
+      const sec = prev.find((s) => s.id === id);
+      if (!sec) return prev;
+
+      const updatedSecs = prev.map((s) => {
+        if (s.id !== id) return s;
+        const updated = { ...s, ...patch };
+        db.sections.put(updated).catch(() => {});
+        return updated;
+      });
+
+      if (patch.name && patch.name !== sec.name) {
+        setProjects((pPrev) => {
+          const nextProjs = pPrev.map((p) => {
+            if (p.group === sec.name) {
+              const updatedProj = { ...p, group: patch.name };
+              db.projects.put(updatedProj).catch(() => {});
+              return updatedProj;
+            }
+            return p;
+          });
+          return nextProjs;
+        });
+      }
+
+      return updatedSecs;
+    });
+  }, []);
+
+  const reorderSections = useCallback((draggedId, targetId) => {
+    setSections((prev) => {
+      const next = [...prev];
+      const dragIdx = next.findIndex(s => s.id === draggedId);
+      const targetIdx = next.findIndex(s => s.id === targetId);
+      if (dragIdx !== -1 && targetIdx !== -1) {
+        const [removed] = next.splice(dragIdx, 1);
+        next.splice(targetIdx, 0, removed);
+        
+        const updated = next.map((s, idx) => ({ ...s, position: idx }));
+        db.sections.bulkPut(updated).catch(err => console.error(err));
+        return updated;
+      }
+      return prev;
+    });
+  }, []);
 
   const addToast = useCallback((msg) => {
     const id = 'toast_' + Date.now();
@@ -656,9 +802,9 @@ export function useStore() {
     setView: (v) => { setView(v); setSelectedId(null); setMultiSelectedIds([]); },
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
-    addProject, deleteProject, toggleExpand, resetDatabase,
+    addProject, deleteProject, updateProject, reorderProjects, toggleExpand, resetDatabase,
     addLabel, updateLabel, deleteLabel,
-    addSection,
+    addSection, deleteSection, updateSection, reorderSections,
     toasts,
     addReminder,
     deleteReminder,
