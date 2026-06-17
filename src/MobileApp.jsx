@@ -17,7 +17,7 @@ function MobileHeader() {
   return (
     <div style={{
       flex: 'none',
-      padding: `${STATUS_PAD}px 16px 12px`,
+      padding: `max(env(safe-area-inset-top), ${STATUS_PAD}px) 16px 12px`,
       display: 'flex',
       alignItems: 'center',
       gap: 10,
@@ -53,7 +53,7 @@ function TabBar() {
       alignItems: 'center',
       borderTop: '1px solid var(--border-2)',
       background: 'var(--bg-elev)',
-      paddingBottom: 22,
+      paddingBottom: 'max(env(safe-area-inset-bottom), 22px)',
       boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.05)',
       zIndex: 50
     }}>

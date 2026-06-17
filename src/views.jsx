@@ -469,8 +469,13 @@ export function ProjectView({ projectId, density }) {
   const scheduled = items.filter((t) => t.dueOffset !== null && t.dueOffset !== 'someday');
   const someday = items.filter((t) => t.dueOffset === 'someday');
   const anytime = items.filter((t) => t.dueOffset === null);
-  const doneCount = tasks.filter((t) => t.done && t.projectId === projectId).length;
+  const completed = React.useMemo(
+    () => tasks.filter((t) => t.done && t.projectId === projectId).sort((a, b) => (b.doneOffset || 0) - (a.doneOffset || 0)),
+    [tasks, projectId]
+  );
+  const doneCount = completed.length;
   const [collapsed, setCollapsed] = useState({ scheduled: false, anytime: false, someday: false });
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
 
   const sortLabel = {
     due: 'Due Date',
@@ -530,6 +535,14 @@ export function ProjectView({ projectId, density }) {
             <TaskGroup tasks={sortedItems} density={density} showProject={false} />
           </>
         )
+      )}
+
+      {completed.length > 0 && (
+        <>
+          <SectionHeader title="Completed" count={completed.length}
+            collapsible collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed((v) => !v)} />
+          {!completedCollapsed && <TaskGroup tasks={completed} density={density} showProject={false} />}
+        </>
       )}
     </div>
   );

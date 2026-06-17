@@ -244,6 +244,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
   const [menu, setMenu] = useState(null);
   const [newSub, setNewSub] = useState('');
   const [subtasksCollapsed, setSubtasksCollapsed] = useState(false);
+  const [doneSubsCollapsed, setDoneSubsCollapsed] = useState(true);
   const [remDate, setRemDate] = useState(() => {
     const d = new Date();
     return d.toISOString().split('T')[0];
@@ -394,7 +395,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
         
         {!subtasksCollapsed && (
           <div>
-            {sortedSubtasks.map((s, idx) => (
+            {sortedSubtasks.map((s, idx) => !s.done && (
               <SubtaskItem
                 key={s.id}
                 taskId={task.id}
@@ -415,6 +416,30 @@ export function TaskEditor({ taskId, inline, mobile }) {
                 onKeyDown={(e) => { if (e.key === 'Enter' && newSub.trim()) { addSubtask(task.id, newSub.trim()); setNewSub(''); } }}
                 placeholder="Add sub-task" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }} />
             </div>
+
+            {subDone > 0 && (
+              <div style={{ marginTop: 4 }}>
+                <button onClick={() => setDoneSubsCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', cursor: 'pointer', padding: '6px 0', color: 'var(--text-3)' }}>
+                  <span style={{ transition: 'transform .15s', transform: doneSubsCollapsed ? 'rotate(-90deg)' : 'none', display: 'flex' }}><I.chevD size={14} /></span>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Completed · {subDone}</span>
+                </button>
+                {!doneSubsCollapsed && sortedSubtasks.map((s, idx) => s.done && (
+                  <SubtaskItem
+                    key={s.id}
+                    taskId={task.id}
+                    s={s}
+                    index={idx}
+                    draggedIndex={draggedIndex}
+                    draggableId={draggableId}
+                    setDraggableId={setDraggableId}
+                    handleDragStart={handleDragStart}
+                    handleDragOver={handleDragOver}
+                    handleDragEnd={handleDragEnd}
+                    sortMode={task.subtaskSort && task.subtaskSort !== 'manual'}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

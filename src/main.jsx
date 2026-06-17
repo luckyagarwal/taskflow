@@ -20,7 +20,7 @@ function Root() {
     const savedTheme = localStorage.getItem('todo-proto-theme') || 'light';
     return (
       <div style={{
-        display: 'grid', placeItems: 'center', height: '100vh', width: '100vw',
+        display: 'grid', placeItems: 'center', height: '100dvh', width: '100vw',
         background: savedTheme === 'dark' ? '#141416' : '#f7f6f4', color: savedTheme === 'dark' ? '#ededee' : '#25241f',
         fontSize: 16, fontWeight: 800, fontFamily: 'sans-serif'
       }}>
@@ -31,7 +31,7 @@ function Root() {
 
   return (
     <AppProvider value={store}>
-      <div className="app-root" data-theme={store.theme} style={{ height: '100vh', width: '100vw', overflow: 'hidden' }}>
+      <div className="app-root" data-theme={store.theme} style={{ width: '100vw', overflow: 'hidden' }}>
         {width < 768 ? (
           <MobileApp />
         ) : (
