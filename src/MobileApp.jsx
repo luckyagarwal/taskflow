@@ -1,5 +1,5 @@
 // MobileApp.jsx — mobile app shell (inside iOS frame). Exposes MobileApp
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
@@ -215,8 +215,25 @@ function BackBar() {
 }
 
 function QuickAddSheet({ onClose }) {
+  // The iOS keyboard covers the lower part of the screen without shrinking the
+  // layout viewport, so a vertically-centered sheet hides behind it. Track the
+  // visualViewport and pin the composer just above the keyboard's top edge.
+  const [bottomGap, setBottomGap] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      // How much of the layout viewport the keyboard (and bottom inset) occludes.
+      const occluded = window.innerHeight - vv.height - vv.offsetTop;
+      setBottomGap(Math.max(0, occluded));
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+  }, []);
   return (
-    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', zIndex: 200 }} onMouseDown={onClose}>
+    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px', paddingBottom: bottomGap + 12, zIndex: 200, transition: 'padding-bottom .15s ease' }} onMouseDown={onClose}>
       <div onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', animation: 'slideUp .2s ease-out' }}>
         <InlineComposer variant="modal" autoOpen defaultDue={0} onDone={onClose} />
       </div>
