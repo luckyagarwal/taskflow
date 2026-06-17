@@ -128,10 +128,12 @@ export function Segmented({ value, onChange, options }) {
 export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true }) {
   const { updateTask, deleteTask, labels: customLabels, multiSelectedIds = [], toggleMultiSelect, projects } = useApp();
   const [menu, setMenu] = React.useState(null);
-  const showActions = !!(selected || menu);
 
   const proj = task.projectId && task.projectId !== 'inbox' ? (projects.find(p => p.id === task.projectId) || H.projectById(task.projectId)) : null;
   const narrow = useIsNarrow();
+  // On touch/mobile we never reveal the desktop hover CTA bar — a tap opens the
+  // task detail instead. The popover menus (opened from meta chips) still work.
+  const showActions = !narrow && !!(selected || menu);
   const compact = density === 'compact';
   const card = density === 'card';
   const labels = task.labels || [];
@@ -158,14 +160,14 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     labels.length || (task.subtasks && task.subtasks.length) || task.note ||
     (task.status && statusChoices[task.status]) || projInMeta;
 
-  const pad = card ? '11px 13px' : compact ? '6px 8px' : '10px 8px';
+  const pad = card ? '11px 13px' : compact ? '6px 8px' : (narrow ? '13px 6px' : '10px 8px');
 
   const meta = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: compact ? 1 : 4 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 10 : 12, flexWrap: 'wrap', marginTop: compact ? 1 : (narrow ? 8 : 4) }}>
       {projInMeta && (
         <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
-            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 700, fontSize: 12 }}>
+            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 700, fontSize: 13 }}>
             <Dot color={proj.color} size={8} />{proj.name}
           </button>
         </div>
@@ -240,7 +242,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
       onClick={() => onOpen && onOpen(task)}>
       <div style={{ display: 'flex', width: '100%', alignItems: 'start', gap: 12 }}>
         <div style={{ paddingTop: compact ? 1 : 1.5, flexShrink: 0 }}>
-          <Checkbox done={task.done} priority={task.priority} size={compact ? 18 : 20} onToggle={onToggle} />
+          <Checkbox done={task.done} priority={task.priority} size={compact ? 18 : (narrow ? 24 : 20)} onToggle={onToggle} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -270,8 +272,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               outline: 'none',
               resize: 'none',
               background: 'transparent',
-              fontSize: compact ? '14.5px' : '15.5px',
-              fontWeight: 600,
+              fontSize: compact ? '14.5px' : (narrow ? '16.5px' : '15.5px'),
+              fontWeight: narrow ? 500 : 600,
               lineHeight: 1.34,
               color: 'var(--text)',
               fontFamily: 'inherit',
@@ -301,11 +303,11 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 outline: 'none',
                 resize: 'none',
                 background: 'transparent',
-                fontSize: '12.5px',
+                fontSize: narrow ? '14px' : '12.5px',
                 color: 'var(--text-3)',
                 fontFamily: 'inherit',
                 padding: 0,
-                marginTop: 2,
+                marginTop: narrow ? 3 : 2,
               }}
             />
           )}
