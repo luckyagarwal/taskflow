@@ -15,7 +15,17 @@ const STATUS_PAD = 50; // clear the iOS status bar / island
 function MobileHeader() {
   const { setSearch, theme, setTheme } = useApp();
   return (
-    <div style={{ flex: 'none', padding: `${STATUS_PAD}px 16px 8px`, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg)' }}>
+    <div style={{
+      flex: 'none',
+      padding: `${STATUS_PAD}px 16px 12px`,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      background: 'var(--bg-elev)',
+      borderBottom: '1px solid var(--border-2)',
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+      zIndex: 50
+    }}>
       <span style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flex: 'none' }}>C</span>
       <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Casex Tasks</span>
       <button className="icon-btn" style={{ border: 'none', background: 'transparent' }} onClick={() => setSearch(true)}><I.search size={20} /></button>

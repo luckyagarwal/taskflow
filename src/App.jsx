@@ -85,7 +85,19 @@ function Sidebar({ style }) {
   };
 
   return (
-    <aside className="scroll" style={{ width: 280, flex: 'none', background: 'var(--bg-side)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '14px 12px 16px', ...style }}>
+    <aside className="scroll" style={{
+      width: 280,
+      flex: 'none',
+      background: 'var(--bg-side)',
+      borderRight: '1px solid var(--border-2)',
+      boxShadow: '4px 0 16px rgba(0, 0, 0, 0.03)',
+      zIndex: 10,
+      display: 'flex',
+      flexDirection: 'column',
+      overflowY: 'auto',
+      padding: '14px 12px 16px',
+      ...style
+    }}>
       {/* workspace header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 12px' }}>
         <span style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flex: 'none' }}>C</span>
