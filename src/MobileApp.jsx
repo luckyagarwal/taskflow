@@ -45,7 +45,7 @@ function Tab({ icon, label, active, onClick }) {
 
 function TabBar() {
   const { view, setView, setSearch } = useApp();
-  const browseActive = ['browse', 'project', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
+  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   return (
     <div style={{
       flex: 'none',
@@ -66,8 +66,10 @@ function TabBar() {
 }
 
 function BrowseView({ onAddProject, onAddSection }) {
-  const { setView, tasks, projects, sections, resetDatabase, deleteSection } = useApp();
+  const { setView, tasks, projects, sections, resetDatabase, deleteSection, updateSection } = useApp();
   const c = Sel.counts(tasks);
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [editingSectionName, setEditingSectionName] = useState('');
 
   const Item = ({ icon, label, count, color, onClick }) => (
     <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, width: '100%', padding: '12px 6px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}>
@@ -77,6 +79,23 @@ function BrowseView({ onAddProject, onAddSection }) {
       <I.chevR size={17} style={{ color: 'var(--text-3)' }} />
     </button>
   );
+
+  const startSectionEdit = (sec) => {
+    setEditingSectionId(sec.id);
+    setEditingSectionName(sec.name);
+  };
+
+  const commitSectionEdit = () => {
+    if (!editingSectionId) return;
+    const trimmed = editingSectionName.trim();
+    const sec = sections.find(s => s.id === editingSectionId);
+    if (sec && trimmed && trimmed !== sec.name) {
+      if (!sections.some(s => s.id !== editingSectionId && s.name.toLowerCase() === trimmed.toLowerCase())) {
+        updateSection(editingSectionId, { name: trimmed });
+      }
+    }
+    setEditingSectionId(null);
+  };
 
   return (
     <div>
@@ -88,22 +107,51 @@ function BrowseView({ onAddProject, onAddSection }) {
       <Item icon={<I.settings size={20} />} label="Settings" color="var(--text-3)" onClick={() => setView({ type: 'settings' })} />
       {sections.map((sec) => {
         const secProjects = projects.filter(p => p.group === sec.name);
+        const isEditing = editingSectionId === sec.id;
         return (
           <div key={sec.id}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 6px 6px' }}>
-              <div className="section-title" style={{ padding: 0 }}>{sec.name}</div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.confirm(`Are you sure you want to delete the section "${sec.name}" and all its projects? Tasks will be moved to Inbox.`)) {
-                    deleteSection(sec.id);
-                  }
-                }}
-                style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}
-                title="Delete section"
-              >
-                <I.trash size={14} />
-              </button>
+              {isEditing ? (
+                <input
+                  autoFocus
+                  value={editingSectionName}
+                  onChange={(e) => setEditingSectionName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitSectionEdit(); if (e.key === 'Escape') setEditingSectionId(null); }}
+                  onBlur={commitSectionEdit}
+                  style={{
+                    flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
+                    color: 'var(--text)', borderRadius: 6, padding: '6px 10px',
+                    fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase',
+                    letterSpacing: '.06em', outline: 'none', minWidth: 0, marginRight: 8
+                  }}
+                />
+              ) : (
+                <div className="section-title" style={{ padding: 0 }}>{sec.name}</div>
+              )}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isEditing) { commitSectionEdit(); } else { startSectionEdit(sec); }
+                  }}
+                  style={{ border: 'none', background: 'transparent', color: isEditing ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}
+                  title="Rename section"
+                >
+                  <I.edit size={14} />
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Are you sure you want to delete the section "${sec.name}" and all its projects? Tasks will be moved to Inbox.`)) {
+                      deleteSection(sec.id);
+                    }
+                  }}
+                  style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}
+                  title="Delete section"
+                >
+                  <I.trash size={14} />
+                </button>
+              </div>
             </div>
             {secProjects.length === 0 ? (
               <div style={{ padding: '10px 6px', fontSize: 13.5, color: 'var(--text-3)', fontStyle: 'italic' }}>
@@ -144,6 +192,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
     case 'upcoming': return <V.UpcomingView density={density} />;
     case 'inbox': return <V.InboxView density={density} />;
     case 'project': return <V.ProjectView projectId={view.id} density={density} />;
+    case 'project-settings': return <V.ProjectSettingsView projectId={view.id} />;
     case 'label': return <V.LabelView labelId={view.id} density={density} />;
     case 'filters': return <V.FiltersView />;
     case 'calendar': return <CalendarView density={density} compact />;
@@ -156,7 +205,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
 
 function BackBar() {
   const { view, setView } = useApp();
-  const showBack = ['project', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   if (!showBack) return null;
   return (
     <button onClick={() => setView({ type: 'browse' })} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px 0', color: 'var(--accent)', fontWeight: 700, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}>

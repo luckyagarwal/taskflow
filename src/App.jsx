@@ -10,18 +10,66 @@ import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { QuickAddModal } from './composer.jsx';
 
-function NavItem({ icon, label, count, active, color, onClick, onDelete }) {
+function NavItem({ icon, label, count, active, color, onClick, onDelete, onRename }) {
   const [hovered, setHovered] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(label);
+
+  const startEdit = (e) => {
+    if (e) e.stopPropagation();
+    setEditValue(label);
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    if (editValue.trim() && editValue.trim() !== label && onRename) {
+      onRename(editValue.trim());
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className={'nav-item' + (active ? ' is-active' : '')} style={{ display: 'flex', alignItems: 'center' }}>
+        <span className="nav-ico" style={{ color: active ? undefined : (color || 'var(--text-3)'), display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
+        <input
+          autoFocus
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
+          onBlur={commitEdit}
+          style={{
+            flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
+            color: 'var(--text)', borderRadius: 4, padding: '2px 6px',
+            fontSize: 13, fontWeight: 700, outline: 'none', minWidth: 0
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <button 
       className={'nav-item' + (active ? ' is-active' : '')} 
       onClick={onClick} 
+      onDoubleClick={onRename ? startEdit : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{ border: 'none', background: 'transparent', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center' }}
     >
       <span className="nav-ico" style={{ color: active ? undefined : (color || 'var(--text-3)'), display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      {onRename && hovered && (
+        <span 
+          onClick={startEdit}
+          style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', marginRight: 4 }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+          title="Rename (or double-click)"
+        >
+          <I.edit size={14} />
+        </span>
+      )}
       {onDelete && hovered ? (
         <span 
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -41,10 +89,13 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete }) {
 
 function ProjectGroup({ title, projects = [], view, setView }) {
   const [open, setOpen] = useState(true);
-  const { tasks, addProject, deleteProject, deleteSection, sections } = useApp();
+  const { tasks, addProject, deleteProject, updateProject, deleteSection, updateSection, sections, reorderProjects } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [projName, setProjName] = useState('');
   const [headerHovered, setHeaderHovered] = useState(false);
+  const [draggedProjIdx, setDraggedProjIdx] = useState(null);
+  const [editingSection, setEditingSection] = useState(false);
+  const [sectionEditName, setSectionEditName] = useState(title);
 
   const handleAdd = () => {
     if (projName.trim()) {
@@ -62,6 +113,41 @@ function ProjectGroup({ title, projects = [], view, setView }) {
     }
   };
 
+  const startSectionEdit = () => {
+    setSectionEditName(title);
+    setEditingSection(true);
+  };
+
+  const commitSectionEdit = () => {
+    const sec = sections.find(s => s.name === title);
+    if (!sec) { setEditingSection(false); return; }
+    const trimmed = sectionEditName.trim();
+    if (trimmed && trimmed !== title) {
+      if (sections.some(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+        setEditingSection(false);
+        return;
+      }
+      updateSection(sec.id, { name: trimmed });
+    }
+    setEditingSection(false);
+  };
+
+  const handleProjDragStart = (e, idx) => {
+    setDraggedProjIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleProjDragOver = (e, idx) => {
+    e.preventDefault();
+    if (draggedProjIdx === null || draggedProjIdx === idx) return;
+    reorderProjects(projects[draggedProjIdx].id, projects[idx].id);
+    setDraggedProjIdx(idx);
+  };
+
+  const handleProjDragEnd = () => {
+    setDraggedProjIdx(null);
+  };
+
   return (
     <div style={{ marginTop: 14 }}>
       <div 
@@ -69,33 +155,77 @@ function ProjectGroup({ title, projects = [], view, setView }) {
         onMouseLeave={() => setHeaderHovered(false)} 
         style={{ display: 'flex', alignItems: 'center', width: '100%', paddingRight: 10 }}
       >
-        <button onClick={() => setOpen((o) => !o)} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '4px 10px', color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-          <span style={{ transition: 'transform .15s', transform: open ? 'none' : 'rotate(-90deg)' }}><I.chevD size={15} /></span>
-          <span className="section-title">{title}</span>
-        </button>
-        {headerHovered && (
-          <span 
-            onClick={(e) => { e.stopPropagation(); handleSectionDelete(); }}
-            style={{ display: 'grid', placeItems: 'center', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', padding: 4 }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--p1)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
-            title="Delete section"
-          >
-            <I.trash size={14} />
-          </span>
+        {editingSection ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '4px 10px' }}>
+            <span style={{ transition: 'transform .15s', transform: open ? 'none' : 'rotate(-90deg)', color: 'var(--text-3)' }}><I.chevD size={15} /></span>
+            <input
+              autoFocus
+              value={sectionEditName}
+              onChange={(e) => setSectionEditName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitSectionEdit(); if (e.key === 'Escape') setEditingSection(false); }}
+              onBlur={commitSectionEdit}
+              style={{
+                flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
+                color: 'var(--text)', borderRadius: 4, padding: '2px 6px',
+                fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase',
+                letterSpacing: '.06em', outline: 'none', minWidth: 0
+              }}
+            />
+          </div>
+        ) : (
+          <button onClick={() => setOpen((o) => !o)} onDoubleClick={(e) => { e.stopPropagation(); startSectionEdit(); }} style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '4px 10px', color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+            <span style={{ transition: 'transform .15s', transform: open ? 'none' : 'rotate(-90deg)' }}><I.chevD size={15} /></span>
+            <span className="section-title">{title}</span>
+          </button>
+        )}
+        {headerHovered && !editingSection && (
+          <div style={{ display: 'flex', gap: 2 }}>
+            <span 
+              onClick={(e) => { e.stopPropagation(); startSectionEdit(); }}
+              style={{ display: 'grid', placeItems: 'center', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', padding: 4 }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+              title="Rename section (or double-click)"
+            >
+              <I.edit size={14} />
+            </span>
+            <span 
+              onClick={(e) => { e.stopPropagation(); handleSectionDelete(); }}
+              style={{ display: 'grid', placeItems: 'center', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', padding: 4 }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--p1)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+              title="Delete section"
+            >
+              <I.trash size={14} />
+            </span>
+          </div>
         )}
       </div>
-      {open && projects.map((p) => {
+      {open && projects.map((p, idx) => {
         const n = Sel.byProject(tasks, p.id).length;
         const handleProjDelete = () => {
           if (window.confirm(`Are you sure you want to delete the project "${p.name}"? Tasks will be moved to Inbox.`)) {
             deleteProject(p.id);
           }
         };
+        const handleProjRename = (newName) => {
+          if (newName && newName !== p.name) {
+            updateProject(p.id, { name: newName });
+          }
+        };
         return (
-          <NavItem key={p.id} icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
-            active={view.type === 'project' && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })}
-            onDelete={handleProjDelete} />
+          <div
+            key={p.id}
+            draggable
+            onDragStart={(e) => handleProjDragStart(e, idx)}
+            onDragOver={(e) => handleProjDragOver(e, idx)}
+            onDragEnd={handleProjDragEnd}
+            style={{ opacity: draggedProjIdx === idx ? 0.4 : 1 }}
+          >
+            <NavItem icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
+              active={(view.type === 'project' || view.type === 'project-settings') && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })}
+              onDelete={handleProjDelete} onRename={handleProjRename} />
+          </div>
         );
       })}
       {open && projects.length === 0 && (
@@ -122,10 +252,11 @@ function ProjectGroup({ title, projects = [], view, setView }) {
 }
 
 function Sidebar({ style }) {
-  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, theme, setTheme } = useApp();
+  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, theme, setTheme, reorderSections } = useApp();
   const c = Sel.counts(tasks);
   const [addingSec, setAddingSec] = useState(false);
   const [newSecName, setNewSecName] = useState('');
+  const [draggedSecIdx, setDraggedSecIdx] = useState(null);
 
   const handleAddSection = () => {
     if (newSecName.trim()) {
@@ -133,6 +264,22 @@ function Sidebar({ style }) {
       setNewSecName('');
       setAddingSec(false);
     }
+  };
+
+  const handleSecDragStart = (e, idx) => {
+    setDraggedSecIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleSecDragOver = (e, idx) => {
+    e.preventDefault();
+    if (draggedSecIdx === null || draggedSecIdx === idx) return;
+    reorderSections(sections[draggedSecIdx].id, sections[idx].id);
+    setDraggedSecIdx(idx);
+  };
+
+  const handleSecDragEnd = () => {
+    setDraggedSecIdx(null);
   };
 
   return (
@@ -179,10 +326,19 @@ function Sidebar({ style }) {
         <NavItem icon={<I.filter size={19} />} label="Filters & Labels" active={view.type === 'filters' || view.type === 'label'} color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
       </nav>
 
-      {sections.map((sec) => {
+      {sections.map((sec, idx) => {
         const secProjects = projects.filter(p => p.group === sec.name);
         return (
-          <ProjectGroup key={sec.id} title={sec.name} projects={secProjects} view={view} setView={setView} />
+          <div
+            key={sec.id}
+            draggable
+            onDragStart={(e) => handleSecDragStart(e, idx)}
+            onDragOver={(e) => handleSecDragOver(e, idx)}
+            onDragEnd={handleSecDragEnd}
+            style={{ opacity: draggedSecIdx === idx ? 0.4 : 1 }}
+          >
+            <ProjectGroup title={sec.name} projects={secProjects} view={view} setView={setView} />
+          </div>
         );
       })}
 
@@ -220,6 +376,7 @@ function MainContent({ density, narrow }) {
     case 'upcoming': content = <V.UpcomingView density={density} />; break;
     case 'inbox': content = <V.InboxView density={density} />; break;
     case 'project': content = <V.ProjectView projectId={view.id} density={density} />; break;
+    case 'project-settings': content = <V.ProjectSettingsView projectId={view.id} />; break;
     case 'label': content = <V.LabelView labelId={view.id} density={density} />; break;
     case 'filters': content = <V.FiltersView />; break;
     case 'calendar': content = <CalendarView density={density} />; break;

@@ -169,7 +169,7 @@ export function dateString(off) {
   return `${H.DOW_LONG[d.getDay()]}, ${H.MONTHS_LONG[d.getMonth()]} ${d.getDate()}`;
 }
 
-export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject }) {
+export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject, onRenameProject, onProjectSettings }) {
   const { multiSelectedIds = [], toggleMultiSelect, clearMultiSelect, bulkDelete, bulkComplete } = useApp();
   const [sortMenu, setSortMenu] = useState(false);
   const [selectMenu, setSelectMenu] = useState(false);
@@ -265,6 +265,25 @@ export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject }
               }} style={{ fontWeight: 600, color: 'var(--p1)', gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--p1)' }}><I.trash size={15} /></span>
                 <span>Delete Selected</span>
+              </div>
+            </>
+          )}
+
+          {onProjectSettings && (
+            <>
+              <div className="divider" style={{ margin: '4px 0' }} />
+              <div className="pop-item" onClick={() => { onProjectSettings(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+                <span style={{ display: 'flex', color: 'var(--accent)' }}><I.settings size={15} /></span>
+                <span>Project Settings</span>
+              </div>
+            </>
+          )}
+
+          {onRenameProject && (
+            <>
+              <div className="pop-item" onClick={() => { onRenameProject(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+                <span style={{ display: 'flex', color: 'var(--accent)' }}><I.edit size={15} /></span>
+                <span>Rename Project</span>
               </div>
             </>
           )}
@@ -435,7 +454,7 @@ export function InboxView({ density }) {
 
 // ── PROJECT ─────────────────────────────────────────────────
 export function ProjectView({ projectId, density }) {
-  const { tasks, projects, sorts, setViewSort, collapsedSections, toggleSection, deleteProject } = useApp();
+  const { tasks, projects, sorts, setViewSort, collapsedSections, toggleSection, deleteProject, updateProject, setView } = useApp();
   const sortBy = sorts[`project-${projectId}`] || 'default';
   const proj = projects.find(p => p.id === projectId) || H.projectById(projectId);
   if (!proj) return null;
@@ -465,11 +484,18 @@ export function ProjectView({ projectId, density }) {
     }
   };
 
+  const handleRenameProject = () => {
+    const newName = window.prompt("Rename Project:", proj.name);
+    if (newName && newName.trim() && newName.trim() !== proj.name) {
+      updateProject(projectId, { name: newName.trim() });
+    }
+  };
+
   return (
     <div>
       <ViewHeader icon={<Dot color={proj.color} size={14} />} title={proj.name}
         subtitle={`${proj.group} · ${items.length} open · ${doneCount} done`}
-        right={<HeaderActions sortBy={sortBy} setSortBy={changeSort} items={items} onDeleteProject={handleDeleteProject} />} />
+        right={<HeaderActions sortBy={sortBy} setSortBy={changeSort} items={items} onDeleteProject={handleDeleteProject} onRenameProject={handleRenameProject} onProjectSettings={() => setView({ type: 'project-settings', id: projectId })} />} />
       <InlineComposer defaultProject={projectId} />
       {items.length === 0 && <Empty icon={<I.check size={30} />} title="No open tasks" sub="Everything here is done. Nice work." />}
       
@@ -899,4 +925,202 @@ export function SettingsView() {
   );
 }
 
-export const Views = { TodayView, UpcomingView, InboxView, ProjectView, LabelView, FiltersView, LogbookView, SettingsView, ViewHeader, SectionHeader, TaskGroup, dateString };
+// ── PROJECT SETTINGS ────────────────────────────────────────
+const PROJECT_COLORS = [
+  '#2D7FF9', '#7C5CFC', '#14B8C4', '#1F9D55',
+  '#E8588A', '#F5A623', '#EF4444', '#8B5CF6',
+  '#EC4899', '#06B6D4', '#84CC16', '#9AA0A6',
+];
+
+export function ProjectSettingsView({ projectId }) {
+  const { projects, sections, updateProject, deleteProject, setView } = useApp();
+  const proj = projects.find(p => p.id === projectId);
+  if (!proj) return null;
+
+  const [name, setName] = React.useState(proj.name);
+  const [color, setColor] = React.useState(proj.color);
+  const [group, setGroup] = React.useState(proj.group);
+  const [saved, setSaved] = React.useState(false);
+
+  // Sync if project changes externally
+  React.useEffect(() => {
+    setName(proj.name);
+    setColor(proj.color);
+    setGroup(proj.group);
+  }, [proj.name, proj.color, proj.group]);
+
+  const hasChanges = name !== proj.name || color !== proj.color || group !== proj.group;
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    const patch = {};
+    if (name.trim() !== proj.name) patch.name = name.trim();
+    if (color !== proj.color) patch.color = color;
+    if (group !== proj.group) patch.group = group;
+    if (Object.keys(patch).length > 0) {
+      updateProject(projectId, patch);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    }
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`Delete project "${proj.name}"? Tasks will be moved to Inbox.`)) {
+      deleteProject(projectId);
+    }
+  };
+
+  const cardStyle = {
+    background: 'var(--bg-elev)',
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    padding: 18,
+    marginBottom: 16
+  };
+
+  const labelStyle = {
+    fontSize: 12.5,
+    fontWeight: 800,
+    color: 'var(--text-3)',
+    textTransform: 'uppercase',
+    letterSpacing: '.04em',
+    marginBottom: 10
+  };
+
+  return (
+    <div>
+      <ViewHeader
+        icon={<span style={{ color: color }}><I.settings size={24} /></span>}
+        title="Project Settings"
+        subtitle={proj.name}
+        right={
+          <button
+            onClick={() => setView({ type: 'project', id: projectId })}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+              borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--bg-elev)',
+              color: 'var(--text)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              transition: 'background .12s'
+            }}
+          >
+            <I.chevL size={16} /> Back to Project
+          </button>
+        }
+      />
+
+      {/* Project Name */}
+      <div style={cardStyle}>
+        <div style={labelStyle}>Project Name</div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Dot color={color} size={12} />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+            placeholder="Project name..."
+            style={{
+              flex: 1, border: '1px solid var(--border)', background: 'var(--bg)',
+              color: 'var(--text)', borderRadius: 8, padding: '10px 12px',
+              fontSize: 15, fontWeight: 700, outline: 'none',
+              transition: 'border-color .15s'
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
+            onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+          />
+        </div>
+      </div>
+
+      {/* Color */}
+      <div style={cardStyle}>
+        <div style={labelStyle}>Color</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+          {PROJECT_COLORS.map(c => (
+            <button
+              key={c}
+              onClick={() => setColor(c)}
+              style={{
+                width: '100%',
+                aspectRatio: '1',
+                maxWidth: 44,
+                borderRadius: 10,
+                background: c,
+                border: color === c ? '3px solid var(--text)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'transform .12s, border-color .12s',
+                display: 'grid',
+                placeItems: 'center',
+                boxShadow: color === c ? `0 0 0 2px var(--bg), 0 0 0 4px ${c}` : 'none'
+              }}
+              onMouseEnter={(e) => { if (color !== c) e.currentTarget.style.transform = 'scale(1.12)'; }}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {color === c && <I.check size={18} style={{ color: '#fff', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.3))' }} />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Section */}
+      <div style={cardStyle}>
+        <div style={labelStyle}>Section</div>
+        <select
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          style={{
+            width: '100%', border: '1px solid var(--border)', background: 'var(--bg)',
+            color: 'var(--text)', borderRadius: 8, padding: '10px 12px',
+            fontSize: 14.5, fontWeight: 700, outline: 'none', cursor: 'pointer'
+          }}
+        >
+          {sections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+        </select>
+        <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 8, fontWeight: 600 }}>
+          Move this project to a different section.
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+        <button
+          onClick={handleSave}
+          disabled={!hasChanges || !name.trim()}
+          style={{
+            flex: 1, padding: '12px 20px', borderRadius: 10,
+            background: hasChanges ? 'var(--accent)' : 'var(--hover)',
+            color: hasChanges ? '#fff' : 'var(--text-3)',
+            fontSize: 14.5, fontWeight: 800, border: 'none', cursor: hasChanges ? 'pointer' : 'default',
+            transition: 'all .15s',
+            boxShadow: hasChanges ? '0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent)' : 'none'
+          }}
+        >
+          {saved ? '✓ Saved' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Danger Zone */}
+      <div style={{ ...cardStyle, borderColor: 'color-mix(in srgb, var(--p1) 30%, var(--border))' }}>
+        <div style={{ ...labelStyle, color: 'var(--p1)' }}>Danger Zone</div>
+        <button
+          onClick={handleDelete}
+          style={{
+            width: '100%', padding: '10px 16px', borderRadius: 8,
+            background: 'color-mix(in srgb, var(--p1) 8%, transparent)',
+            color: 'var(--p1)', fontSize: 14, fontWeight: 750,
+            border: '1px solid var(--p1)', cursor: 'pointer',
+            transition: 'background .15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--p1) 15%, transparent)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'color-mix(in srgb, var(--p1) 8%, transparent)'}
+        >
+          <I.trash size={15} /> Delete Project
+        </button>
+        <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 8, fontWeight: 600 }}>
+          All tasks will be moved to Inbox. This cannot be undone.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const Views = { TodayView, UpcomingView, InboxView, ProjectView, ProjectSettingsView, LabelView, FiltersView, LogbookView, SettingsView, ViewHeader, SectionHeader, TaskGroup, dateString };
