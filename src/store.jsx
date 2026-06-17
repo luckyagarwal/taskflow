@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
 import { db } from './db.js';
+import { startSync } from './sync.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -213,6 +214,26 @@ export function useStore() {
     
     init().catch(err => console.error("Database initialization failed", err));
   }, []);
+
+  // Re-read Dexie into React state after a remote sync merges in changes.
+  const reloadFromDb = useCallback(async () => {
+    const [t, p, l, s] = await Promise.all([
+      db.tasks.toArray(), db.projects.toArray(), db.labels.toArray(), db.sections.toArray()
+    ]);
+    t.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    p.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    s.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    setTasks(t);
+    setProjects(p);
+    setCustomLabels(l);
+    setSections(s);
+  }, []);
+
+  // Start background sync once initial load completes (runs once).
+  useEffect(() => {
+    if (!loaded) return;
+    startSync(reloadFromDb);
+  }, [loaded, reloadFromDb]);
 
   useEffect(() => {
     localStorage.setItem(KEY_SIDEBAR_COLLAPSED, JSON.stringify(sidebarCollapsed));

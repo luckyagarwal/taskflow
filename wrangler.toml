@@ -1,0 +1,19 @@
+# Cloudflare Pages config for TaskFlow.
+# The D1 binding exposes the database to Pages Functions as `env.DB`.
+#
+# Setup (run once):
+#   wrangler d1 create taskflow-db
+#   -> copy the printed database_id into database_id below
+#   wrangler d1 execute taskflow-db --file=schema.sql --remote
+#
+# In the Cloudflare dashboard you can alternatively bind D1 under
+# Pages project -> Settings -> Functions -> D1 database bindings (variable name: DB).
+
+name = "taskflow"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "taskflow-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
