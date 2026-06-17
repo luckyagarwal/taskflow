@@ -20,6 +20,40 @@ export function useStore() {
   const [toasts, setToasts] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('todo-proto-theme');
+      return saved || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  const [density, setDensity] = useState(() => {
+    try {
+      const saved = localStorage.getItem('todo-proto-density');
+      return saved || 'card';
+    } catch {
+      return 'card';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('todo-proto-theme', theme);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('todo-proto-density', density);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [density]);
+
   const KEY_SIDEBAR_COLLAPSED = 'todo-proto-sidebar-collapsed';
   const KEY_SIDEBAR_WIDTH = 'todo-proto-sidebar-width';
 
@@ -44,9 +78,11 @@ export function useStore() {
 
   const [view, setView] = useState({ type: 'today' });
   const [selectedId, setSelectedId] = useState(null);
+  const [multiSelectedIds, setMultiSelectedIds] = useState([]);
   const [quickAdd, setQuickAdd] = useState(false);
   const [search, setSearch] = useState(false);
   const [expandedIds, setExpandedIds] = useState([]);
+  const [collapsedSections, setCollapsedSections] = useState([]);
 
   // Database initialization and migration
   useEffect(() => {
@@ -164,6 +200,10 @@ export function useStore() {
     setExpandedIds((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }, []);
 
+  const toggleSection = useCallback((id) => {
+    setCollapsedSections((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }, []);
+
   const toggleTask = useCallback((id) => {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== id) return t;
@@ -247,6 +287,46 @@ export function useStore() {
     db.tasks.delete(id).catch(() => {});
     setSelectedId((s) => (s === id ? null : s));
   }, []);
+
+  const toggleMultiSelect = useCallback((id) => {
+    setMultiSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }, []);
+
+  const clearMultiSelect = useCallback(() => {
+    setMultiSelectedIds([]);
+  }, []);
+
+  const bulkDelete = useCallback((idsToDelete) => {
+    const ids = idsToDelete || multiSelectedIds;
+    if (!ids.length) return;
+    setTasks((ts) => ts.filter((t) => !ids.includes(t.id)));
+    db.tasks.bulkDelete(ids).catch(() => {});
+    setMultiSelectedIds((prev) => prev.filter((x) => !ids.includes(x)));
+    setSelectedId((s) => (ids.includes(s) ? null : s));
+  }, [multiSelectedIds]);
+
+  const bulkComplete = useCallback((idsToComplete) => {
+    const ids = idsToComplete || multiSelectedIds;
+    if (!ids.length) return;
+    setTasks((ts) =>
+      ts.map((t) => {
+        if (!ids.includes(t.id)) return t;
+        if (t.done) return t;
+        let updated;
+        if (t.recurring) {
+          const nextDue = advanceRecurring(t.dueOffset, t.recurring);
+          updated = { ...t, dueOffset: nextDue, done: false, status: 'planned' };
+        } else {
+          updated = { ...t, done: true, doneOffset: 0, status: 'done' };
+        }
+        db.tasks.put(updated).catch(() => {});
+        return updated;
+      })
+    );
+    setMultiSelectedIds((prev) => prev.filter((x) => !ids.includes(x)));
+  }, [multiSelectedIds]);
 
   const toggleSubtask = useCallback((taskId, subId) => {
     setTasks((ts) => ts.map((t) => {
@@ -494,6 +574,8 @@ export function useStore() {
     localStorage.removeItem('todo-proto-sidebar-width');
     localStorage.removeItem('todo-proto-project-sort');
     localStorage.removeItem('todo-proto-view-sorts');
+    localStorage.removeItem('todo-proto-theme');
+    localStorage.removeItem('todo-proto-density');
     
     await db.tasks.clear();
     await db.projects.clear();
@@ -503,11 +585,75 @@ export function useStore() {
     window.location.reload();
   }, []);
 
+  const exportDatabase = useCallback(async () => {
+    try {
+      const allTasks = await db.tasks.toArray();
+      const allProjects = await db.projects.toArray();
+      const allLabels = await db.labels.toArray();
+      const allSections = await db.sections.toArray();
+
+      const backup = {
+        version: 3,
+        tasks: allTasks,
+        projects: allProjects,
+        labels: allLabels,
+        sections: allSections,
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", url);
+      downloadAnchor.setAttribute("download", `taskflow-backup-${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+
+      setToasts(prev => [...prev, { id: Date.now(), text: "Backup exported successfully!" }]);
+    } catch (err) {
+      console.error("Failed to export backup", err);
+      setToasts(prev => [...prev, { id: Date.now(), text: "Failed to export backup!" }]);
+    }
+  }, []);
+
+  const importDatabase = useCallback(async (jsonData) => {
+    try {
+      const backup = JSON.parse(jsonData);
+      
+      if (!backup || typeof backup !== 'object') throw new Error("Invalid backup format");
+      if (!Array.isArray(backup.tasks) || !Array.isArray(backup.projects)) {
+        throw new Error("Missing required tables: tasks or projects");
+      }
+
+      await db.tasks.clear();
+      await db.projects.clear();
+      await db.labels.clear();
+      await db.sections.clear();
+
+      if (backup.tasks.length) await db.tasks.bulkPut(backup.tasks);
+      if (backup.projects.length) await db.projects.bulkPut(backup.projects);
+      if (backup.labels && backup.labels.length) await db.labels.bulkPut(backup.labels);
+      if (backup.sections && backup.sections.length) await db.sections.bulkPut(backup.sections);
+
+      setToasts(prev => [...prev, { id: Date.now(), text: "Backup imported successfully! Reloading..." }]);
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error("Failed to import backup", err);
+      alert("Failed to import backup: " + err.message);
+    }
+  }, []);
+
   return {
     tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,
+    collapsedSections, setCollapsedSections, toggleSection,
+    multiSelectedIds, toggleMultiSelect, clearMultiSelect, bulkDelete, bulkComplete,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded,
     sorts, setViewSort, reorderTasks,
-    setView: (v) => { setView(v); setSelectedId(null); },
+    setView: (v) => { setView(v); setSelectedId(null); setMultiSelectedIds([]); },
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
     addProject, deleteProject, toggleExpand, resetDatabase,
@@ -517,6 +663,12 @@ export function useStore() {
     addReminder,
     deleteReminder,
     markReminderFired,
+    theme,
+    setTheme,
+    density,
+    setDensity,
+    exportDatabase,
+    importDatabase,
   };
 }
 
