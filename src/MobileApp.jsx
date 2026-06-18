@@ -43,9 +43,8 @@ function MobileHeader() {
       }}>
         T
       </div>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text)' }}>TaskFlow</span>
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Personal Workspace</span>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+        <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em', color: 'var(--text)' }}>TaskFlow</span>
       </div>
     </div>
   );
