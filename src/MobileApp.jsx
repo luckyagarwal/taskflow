@@ -563,10 +563,9 @@ function AddProjectModal({ onClose }) {
 }
 
 export function MobileApp() {
-  const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density, multiSelectedIds } = useApp();
+  const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density, multiSelectedIds, barsVisible, setBarsVisible } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [addingSec, setAddingSec] = useState(false);
-  const [barsVisible, setBarsVisible] = useState(true);
   const lastScrollTopRef = React.useRef(0);
 
   const handleScroll = (e) => {

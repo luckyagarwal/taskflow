@@ -64,8 +64,8 @@ export function LabelChip({ id, small }) {
 // ── Due badge ───────────────────────────────────────────────
 const TONE = { overdue: 'var(--p1)', today: 'var(--today)', soon: 'var(--p3)', future: 'var(--text-2)' };
 
-export function DueBadge({ offset, time, small, startOffset }) {
-  const labelText = H.dateRangeLabel(startOffset, offset, time);
+export function DueBadge({ offset, time, small, startOffset, startTime }) {
+  const labelText = H.dateRangeLabel(startOffset, offset, time, startTime);
   if (!labelText) return null;
 
   const mainOffset = offset !== null && offset !== undefined ? offset : startOffset;
@@ -222,7 +222,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
       {showProject !== 'inDate' && (
         <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setMenu(menu === 'due' ? null : 'due')} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'flex' }}>
-            <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} />
+            <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} startTime={task.startTime} />
           </button>
           {menu === 'due' && (
             <DateSelectorModal

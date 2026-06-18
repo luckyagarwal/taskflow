@@ -732,10 +732,12 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
 
   const initialStart = task ? task.startOffset : startOffset;
   const initialDue = task ? task.dueOffset : dueOffset;
+  const initialStartTime = task ? task.startTime : null;
   const initialTime = task ? task.time : time;
 
   const hasRange = initialStart !== null && initialStart !== undefined;
   const [rangeOn, setRangeOn] = useState(hasRange);
+  const [startTimeOn, setStartTimeOn] = useState(!!initialStartTime);
   const [timeOn, setTimeOn] = useState(!!initialTime);
   const [picking, setPicking] = useState('start'); // 'start' | 'end'
   const today = H.startOfToday();
@@ -749,24 +751,25 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
   const start = rangeOn ? (initialStart ?? initialDue) : null;
   const end = initialDue;
 
-  const triggerChange = (newStart, newDue, newTime) => {
+  const triggerChange = (newStart, newDue, newStartTime, newTime) => {
     let s = newStart;
     let d = newDue;
     if (typeof s === 'number' && typeof d === 'number' && d < s) {
       d = s;
     }
     if (task) {
-      updateTask(task.id, { startOffset: s, dueOffset: d, time: newTime });
+      updateTask(task.id, { startOffset: s, dueOffset: d, startTime: newStartTime, time: newTime });
     }
     if (onChange) {
-      onChange(s, d, newTime);
+      onChange(s, d, newStartTime, newTime);
     }
   };
 
-  const setSingle = (off) => triggerChange(null, off, timeOn ? initialTime : null);
+  const setSingle = (off) => triggerChange(null, off, null, timeOn ? initialTime : null);
   const setNoDate = () => {
-    triggerChange(null, null, null);
+    triggerChange(null, null, null, null);
     setTimeOn(false);
+    setStartTimeOn(false);
     setRangeOn(false);
   };
 
@@ -778,34 +781,45 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
     if (picking === 'start') {
       const e = end == null ? off : end;
       const lo = Math.min(off, e), hi = Math.max(off, e);
-      triggerChange(lo, hi, timeOn ? initialTime : null);
+      triggerChange(lo, hi, startTimeOn ? initialStartTime : null, timeOn ? initialTime : null);
       setPicking('end');
     } else {
       const s = start == null ? off : start;
       const lo = Math.min(off, s), hi = Math.max(off, s);
-      triggerChange(lo, hi, timeOn ? initialTime : null);
+      triggerChange(lo, hi, startTimeOn ? initialStartTime : null, timeOn ? initialTime : null);
       setPicking('start');
     }
   };
 
   const toggleRange = () => {
     if (rangeOn) {
-      triggerChange(null, end, timeOn ? initialTime : null);
+      triggerChange(null, end, null, timeOn ? initialTime : null);
       setRangeOn(false);
+      setStartTimeOn(false);
     } else {
       const base = end == null ? 0 : end;
-      triggerChange(base, base, timeOn ? initialTime : null);
+      triggerChange(base, base, startTimeOn ? initialStartTime : null, timeOn ? initialTime : null);
       setRangeOn(true);
       setPicking('end');
     }
   };
 
+  const toggleStartTime = () => {
+    if (startTimeOn) {
+      triggerChange(start, end, null, timeOn ? initialTime : null);
+      setStartTimeOn(false);
+    } else {
+      triggerChange(start, end, initialStartTime || '09:00', timeOn ? initialTime : null);
+      setStartTimeOn(true);
+    }
+  };
+
   const toggleTime = () => {
     if (timeOn) {
-      triggerChange(start, end, null);
+      triggerChange(start, end, startTimeOn ? initialStartTime : null, null);
       setTimeOn(false);
     } else {
-      triggerChange(start, end, initialTime || '09:00');
+      triggerChange(start, end, startTimeOn ? initialStartTime : null, initialTime || '09:00');
       setTimeOn(true);
     }
   };
@@ -822,12 +836,12 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
       if (picking === 'start') {
         const e = end == null ? off : end;
         const lo = Math.min(off, e), hi = Math.max(off, e);
-        triggerChange(lo, hi, timeOn ? initialTime : null);
+        triggerChange(lo, hi, startTimeOn ? initialStartTime : null, timeOn ? initialTime : null);
         setPicking('end');
       } else {
         const s = start == null ? off : start;
         const lo = Math.min(off, s), hi = Math.max(off, s);
-        triggerChange(lo, hi, timeOn ? initialTime : null);
+        triggerChange(lo, hi, startTimeOn ? initialStartTime : null, timeOn ? initialTime : null);
       }
     } else {
       setSingle(off);
@@ -903,7 +917,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
                 {rangeOn ? 'Start' : 'Date'}
               </div>
               <div style={{ fontSize: 15.5, fontWeight: 800, color: (picking === 'start' || !rangeOn) ? 'var(--accent-text)' : 'var(--text)' }}>
-                {rangeOn ? (start != null ? `${fmtDate(start)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'Pick start') : (end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'No date')}
+                {rangeOn ? (start != null ? `${fmtDate(start)}${startTimeOn && initialStartTime ? ` at ${fmtTime(initialStartTime)}` : ''}` : 'Pick start') : (end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'No date')}
               </div>
             </div>
           </div>
@@ -924,7 +938,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
 
         {/* Calendar grid card */}
         <div className="m-group" style={{ padding: '12px 12px 14px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 6px 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', padding: '2px 6px 10px' }}>
             <span style={{ fontSize: 16, fontWeight: 800 }}>{H.MONTHS_LONG[month]} {year}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button type="button" className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMonthShift(m => m - 1)}>
@@ -977,21 +991,38 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
 
         {/* Toggles settings card */}
         <div className="m-group">
-          <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="m-toggle-row" style={{ borderBottom: (rangeOn || timeOn || startTimeOn) ? '1px solid var(--border)' : 'none' }}>
             <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.calendar size={19} /></span>
             <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>End date</span>
             <IOSToggle value={rangeOn} onChange={toggleRange} />
           </div>
-          <div className="m-toggle-row">
+          {rangeOn && (
+            <>
+              <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
+                <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Start time</span>
+                <IOSToggle value={startTimeOn} onChange={toggleStartTime} />
+              </div>
+              {startTimeOn && (
+                <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time (Start)</span>
+                  <input type="time" value={initialStartTime || '09:00'} onChange={e => triggerChange(start, end, e.target.value, timeOn ? initialTime : null)}
+                    className="m-timeinput" />
+                </div>
+              )}
+            </>
+          )}
+          <div className="m-toggle-row" style={{ borderBottom: timeOn ? '1px solid var(--border)' : 'none' }}>
             <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
-            <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Include time</span>
+            <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>{rangeOn ? 'End time' : 'Include time'}</span>
             <IOSToggle value={timeOn} onChange={toggleTime} />
           </div>
           {timeOn && (
-            <div className="m-toggle-row" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="m-toggle-row">
               <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
-              <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time</span>
-              <input type="time" value={initialTime || '09:00'} onChange={e => triggerChange(start, end, e.target.value)}
+              <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time {rangeOn ? '(End)' : ''}</span>
+              <input type="time" value={initialTime || '09:00'} onChange={e => triggerChange(start, end, startTimeOn ? initialStartTime : null, e.target.value)}
                 className="m-timeinput" />
             </div>
           )}

@@ -21,6 +21,7 @@ export function useStore() {
   const [toasts, setToasts] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [wipingDb, setWipingDb] = useState(false);
+  const [barsVisible, setBarsVisible] = useState(true);
 
   const [theme, setTheme] = useState(() => {
     try {
@@ -844,6 +845,8 @@ export function useStore() {
     setDensity,
     exportDatabase,
     importDatabase,
+    barsVisible,
+    setBarsVisible,
   };
 }
 

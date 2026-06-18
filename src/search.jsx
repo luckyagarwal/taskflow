@@ -68,7 +68,7 @@ export function SearchOverlay({ onClose }) {
                   <Row key={t.id} onClick={() => open(t)}>
                     <span style={{ width: 16, height: 16, borderRadius: 999, border: `2px solid ${H.priorityColor(t.priority) || 'var(--check-empty)'}`, flex: 'none' }} />
                     <span style={{ flex: 1, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                    {(t.dueOffset !== null || t.startOffset !== null) && <DueBadge offset={t.dueOffset} startOffset={t.startOffset} time={t.time} small />}
+                    {(t.dueOffset !== null || t.startOffset !== null) && <DueBadge offset={t.dueOffset} startOffset={t.startOffset} time={t.time} startTime={t.startTime} small />}
                     {proj && <Dot color={proj.color} />}
                   </Row>
                 );

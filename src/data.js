@@ -313,8 +313,10 @@ export function advanceRecurring(dueOffset, rule) {
   return offsetFromDate(nextDue);
 }
 
-export function dateRangeLabel(startOffset, dueOffset, time) {
+export function dateRangeLabel(startOffset, dueOffset, time, startTime) {
   const showTime = time && dueOffset !== 'someday';
+  const showStartTime = startTime && startOffset !== 'someday';
+  
   if (startOffset === null || startOffset === undefined) {
     const d = dueLabel(dueOffset);
     if (!d) return null;
@@ -323,15 +325,23 @@ export function dateRangeLabel(startOffset, dueOffset, time) {
   if (dueOffset === null || dueOffset === undefined) {
     const s = dueLabel(startOffset);
     if (!s) return null;
-    return `Start: ${s.text}`;
+    return `Start: ${s.text}` + (showStartTime ? ` · ${startTime}` : '');
   }
   if (startOffset === dueOffset) {
     const d = dueLabel(dueOffset);
+    if (showStartTime && showTime) {
+      return `${d.text} · ${startTime} → ${time}`;
+    }
+    if (showStartTime) {
+      return `${d.text} · ${startTime}`;
+    }
     return d.text + (showTime ? ` · ${time}` : '');
   }
   const s = dueLabel(startOffset);
   const d = dueLabel(dueOffset);
-  return `${s.text} → ${d.text}` + (showTime ? ` · ${time}` : '');
+  const startPart = s.text + (showStartTime ? ` · ${startTime}` : '');
+  const endPart = d.text + (showTime ? ` · ${time}` : '');
+  return `${startPart} → ${endPart}`;
 }
 
 export const H = {
