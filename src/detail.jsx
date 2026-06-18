@@ -1002,6 +1002,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
 }
 
 export function DateSelectorModal({ task, startOffset, dueOffset, time, onChange, onClose }) {
+  const { theme } = useApp();
   const narrow = useIsNarrow();
   const initStart = task ? task.startOffset : startOffset;
   const initDue = task ? task.dueOffset : dueOffset;
@@ -1018,21 +1019,23 @@ export function DateSelectorModal({ task, startOffset, dueOffset, time, onChange
     />
   );
 
+  const host = (typeof document !== 'undefined' && document.querySelector('.app-root')) || document.body;
+
   if (narrow) {
     return createPortal(
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+      <div data-theme={theme} style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
         {content}
       </div>,
-      document.body
+      host
     );
   } else {
     return createPortal(
-      <div className="scrim" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onMouseDown={onClose}>
+      <div className="scrim" data-theme={theme} style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onMouseDown={onClose}>
         <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 380, height: 600, borderRadius: 16, background: 'var(--bg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', overflow: 'hidden', position: 'relative' }}>
           {content}
         </div>
       </div>,
-      document.body
+      host
     );
   }
 }

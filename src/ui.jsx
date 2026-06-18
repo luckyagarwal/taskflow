@@ -9,13 +9,13 @@ import { DateSelectorModal } from './detail.jsx';
 // True on phone-width viewports — used to reflow task rows so the project
 // label drops below the title instead of stealing a fixed right column.
 export function useIsNarrow() {
-  const q = '(max-width: 767px)';
-  const [narrow, setNarrow] = React.useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  const [narrow, setNarrow] = React.useState(() => typeof window !== 'undefined' && window.location.pathname.startsWith('/mobile'));
   React.useEffect(() => {
-    const mq = window.matchMedia(q);
-    const fn = (e) => setNarrow(e.matches);
-    mq.addEventListener('change', fn);
-    return () => mq.removeEventListener('change', fn);
+    const fn = () => {
+      setNarrow(window.location.pathname.startsWith('/mobile'));
+    };
+    window.addEventListener('popstate', fn);
+    return () => window.removeEventListener('popstate', fn);
   }, []);
   return narrow;
 }

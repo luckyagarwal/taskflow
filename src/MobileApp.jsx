@@ -12,7 +12,7 @@ import { InlineComposer } from './composer.jsx';
 
 const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers the notch/island in standalone mode
 
-function MobileHeader() {
+function MobileHeader({ visible }) {
   const { view } = useApp();
   const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
 
@@ -20,13 +20,18 @@ function MobileHeader() {
 
   return (
     <div className="frosted-glass" style={{
-      flex: 'none',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       padding: `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 4px) 18px 14px`,
       display: 'flex',
       alignItems: 'center',
       gap: 12,
       borderBottom: '1px solid var(--border)',
-      zIndex: 50
+      zIndex: 50,
+      transform: visible ? 'none' : 'translateY(-100%)',
+      transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
     }}>
       <div style={{
         width: 32,
@@ -100,18 +105,23 @@ function Tab({ icon, label, active, onClick }) {
   );
 }
 
-function TabBar() {
+function TabBar({ visible }) {
   const { view, setView, setSearch } = useApp();
   const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   return (
     <div className="frosted-glass" style={{
-      flex: 'none',
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
       display: 'flex',
       alignItems: 'center',
       borderTop: '1px solid var(--border)',
       paddingBottom: 'max(env(safe-area-inset-bottom), 24px)',
       zIndex: 50,
-      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.02)'
+      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.02)',
+      transform: visible ? 'none' : 'translateY(100%)',
+      transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
     }}>
       <Tab icon={<I.today size={20} />} label="Today" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
       <Tab icon={<I.upcoming size={20} />} label="Upcoming" active={view.type === 'upcoming'} onClick={() => setView({ type: 'upcoming' })} />
@@ -314,18 +324,23 @@ function MobileContent({ density, onAddProject, onAddSection }) {
   }
 }
 
-function BackBar() {
+function BackBar({ visible }) {
   const { view, setView } = useApp();
   const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   if (!showBack) return null;
   return (
     <div className="frosted-glass" style={{
-      flex: 'none',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       padding: `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 4px) 18px 14px`,
       display: 'flex',
       alignItems: 'center',
       borderBottom: '1px solid var(--border)',
-      zIndex: 50
+      zIndex: 50,
+      transform: visible ? 'none' : 'translateY(-100%)',
+      transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
     }}>
       <button 
         onClick={() => setView({ type: 'browse' })} 
@@ -551,13 +566,41 @@ export function MobileApp() {
   const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density, multiSelectedIds } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [addingSec, setAddingSec] = useState(false);
+  const [barsVisible, setBarsVisible] = useState(true);
+  const lastScrollTopRef = React.useRef(0);
+
+  const handleScroll = (e) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    if (scrollTop < 20) {
+      if (!barsVisible) setBarsVisible(true);
+    } else {
+      const diff = scrollTop - lastScrollTopRef.current;
+      if (diff > 5) {
+        if (barsVisible) setBarsVisible(false);
+      } else if (diff < -5) {
+        if (!barsVisible) setBarsVisible(true);
+      }
+    }
+    lastScrollTopRef.current = scrollTop;
+  };
+
   const selecting = !!(multiSelectedIds && multiSelectedIds.length > 0);
   return (
     <div style={{ position: 'relative', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <MobileHeader />
-      <BackBar />
-      <div className="scroll" style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ padding: '6px 12px 96px' }}>
+      <MobileHeader visible={barsVisible} />
+      <BackBar visible={barsVisible} />
+      <div 
+        className="scroll" 
+        onScroll={handleScroll}
+        style={{ 
+          position: 'absolute',
+          inset: 0,
+          overflowY: 'auto',
+          paddingTop: `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 56px)`,
+          paddingBottom: `calc(max(env(safe-area-inset-bottom), 24px) + 56px)`
+        }}
+      >
+        <div style={{ padding: '6px 12px 24px' }}>
           <MobileContent density={density} onAddProject={() => setAddingProj(true)} onAddSection={() => setAddingSec(true)} />
         </div>
       </div>
@@ -572,13 +615,15 @@ export function MobileApp() {
             background: 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center',
             boxShadow: '0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent)', zIndex: 50,
             border: 'none', cursor: 'pointer',
+            transform: barsVisible ? 'none' : 'translateY(68px)',
+            transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         >
           <I.plus size={26} />
         </button>
       )}
 
-      <TabBar />
+      <TabBar visible={barsVisible} />
 
       {selectedId && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'var(--bg)', animation: 'panelIn .2s ease' }}>

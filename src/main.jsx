@@ -7,13 +7,23 @@ import "./index.css";
 
 function Root() {
   const [width, setWidth] = useState(window.innerWidth);
+  const [pathname, setPathname] = useState(() => typeof window !== 'undefined' ? window.location.pathname : '/');
   const store = useStore();
 
-  // Window resize handler to switch layouts dynamically
+  // Window resize handler for desktop reflow
   useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Path routing handler
+  useEffect(() => {
+    const handlePopState = () => {
+      setPathname(window.location.pathname);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   if (!store.loaded || store.wipingDb) {
@@ -35,10 +45,12 @@ function Root() {
     );
   }
 
+  const isMobile = pathname.startsWith('/mobile');
+
   return (
     <AppProvider value={store}>
       <div className="app-root" data-theme={store.theme} style={{ width: '100vw', overflow: 'hidden' }}>
-        {width < 768 ? (
+        {isMobile ? (
           <MobileApp />
         ) : (
           <DesktopApp frameW={width} />
