@@ -950,7 +950,7 @@ export function SettingsView() {
 
             <button
               onClick={() => {
-                if (window.confirm("Are you sure you want to reset the database? This clears all tasks, projects, and labels, and reloads seed data.")) {
+                if (window.confirm("Are you sure you want to reset the database? This will instantly delete all tasks, projects, and labels.")) {
                   resetDatabase();
                 }
               }}

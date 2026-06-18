@@ -158,58 +158,68 @@ export function useStore() {
         }
         loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       } else {
-        const localTasks = localStorage.getItem(KEY_TASKS);
-        const localProjects = localStorage.getItem(KEY_PROJECTS);
-        const localLabels = localStorage.getItem(KEY_LABELS);
-
-        const normalize = (list) => list.map((t, idx) => {
-          const subtasks = (t.subtasks || []).map((sub, sIdx) => ({
-            priority: 4,
-            status: 'planned',
-            startOffset: null,
-            dueOffset: null,
-            createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
-            ...sub
-          }));
-          return {
-            createdAt: t.createdAt || (Date.now() - (1000 - idx) * 60000),
-            subtaskSort: t.subtaskSort || 'manual',
-            position: t.position !== undefined ? t.position : idx,
-            ...t,
-            subtasks
-          };
-        });
-
-        if (localTasks || localProjects || localLabels) {
-          loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : normalize(DATA.tasks);
-          loadedProjects = (localProjects ? JSON.parse(localProjects) : DATA.projects).map((p, idx) => ({ position: idx, ...p }));
-          loadedLabels = localLabels ? JSON.parse(localLabels) : DATA.labels.map(l => ({ ...l }));
-
-          await db.tasks.bulkPut(loadedTasks);
-          await db.projects.bulkPut(loadedProjects);
-          await db.labels.bulkPut(loadedLabels);
-
-          localStorage.removeItem(KEY_TASKS);
-          localStorage.removeItem(KEY_PROJECTS);
-          localStorage.removeItem(KEY_LABELS);
+        const seeded = localStorage.getItem('taskflow-seeded');
+        if (seeded) {
+          loadedTasks = [];
+          loadedProjects = [];
+          loadedLabels = [];
+          loadedSections = [];
         } else {
-          loadedTasks = normalize(DATA.tasks);
-          loadedProjects = DATA.projects.map((p, idx) => ({ ...p, position: idx }));
-          loadedLabels = DATA.labels.map(l => ({ ...l }));
+          const localTasks = localStorage.getItem(KEY_TASKS);
+          const localProjects = localStorage.getItem(KEY_PROJECTS);
+          const localLabels = localStorage.getItem(KEY_LABELS);
 
-          await db.tasks.bulkPut(loadedTasks);
-          await db.projects.bulkPut(loadedProjects);
-          await db.labels.bulkPut(loadedLabels);
+          const normalize = (list) => list.map((t, idx) => {
+            const subtasks = (t.subtasks || []).map((sub, sIdx) => ({
+              priority: 4,
+              status: 'planned',
+              startOffset: null,
+              dueOffset: null,
+              createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
+              ...sub
+            }));
+            return {
+              createdAt: t.createdAt || (Date.now() - (1000 - idx) * 60000),
+              subtaskSort: t.subtaskSort || 'manual',
+              position: t.position !== undefined ? t.position : idx,
+              ...t,
+              subtasks
+            };
+          });
+
+          if (localTasks || localProjects || localLabels) {
+            loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : normalize(DATA.tasks);
+            loadedProjects = (localProjects ? JSON.parse(localProjects) : DATA.projects).map((p, idx) => ({ position: idx, ...p }));
+            loadedLabels = localLabels ? JSON.parse(localLabels) : DATA.labels.map(l => ({ ...l }));
+
+            await db.tasks.bulkPut(loadedTasks);
+            await db.projects.bulkPut(loadedProjects);
+            await db.labels.bulkPut(loadedLabels);
+
+            localStorage.removeItem(KEY_TASKS);
+            localStorage.removeItem(KEY_PROJECTS);
+            localStorage.removeItem(KEY_LABELS);
+          } else {
+            loadedTasks = normalize(DATA.tasks);
+            loadedProjects = DATA.projects.map((p, idx) => ({ ...p, position: idx }));
+            loadedLabels = DATA.labels.map(l => ({ ...l }));
+
+            await db.tasks.bulkPut(loadedTasks);
+            await db.projects.bulkPut(loadedProjects);
+            await db.labels.bulkPut(loadedLabels);
+          }
+          loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+          loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+          const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
+          if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
+          if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
+          loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
+          await db.sections.bulkPut(loadedSections);
+          loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+          localStorage.setItem('taskflow-seeded', 'true');
         }
-        loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
-        const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
-        if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
-        if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
-        loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
-        await db.sections.bulkPut(loadedSections);
-        loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       }
 
       setTasks(loadedTasks);
@@ -721,6 +731,14 @@ export function useStore() {
   }, []);
 
   const resetDatabase = useCallback(async () => {
+    // Instantly clear all states so they disappear from UI immediately
+    setTasks([]);
+    setProjects([]);
+    setCustomLabels([]);
+    setSections([]);
+    setSelectedId(null);
+    setMultiSelectedIds([]);
+
     setWipingDb(true);
     try {
       await fetch('/api/sync', { method: 'DELETE', cache: 'no-store' }).catch(err => {
@@ -739,6 +757,7 @@ export function useStore() {
       localStorage.removeItem('todo-proto-density');
       localStorage.removeItem('todo-proto-view-filters');
       localStorage.removeItem('taskflow-sync-since');
+      localStorage.setItem('taskflow-seeded', 'true');
       
       await Promise.all([
         db.tasks.clear(),
