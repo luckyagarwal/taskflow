@@ -15,30 +15,91 @@ const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers t
 function MobileHeader() {
   const { setSearch, theme, setTheme } = useApp();
   return (
-    <div style={{
+    <div className="frosted-glass" style={{
       flex: 'none',
-      padding: `max(env(safe-area-inset-top), ${STATUS_PAD}px) 16px 12px`,
+      padding: `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 4px) 18px 14px`,
       display: 'flex',
       alignItems: 'center',
-      gap: 10,
-      background: 'var(--bg-elev)',
-      borderBottom: '1px solid var(--border-2)',
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+      gap: 12,
+      borderBottom: '1px solid var(--border)',
       zIndex: 50
     }}>
-      <span style={{ width: 30, height: 30, borderRadius: 9, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 13, flex: 'none' }}>C</span>
-      <span style={{ fontWeight: 800, fontSize: 15, flex: 1 }}>Casex Tasks</span>
-      <button className="icon-btn" style={{ border: 'none', background: 'transparent', width: 40, height: 40 }} onClick={() => setSearch(true)}><I.search size={21} /></button>
-      <button className="icon-btn" style={{ border: 'none', background: 'transparent', width: 40, height: 40 }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><I.sun size={20} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={20} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
+      <div style={{
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        background: 'linear-gradient(135deg, #2563EB, #8B5CF6)',
+        display: 'grid',
+        placeItems: 'center',
+        color: '#fff',
+        fontWeight: 800,
+        fontSize: 14,
+        flex: 'none',
+        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+      }}>
+        T
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text)' }}>TaskFlow</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Personal Workspace</span>
+      </div>
+      <button className="icon-btn active-scale" style={{ border: 'none', background: 'transparent', width: 36, height: 36, borderRadius: 10, color: 'var(--text-2)' }} onClick={() => setSearch(true)}>
+        <I.search size={18} />
+      </button>
+      <button className="icon-btn active-scale" style={{ border: 'none', background: 'transparent', width: 36, height: 36, borderRadius: 10, color: 'var(--text-2)' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+        <I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} />
+        <I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} />
+      </button>
     </div>
   );
 }
 
 function Tab({ icon, label, active, onClick }) {
   return (
-    <button onClick={onClick} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 0', border: 'none', background: 'transparent', color: active ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer' }}>
-      {icon}
-      <span style={{ fontSize: 10.5, fontWeight: 700 }}>{label}</span>
+    <button
+      onClick={onClick}
+      className="active-scale"
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 4,
+        padding: '10px 0 6px',
+        border: 'none',
+        background: 'transparent',
+        color: active ? 'var(--accent)' : 'var(--text-3)',
+        cursor: 'pointer',
+        position: 'relative',
+        transition: 'color 0.2s ease'
+      }}
+    >
+      <div style={{
+        transform: active ? 'scale(1.08)' : 'scale(1)',
+        transition: 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        color: active ? 'var(--accent)' : 'var(--text-3)'
+      }}>
+        {icon}
+      </div>
+      <span style={{
+        fontSize: 10,
+        fontWeight: active ? 800 : 600,
+        letterSpacing: '0.01em',
+        opacity: active ? 1 : 0.8
+      }}>
+        {label}
+      </span>
+      {active && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          width: 20,
+          height: 3,
+          background: 'var(--accent)',
+          borderRadius: '0 0 4px 4px',
+          animation: 'fadeIn 0.15s ease-out'
+        }} />
+      )}
     </button>
   );
 }
@@ -47,20 +108,19 @@ function TabBar() {
   const { view, setView, setSearch } = useApp();
   const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   return (
-    <div style={{
+    <div className="frosted-glass" style={{
       flex: 'none',
       display: 'flex',
       alignItems: 'center',
-      borderTop: '1px solid var(--border-2)',
-      background: 'var(--bg-elev)',
-      paddingBottom: 'max(env(safe-area-inset-bottom), 22px)',
-      boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.05)',
-      zIndex: 50
+      borderTop: '1px solid var(--border)',
+      paddingBottom: 'max(env(safe-area-inset-bottom), 24px)',
+      zIndex: 50,
+      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.02)'
     }}>
-      <Tab icon={<I.today size={22} />} label="Today" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
-      <Tab icon={<I.upcoming size={22} />} label="Upcoming" active={view.type === 'upcoming'} onClick={() => setView({ type: 'upcoming' })} />
-      <Tab icon={<I.grid size={22} />} label="Browse" active={browseActive} onClick={() => setView({ type: 'browse' })} />
-      <Tab icon={<I.search size={22} />} label="Search" active={false} onClick={() => setSearch(true)} />
+      <Tab icon={<I.today size={20} />} label="Today" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
+      <Tab icon={<I.upcoming size={20} />} label="Upcoming" active={view.type === 'upcoming'} onClick={() => setView({ type: 'upcoming' })} />
+      <Tab icon={<I.grid size={20} />} label="Browse" active={browseActive} onClick={() => setView({ type: 'browse' })} />
+      <Tab icon={<I.search size={20} />} label="Search" active={false} onClick={() => setSearch(true)} />
     </div>
   );
 }
@@ -71,12 +131,50 @@ function BrowseView({ onAddProject, onAddSection }) {
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingSectionName, setEditingSectionName] = useState('');
 
-  const Item = ({ icon, label, count, color, onClick }) => (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, width: '100%', padding: '12px 6px', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' }}>
-      <span style={{ color: color || 'var(--text-2)', display: 'grid', placeItems: 'center', width: 22 }}>{icon}</span>
-      <span style={{ fontWeight: 700, fontSize: 15.5, flex: 1, textAlign: 'left', color: 'var(--text)' }}>{label}</span>
-      {count ? <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-3)' }}>{count}</span> : null}
-      <I.chevR size={17} style={{ color: 'var(--text-3)' }} />
+  const Item = ({ icon, label, count, onClick }) => (
+    <button onClick={onClick} className="active-scale" style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+      <span style={{ display: 'grid', placeItems: 'center', width: 22, height: 22, color: 'var(--text-2)' }}>{icon}</span>
+      <span style={{ fontWeight: 700, fontSize: 15, flex: 1, textAlign: 'left', color: 'var(--text)' }}>{label}</span>
+      {count ? <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-3)', marginRight: 4 }}>{count}</span> : null}
+      <I.chevR size={15} style={{ color: 'var(--text-3)', opacity: 0.7 }} />
+    </button>
+  );
+
+  const GridCard = ({ icon, label, count, color, onClick }) => (
+    <button 
+      onClick={onClick} 
+      className="scandinavian-card active-scale"
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'flex-start', 
+        gap: 12, 
+        padding: '16px', 
+        width: '100%', 
+        cursor: 'pointer',
+        textAlign: 'left',
+        background: 'var(--bg-elev)',
+        border: '1px solid var(--border)'
+      }}
+    >
+      <div style={{ 
+        color: color || 'var(--accent)', 
+        background: `color-mix(in srgb, ${color || 'var(--accent)'} 10%, var(--bg))` ,
+        display: 'grid', 
+        placeItems: 'center', 
+        width: 38, 
+        height: 38, 
+        borderRadius: 10,
+        flexShrink: 0
+      }}>
+        {icon}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+        <span style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text)', letterSpacing: '-0.01em' }}>{label}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-3)', marginTop: 2 }}>
+          {count !== undefined ? `${count} ${count === 1 ? 'task' : 'tasks'}` : 'Open view'}
+        </span>
+      </div>
     </button>
   );
 
@@ -100,17 +198,21 @@ function BrowseView({ onAddProject, onAddSection }) {
   return (
     <div>
       <V.ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.grid size={24} /></span>} title="Browse" subtitle="Jump to any list" />
-      <Item icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} onClick={() => setView({ type: 'inbox' })} />
-      <Item icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
-      <Item icon={<I.filter size={20} />} label="Filters & Labels" color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
-      <Item icon={<I.logbook size={20} />} label="Completed" color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
-      <Item icon={<I.settings size={20} />} label="Settings" color="var(--text-3)" onClick={() => setView({ type: 'settings' })} />
+      
+      {/* 2x2 Grid of primary lists */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, marginTop: 8 }}>
+        <GridCard icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} color="var(--text-2)" onClick={() => setView({ type: 'inbox' })} />
+        <GridCard icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
+        <GridCard icon={<I.filter size={20} />} label="Filters & Labels" color="#8B5CF6" onClick={() => setView({ type: 'filters' })} />
+        <GridCard icon={<I.logbook size={20} />} label="Completed" count={tasks.filter(t => t.done).length} color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
+      </div>
+
       {sections.map((sec) => {
         const secProjects = projects.filter(p => p.group === sec.name);
         const isEditing = editingSectionId === sec.id;
         return (
-          <div key={sec.id}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 6px 6px' }}>
+          <div key={sec.id} style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 6px 8px' }}>
               {isEditing ? (
                 <input
                   autoFocus
@@ -120,20 +222,21 @@ function BrowseView({ onAddProject, onAddSection }) {
                   onBlur={commitSectionEdit}
                   style={{
                     flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
-                    color: 'var(--text)', borderRadius: 6, padding: '6px 10px',
-                    fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase',
+                    color: 'var(--text)', borderRadius: 8, padding: '6px 10px',
+                    fontSize: 12, fontWeight: 800, textTransform: 'uppercase',
                     letterSpacing: '.06em', outline: 'none', minWidth: 0, marginRight: 8
                   }}
                 />
               ) : (
-                <div className="section-title" style={{ padding: 0 }}>{sec.name}</div>
+                <div className="section-title" style={{ padding: 0, fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>{sec.name}</div>
               )}
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isEditing) { commitSectionEdit(); } else { startSectionEdit(sec); }
                   }}
+                  className="active-scale"
                   style={{ border: 'none', background: 'transparent', color: isEditing ? 'var(--accent)' : 'var(--text-3)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}
                   title="Rename section"
                 >
@@ -146,6 +249,7 @@ function BrowseView({ onAddProject, onAddSection }) {
                       deleteSection(sec.id);
                     }
                   }}
+                  className="active-scale"
                   style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', padding: 4, display: 'grid', placeItems: 'center' }}
                   title="Delete section"
                 >
@@ -153,30 +257,41 @@ function BrowseView({ onAddProject, onAddSection }) {
                 </button>
               </div>
             </div>
+
             {secProjects.length === 0 ? (
-              <div style={{ padding: '10px 6px', fontSize: 13.5, color: 'var(--text-3)', fontStyle: 'italic' }}>
-                No projects
+              <div className="scandinavian-card" style={{ padding: '16px', fontSize: 13.5, color: 'var(--text-3)', fontStyle: 'italic', background: 'var(--bg-elev)', border: '1px solid var(--border)' }}>
+                No projects in this section
               </div>
             ) : (
-              secProjects.map((p) => (
-                <Item key={p.id} icon={<Dot color={p.color} size={12} />} label={p.name} count={Sel.byProject(tasks, p.id).length} onClick={() => setView({ type: 'project', id: p.id })} />
-              ))
+              <div className="scandinavian-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-elev)', border: '1px solid var(--border)' }}>
+                {secProjects.map((p, idx) => (
+                  <div key={p.id} style={{ borderBottom: idx < secProjects.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <Item icon={<Dot color={p.color} size={10} />} label={p.name} count={Sel.byProject(tasks, p.id).length} onClick={() => setView({ type: 'project', id: p.id })} />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         );
       })}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20 }}>
-        <button onClick={onAddProject} style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10,
-          background: 'var(--hover)', color: 'var(--accent)', fontWeight: 800, fontSize: 13.5,
-          border: 'none', cursor: 'pointer', transition: 'background .12s'
+
+      {/* Settings Row */}
+      <div className="scandinavian-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-elev)', border: '1px solid var(--border)', marginTop: 24 }}>
+        <Item icon={<I.settings size={16} />} label="Settings" onClick={() => setView({ type: 'settings' })} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28 }}>
+        <button onClick={onAddProject} className="active-scale" style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderRadius: 12,
+          background: 'var(--hover)', color: 'var(--text)', fontWeight: 800, fontSize: 13.5,
+          border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)'
         }}>
           <I.plusSm size={18} /> Add Project
         </button>
-        <button onClick={onAddSection} style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10,
-          background: 'var(--hover)', color: 'var(--accent)', fontWeight: 800, fontSize: 13.5,
-          border: 'none', cursor: 'pointer', transition: 'background .12s'
+        <button onClick={onAddSection} className="active-scale" style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderRadius: 12,
+          background: 'var(--hover)', color: 'var(--text)', fontWeight: 800, fontSize: 13.5,
+          border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)'
         }}>
           <I.plusSm size={18} /> Add Section
         </button>
@@ -233,8 +348,13 @@ function QuickAddSheet({ onClose }) {
     return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
   }, []);
   return (
-    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px', paddingBottom: bottomGap + 12, zIndex: 200, transition: 'padding-bottom .15s ease' }} onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', animation: 'slideUp .2s ease-out' }}>
+    <div className="sheet-scrim" onMouseDown={onClose} style={{ display: 'flex', alignItems: 'flex-end' }}>
+      <div 
+        className="bottom-sheet" 
+        onMouseDown={(e) => e.stopPropagation()} 
+        style={{ width: '100%', padding: `20px 16px ${28 + bottomGap}px` }}
+      >
+        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-10px auto 16px' }} />
         <InlineComposer variant="modal" autoOpen defaultDue={0} onDone={onClose} />
       </div>
     </div>
@@ -253,15 +373,38 @@ function AddSectionModal({ onClose }) {
   };
 
   return (
-    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', zIndex: 200 }} onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 300, background: 'var(--bg-elev)', borderRadius: 14, border: '1px solid var(--border)', padding: 18, boxShadow: 'var(--shadow)', animation: 'slideUp .2s ease-out' }}>
-        <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 14, color: 'var(--text)' }}>New Section</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Section name..."
-            style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: 14.5, outline: 'none' }} />
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-            <button onClick={onClose} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 14, fontWeight: 700, padding: '6px 12px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleAdd} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 800, padding: '6px 16px', borderRadius: 8, cursor: 'pointer' }}>Add</button>
+    <div className="sheet-scrim" onMouseDown={onClose} style={{ display: 'flex', alignItems: 'flex-end' }}>
+      <div 
+        className="bottom-sheet"
+        onMouseDown={(e) => e.stopPropagation()} 
+        style={{ width: '100%' }}
+      >
+        {/* Grab Handle for Bottom Sheet */}
+        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
+        
+        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Section</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <input 
+            autoFocus 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            placeholder="Section name (e.g. Work, Personal)..."
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+            style={{ 
+              width: '100%', 
+              border: '1.5px solid var(--border)', 
+              background: 'var(--bg)', 
+              color: 'var(--text)', 
+              borderRadius: 12, 
+              padding: '12px 14px', 
+              fontSize: 15, 
+              outline: 'none',
+              transition: 'border-color 0.2s'
+            }} 
+          />
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={onClose} className="active-scale" style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', fontSize: 14.5, fontWeight: 700, padding: '10px 16px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 800, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Section</button>
           </div>
         </div>
       </div>
@@ -294,32 +437,88 @@ function AddProjectModal({ onClose }) {
   };
 
   return (
-    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', zIndex: 200 }} onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 300, background: 'var(--bg-elev)', borderRadius: 14, border: '1px solid var(--border)', padding: 18, boxShadow: 'var(--shadow)', animation: 'slideUp .2s ease-out' }}>
-        <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 14, color: 'var(--text)' }}>New Project</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name..."
-            style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: 14.5, outline: 'none' }} />
+    <div className="sheet-scrim" onMouseDown={onClose} style={{ display: 'flex', alignItems: 'flex-end' }}>
+      <div 
+        className="bottom-sheet"
+        onMouseDown={(e) => e.stopPropagation()} 
+        style={{ width: '100%' }}
+      >
+        {/* Grab Handle for Bottom Sheet */}
+        <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
+
+        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Project</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <input 
+            autoFocus 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            placeholder="Project name (e.g. Website, Groceries)..."
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+            style={{ 
+              width: '100%', 
+              border: '1.5px solid var(--border)', 
+              background: 'var(--bg)', 
+              color: 'var(--text)', 
+              borderRadius: 12, 
+              padding: '12px 14px', 
+              fontSize: 15, 
+              outline: 'none',
+              transition: 'border-color 0.2s'
+            }} 
+          />
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)' }}>Section</span>
-            <select value={group} onChange={(e) => {
-              setGroup(e.target.value);
-              setIsCustom(e.target.value === '__new__');
-            }} style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '8px 10px', fontSize: 14, outline: 'none', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Assign to Section</span>
+            <select 
+              value={group} 
+              onChange={(e) => {
+                setGroup(e.target.value);
+                setIsCustom(e.target.value === '__new__');
+              }} 
+              style={{ 
+                width: '100%', 
+                border: '1.5px solid var(--border)', 
+                background: 'var(--bg)', 
+                color: 'var(--text)', 
+                borderRadius: 12, 
+                padding: '12px 14px', 
+                fontSize: 14.5, 
+                outline: 'none', 
+                cursor: 'pointer',
+                appearance: 'none',
+                backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2395938E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 14px center',
+                backgroundSize: '16px'
+              }}
+            >
               {sections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-              <option value="__new__">+ New Section...</option>
+              <option value="__new__">+ Create New Section...</option>
             </select>
           </div>
 
           {isCustom && (
-            <input value={customGroup} onChange={(e) => setCustomGroup(e.target.value)} placeholder="New section name..."
-              style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: 14, outline: 'none' }} />
+            <input 
+              value={customGroup} 
+              onChange={(e) => setCustomGroup(e.target.value)} 
+              placeholder="New section name..."
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+              style={{ 
+                width: '100%', 
+                border: '1.5px solid var(--border)', 
+                background: 'var(--bg)', 
+                color: 'var(--text)', 
+                borderRadius: 12, 
+                padding: '12px 14px', 
+                fontSize: 14.5, 
+                outline: 'none' 
+              }} 
+            />
           )}
 
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-            <button onClick={onClose} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 14, fontWeight: 700, padding: '6px 12px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleAdd} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 800, padding: '6px 16px', borderRadius: 8, cursor: 'pointer' }}>Add</button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={onClose} className="active-scale" style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', fontSize: 14.5, fontWeight: 700, padding: '10px 16px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 800, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Project</button>
           </div>
         </div>
       </div>
@@ -344,12 +543,18 @@ export function MobileApp() {
 
       {/* FAB — hidden during multi-select (contextual action bar takes over) */}
       {!selecting && (
-        <button onClick={() => setQuickAdd(true)} style={{
-          position: 'absolute', right: 18, bottom: 96, width: 56, height: 56, borderRadius: 18,
-          background: 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center',
-          boxShadow: '0 10px 26px color-mix(in srgb, var(--accent) 45%, transparent)', zIndex: 50,
-          border: 'none', cursor: 'pointer',
-        }}><I.plus size={26} /></button>
+        <button 
+          onClick={() => setQuickAdd(true)} 
+          className="active-scale"
+          style={{
+            position: 'absolute', right: 20, bottom: 100, width: 56, height: 56, borderRadius: 18,
+            background: 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center',
+            boxShadow: '0 8px 24px color-mix(in srgb, var(--accent) 30%, transparent)', zIndex: 50,
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          <I.plus size={26} />
+        </button>
       )}
 
       <TabBar />

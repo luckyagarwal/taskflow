@@ -14,50 +14,50 @@
 
 /* ── Light ───────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg: #ffffff;
-  --bg-side: #f7f6f4;
-  --bg-elev: #ffffff;
-  --hover: #f1f0ee;
-  --hover-strong: #e9e8e5;
-  --active: #eaf1fe;
-  --border: #ececea;
-  --border-2: #e0dfdc;
-  --text: #25241f;
-  --text-2: #6c6a64;
-  --text-3: #a6a39c;
-  --accent: #2D7FF9;
-  --accent-press: #1f6fe6;
-  --accent-soft: #eaf2ff;
-  --accent-text: #1f6fe6;
-  --shadow-sm: 0 1px 2px rgba(30,28,24,.06), 0 1px 3px rgba(30,28,24,.05);
-  --shadow-md: 0 6px 16px rgba(30,28,24,.10), 0 2px 6px rgba(30,28,24,.06);
-  --shadow-lg: 0 18px 50px rgba(30,28,24,.16), 0 6px 16px rgba(30,28,24,.10);
-  --scrim: rgba(30,28,24,.32);
-  --check-empty: #cfcdc7;
+  --bg: #FAF9F6;
+  --bg-side: #F4F2EE;
+  --bg-elev: #FFFFFF;
+  --hover: #EBEAE6;
+  --hover-strong: #E2E1DC;
+  --active: #EEF2FF;
+  --border: #E8E6E2;
+  --border-2: #DCDAD5;
+  --text: #1E1E1C;
+  --text-2: #5D5C58;
+  --text-3: #95938E;
+  --accent: #2563EB;
+  --accent-press: #1D4ED8;
+  --accent-soft: #EFF6FF;
+  --accent-text: #1D4ED8;
+  --shadow-sm: 0 2px 8px rgba(30, 28, 24, 0.04), 0 1px 3px rgba(30, 28, 24, 0.02);
+  --shadow-md: 0 8px 24px rgba(30, 28, 24, 0.06), 0 2px 8px rgba(30, 28, 24, 0.04);
+  --shadow-lg: 0 20px 40px rgba(30, 28, 24, 0.08), 0 4px 12px rgba(30, 28, 24, 0.04);
+  --scrim: rgba(30, 28, 24, 0.25);
+  --check-empty: #C5C3BD;
 }
 
 /* ── Dark ────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg: #1b1b1d;
-  --bg-side: #141416;
-  --bg-elev: #242427;
-  --hover: #2a2a2e;
-  --hover-strong: #323237;
-  --active: #1d2c44;
-  --border: #2c2c30;
-  --border-2: #3a3a40;
-  --text: #ededee;
-  --text-2: #a3a2a8;
-  --text-3: #6e6d74;
-  --accent: #4d94ff;
-  --accent-press: #69a5ff;
-  --accent-soft: #1c2a42;
-  --accent-text: #7db0ff;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
-  --shadow-md: 0 8px 22px rgba(0,0,0,.5);
-  --shadow-lg: 0 22px 60px rgba(0,0,0,.6);
-  --scrim: rgba(0,0,0,.55);
-  --check-empty: #4a4a50;
+  --bg: #141416;
+  --bg-side: #1A1A1E;
+  --bg-elev: #222227;
+  --hover: #2B2B32;
+  --hover-strong: #36363E;
+  --active: #1D2D44;
+  --border: #2D2D32;
+  --border-2: #3E3E45;
+  --text: #ECECED;
+  --text-2: #A1A1A7;
+  --text-3: #6C6C72;
+  --accent: #60A5FA;
+  --accent-press: #93C5FD;
+  --accent-soft: #1E293B;
+  --accent-text: #60A5FA;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.4), 0 2px 10px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --check-empty: #48484E;
 }
 
 * { box-sizing: border-box; }
@@ -264,5 +264,54 @@ body { font-family: 'Nunito', system-ui, sans-serif; }
   box-shadow: var(--shadow-lg);
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   animation: sheetUp .26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Mobile UI Redesign Helpers ───────────────────────────── */
+.active-scale {
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.12s ease;
+}
+.active-scale:active {
+  transform: scale(0.95);
+  opacity: 0.75;
+}
+
+.frosted-glass {
+  background: color-mix(in srgb, var(--bg-elev) 80%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+}
+
+.scandinavian-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease;
+}
+
+.scandinavian-card:active {
+  transform: scale(0.985);
+  box-shadow: var(--shadow-sm);
+}
+
+.bottom-sheet {
+  background: var(--bg-elev);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  box-shadow: var(--shadow-lg);
+  padding: 24px 20px 34px;
+  animation: sheetUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+  z-index: 200;
 }
 
