@@ -239,17 +239,12 @@ function MetaRow({ icon, label, children, onClick, accent }) {
 }
 
 export function TaskEditor({ taskId, inline, mobile }) {
-  const { tasks, updateTask, toggleTask, addSubtask, projects, labels: customLabels, addLabel, addReminder, deleteReminder } = useApp();
+  const { tasks, updateTask, toggleTask, addSubtask, projects, labels: customLabels, addLabel } = useApp();
   const task = tasks.find((t) => t.id === taskId);
   const [menu, setMenu] = useState(null);
   const [newSub, setNewSub] = useState('');
   const [subtasksCollapsed, setSubtasksCollapsed] = useState(false);
   const [doneSubsCollapsed, setDoneSubsCollapsed] = useState(true);
-  const [remDate, setRemDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
-  });
-  const [remTime, setRemTime] = useState('09:00');
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
 
@@ -591,73 +586,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
           )}
         </div>
 
-        {/* Reminders */}
-        <div style={{ position: 'relative' }}>
-          <MetaRow icon={<I.bell size={18} />} label="Reminders" onClick={() => setMenu(menu === 'reminders' ? null : 'reminders')}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: (task.reminders && task.reminders.filter(r => !r.fired).length > 0) ? 'var(--accent)' : 'var(--text-3)' }}>
-              {task.reminders && task.reminders.filter(r => !r.fired).length > 0 ? (
-                `${task.reminders.filter(r => !r.fired).length} active`
-              ) : 'Add reminder'}
-            </span>
-          </MetaRow>
-          {menu === 'reminders' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 240, padding: '12px', display: 'flex', flexDirection: 'column', gap: 10, zIndex: 100 }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-2)', borderBottom: '1px solid var(--border)', paddingBottom: 6 }}>Reminders List</div>
-              
-              {/* Existing Reminders */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 120, overflowY: 'auto' }}>
-                {(!task.reminders || task.reminders.length === 0) ? (
-                  <div style={{ fontSize: 12, color: 'var(--text-3)', fontStyle: 'italic' }}>No reminders scheduled</div>
-                ) : (
-                  task.reminders.map((r) => {
-                    const rd = new Date(r.time);
-                    const formatted = rd.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    return (
-                      <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', padding: '4px 8px', borderRadius: 4, fontSize: 12 }}>
-                        <span style={{ color: r.fired ? 'var(--text-3)' : 'var(--text)', textDecoration: r.fired ? 'line-through' : 'none' }}>
-                          {formatted} {r.fired && '(fired)'}
-                        </span>
-                        <button onClick={(e) => { e.stopPropagation(); deleteReminder(task.id, r.id); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: 'pointer', padding: 2, display: 'flex' }} title="Delete reminder">
-                          <I.x size={12} />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
 
-              <div className="divider" style={{ margin: '4px 0' }} />
-
-              {/* Add Reminder Form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} onClick={(e) => e.stopPropagation()}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>Date</span>
-                  <input type="date" value={remDate} onChange={(e) => setRemDate(e.target.value)}
-                    style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '4px 6px', fontSize: 12, outline: 'none', width: '100%' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)' }}>Time</span>
-                  <input type="time" value={remTime} onChange={(e) => setRemTime(e.target.value)}
-                    style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '4px 6px', fontSize: 12, outline: 'none', width: '100%' }} />
-                </div>
-                <button onClick={() => {
-                  if (remDate && remTime) {
-                    const dt = new Date(`${remDate}T${remTime}`);
-                    const ts = dt.getTime();
-                    if (!isNaN(ts)) {
-                      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-                        Notification.requestPermission();
-                      }
-                      addReminder(task.id, ts);
-                    }
-                  }
-                }} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 800, padding: '6px', borderRadius: 4, cursor: 'pointer', marginTop: 4 }}>
-                  Add Reminder
-                </button>
-              </div>
-            </Popover>
-          )}
-        </div>
 
         {/* Recurrence / Repeat */}
         <div style={{ position: 'relative' }}>
