@@ -159,12 +159,12 @@ input, textarea { font-family: inherit; }
 .pop-item:hover { background: var(--hover); }
 
 /* Mobile bottom-sheet variant of Popover (pickers: due, priority, labels, project) */
-.sheet-scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 1000; animation: fadeIn .15s ease; }
+.sheet-scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 4000; animation: fadeIn .15s ease; }
 .pop-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1001;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 4001;
   background: var(--bg-elev); border-top-left-radius: 20px; border-top-right-radius: 20px;
-  box-shadow: var(--shadow-lg); padding: 6px 10px calc(14px + env(safe-area-inset-bottom));
-  max-height: 75vh; overflow-y: auto; overscroll-behavior: contain;
+  box-shadow: var(--shadow-lg); padding: 6px 10px calc(24px + env(safe-area-inset-bottom));
+  max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
   animation: sheetUp .26s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .sheet-handle { width: 38px; height: 5px; border-radius: 99px; background: var(--border-2); margin: 8px auto 12px; }

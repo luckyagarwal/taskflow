@@ -337,7 +337,7 @@ export function MobileApp() {
       <MobileHeader />
       <BackBar />
       <div className="scroll" style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ padding: '6px 16px 96px' }}>
+        <div style={{ padding: '6px 12px 96px' }}>
           <MobileContent density={density} onAddProject={() => setAddingProj(true)} onAddSection={() => setAddingSec(true)} />
         </div>
       </div>

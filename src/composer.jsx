@@ -1,5 +1,6 @@
 // composer.jsx — inline quick-add composer + popovers
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Icons as I } from './icons.jsx';
 import { H, parseTask } from './data.js';
 import { useApp } from './store.jsx';
@@ -49,15 +50,21 @@ export function Popover({ children, onClose, style }) {
 
   // On mobile, present every picker as a bottom sheet instead of a desktop-anchored
   // popover — native app feel for editing due date, priority, labels, project, etc.
+  // Portal up to .app-root so the fixed sheet escapes any ancestor overflow/
+  // transform/stacking context (the scroll container or a swiped row) and always
+  // sits above the tab bar — while staying inside the [data-theme] variable scope
+  // (portaling to <body> would drop --bg-elev/--scrim and render unstyled).
   if (narrow) {
-    return (
+    const host = (typeof document !== 'undefined' && document.querySelector('.app-root')) || document.body;
+    return createPortal(
       <>
         <div className="sheet-scrim" onMouseDown={onClose} />
         <div className="pop-sheet" ref={ref} onMouseDown={(e) => e.stopPropagation()}>
           <div className="sheet-handle" />
           {children}
         </div>
-      </>
+      </>,
+      host
     );
   }
   return <div className="pop" ref={ref} style={style}>{children}</div>;

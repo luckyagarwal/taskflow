@@ -162,7 +162,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
     labels.length || (task.subtasks && task.subtasks.length) || task.note ||
     (task.status && statusChoices[task.status]) || projInMeta;
 
-  const pad = card ? '11px 13px' : compact ? '6px 8px' : (narrow ? '13px 6px' : '10px 8px');
+  const pad = card ? '11px 13px' : compact ? '6px 8px' : (narrow ? '14px 4px' : '10px 8px');
 
   const meta = (
     <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 10 : 12, flexWrap: 'wrap', marginTop: compact ? 1 : (narrow ? 8 : 4) }}>
@@ -348,7 +348,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               outline: 'none',
               resize: 'none',
               background: 'transparent',
-              fontSize: compact ? '14.5px' : (narrow ? '16.5px' : '15.5px'),
+              fontSize: compact ? '14.5px' : (narrow ? '17px' : '15.5px'),
               fontWeight: narrow ? 500 : 600,
               lineHeight: 1.34,
               color: 'var(--text)',
@@ -379,7 +379,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 outline: 'none',
                 resize: 'none',
                 background: 'transparent',
-                fontSize: narrow ? '14px' : '12.5px',
+                fontSize: narrow ? '14.5px' : '12.5px',
                 color: 'var(--text-3)',
                 fontFamily: 'inherit',
                 padding: 0,
@@ -387,7 +387,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               }}
             />
           ) : task.note ? (
-            <div className="task-note-clamp" style={{ fontSize: narrow ? '14px' : '12.5px', color: 'var(--text-3)', lineHeight: 1.4, marginTop: narrow ? 3 : 2 }}>{task.note}</div>
+            <div className="task-note-clamp" style={{ fontSize: narrow ? '14.5px' : '12.5px', color: 'var(--text-3)', lineHeight: 1.4, marginTop: narrow ? 3 : 2 }}>{task.note}</div>
           ) : null}
           {hasMeta && (compact ? null : meta)}
           {compact && hasMeta && meta}
@@ -561,7 +561,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
             </button>
           </div>
 
-          {toggleMultiSelect && (
+          {toggleMultiSelect && (!narrow || anyMultiSelected || isMultiSelected) && (
             <button
               className="icon-btn row-hover"
               style={{
