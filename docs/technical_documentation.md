@@ -79,7 +79,6 @@ interface Task {
   subtaskSort: string;     // Subtask sort order ("manual", "priority", "created")
   position: number;        // Global positioning weight for custom sorting
   status: string;          // planned, inprogress, blocked, waiting, done
-  reminders?: Reminder[];  // List of task reminders
 }
 ```
 
@@ -94,15 +93,6 @@ interface Subtask {
   startOffset: number | null;// Start date offset
   dueOffset: number | null;// Due date offset
   createdAt: number;       // Creation timestamp
-}
-```
-
-#### Reminder (nested inside `tasks.reminders`)
-```typescript
-interface Reminder {
-  id: string;              // Prefix "rem_" + timestamp
-  time: number;            // Absolute Unix timestamp (ms) when reminder triggers
-  fired: boolean;          // True if reminder has been delivered to user
 }
 ```
 
@@ -144,8 +134,6 @@ State is served using a React Context. The `useStore` custom hook handles databa
 * `updateTask(id, patch)`: Modifies task properties and persists to Dexie.
 * `addProject(name, group)`: Inserts a project mapped to a section.
 * `addSection(name)`: Saves a new section.
-* `addReminder(taskId, timestamp)`: Registers a reminder timestamp to a task.
-* `deleteReminder(taskId, reminderId)`: Deletes a reminder.
 * `updateSubtask(taskId, subId, patch)`: Edits properties (title, status, priority, dates) of a nested subtask.
 
 ---

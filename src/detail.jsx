@@ -484,19 +484,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Empty</span>
             )}
           </MetaRow>
-          {menu === 'date' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 200, zIndex: 100 }}>
-              <WhenPicker
-                startOffset={task.startOffset}
-                dueOffset={task.dueOffset}
-                time={task.time}
-                onChange={(startVal, dueVal, newTime) => {
-                  updateTask(task.id, { startOffset: startVal, dueOffset: dueVal, time: newTime });
-                }}
-                onClose={() => setMenu(null)}
-              />
-            </Popover>
-          )}
+
         </div>
 
         {/* Priority */}
@@ -614,6 +602,9 @@ export function TaskEditor({ taskId, inline, mobile }) {
           )}
         </div>
       </div>
+      {menu === 'date' && (
+        <DatePage task={task} onClose={() => setMenu(null)} />
+      )}
     </div>
   );
 }
@@ -627,7 +618,7 @@ export function TaskDetail({ taskId, onClose, mobile }) {
   const proj = task.projectId !== 'inbox' ? (projects.find(p => p.id === task.projectId) || H.projectById(task.projectId)) : null;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)', position: 'relative' }}>
       {/* top bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: mobile ? '8px 10px' : '12px 14px', borderBottom: '1px solid var(--border)', flex: 'none' }}>
         <button className="icon-btn" onClick={onClose} aria-label="Close">{mobile ? <I.chevL size={20} /> : <I.x size={18} />}</button>
@@ -654,4 +645,276 @@ function fmtTime(t) {
   const ap = h >= 12 ? 'PM' : 'AM';
   const hh = h % 12 === 0 ? 12 : h % 12;
   return `${hh}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
+function fmtDate(off) {
+  if (off === null || off === undefined) return '';
+  const d = H.dateFromOffset(off);
+  if (!d) return '';
+  return `${H.DOW[d.getDay()]}, ${H.MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
+function IOSToggle({ value, onChange }) {
+  return (
+    <div onClick={() => onChange(!value)} className="ios-toggle" style={{
+      background: value ? 'var(--accent)' : 'var(--border-2)',
+      justifyContent: value ? 'flex-end' : 'flex-start',
+    }}>
+      <div className="ios-toggle-thumb" />
+    </div>
+  );
+}
+
+function DatePage({ task, onClose }) {
+  const { updateTask } = useApp();
+  const hasRange = task.startOffset !== null && task.startOffset !== undefined;
+  const [rangeOn, setRangeOn] = useState(hasRange);
+  const [timeOn, setTimeOn] = useState(!!task.time);
+  const [picking, setPicking] = useState('start'); // 'start' | 'end'
+  const today = H.startOfToday();
+  const initial = task.dueOffset != null ? task.dueOffset : 0;
+  const [monthShift, setMonthShift] = useState(() => {
+    const d = H.dateFromOffset(initial);
+    return d ? (d.getFullYear() - today.getFullYear()) * 12 + (d.getMonth() - today.getMonth()) : 0;
+  });
+
+  const start = rangeOn ? (task.startOffset ?? task.dueOffset) : null;
+  const end = task.dueOffset;
+
+  const setSingle = (off) => updateTask(task.id, { dueOffset: off, startOffset: null });
+  const setNoDate = () => {
+    updateTask(task.id, { dueOffset: null, startOffset: null, time: null });
+    setTimeOn(false);
+    setRangeOn(false);
+  };
+
+  const tapDay = (off) => {
+    if (!rangeOn) {
+      setSingle(off);
+      return;
+    }
+    if (picking === 'start') {
+      const e = end == null ? off : end;
+      const lo = Math.min(off, e), hi = Math.max(off, e);
+      updateTask(task.id, { startOffset: lo, dueOffset: hi });
+      setPicking('end');
+    } else {
+      const s = start == null ? off : start;
+      const lo = Math.min(off, s), hi = Math.max(off, s);
+      updateTask(task.id, { startOffset: lo, dueOffset: hi });
+      setPicking('start');
+    }
+  };
+
+  const toggleRange = () => {
+    if (rangeOn) {
+      updateTask(task.id, { startOffset: null });
+      setRangeOn(false);
+    } else {
+      const base = end == null ? 0 : end;
+      updateTask(task.id, { startOffset: base, dueOffset: base });
+      setRangeOn(true);
+      setPicking('end');
+    }
+  };
+
+  const toggleTime = () => {
+    if (timeOn) {
+      updateTask(task.id, { time: null });
+      setTimeOn(false);
+    } else {
+      updateTask(task.id, { time: task.time || '09:00' });
+      setTimeOn(true);
+    }
+  };
+
+  const monthShiftFor = (off, today) => {
+    if (off === null || off === undefined) return 0;
+    const d = H.dateFromOffset(off);
+    if (!d) return 0;
+    return (d.getFullYear() - today.getFullYear()) * 12 + (d.getMonth() - today.getMonth());
+  };
+
+  const handleQuickChip = (off) => {
+    if (rangeOn) {
+      if (picking === 'start') {
+        const e = end == null ? off : end;
+        const lo = Math.min(off, e), hi = Math.max(off, e);
+        updateTask(task.id, { startOffset: lo, dueOffset: hi });
+        setPicking('end');
+      } else {
+        const s = start == null ? off : start;
+        const lo = Math.min(off, s), hi = Math.max(off, s);
+        updateTask(task.id, { startOffset: lo, dueOffset: hi });
+      }
+    } else {
+      setSingle(off);
+    }
+    setMonthShift(monthShiftFor(off, today));
+  };
+
+  // Month grid
+  const base = new Date(today.getFullYear(), today.getMonth() + monthShift, 1);
+  const year = base.getFullYear(), month = base.getMonth();
+  const firstDow = base.getDay(); // Sunday-first (0 is Sunday)
+  const gridStart = new Date(year, month, 1 - firstDow);
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    cells.push(new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i));
+  }
+
+  const offOf = (d) => {
+    const tToday = new Date(today).setHours(0,0,0,0);
+    const tD = new Date(d).setHours(0,0,0,0);
+    return Math.round((tD - tToday) / H.MS_DAY);
+  };
+
+  const QUICK = [
+    { label: 'Today', off: 0 },
+    { label: 'Tomorrow', off: 1 },
+    { label: 'Next week', off: 7 },
+  ];
+
+  return (
+    <div className="push-screen" style={{ zIndex: 160 }}>
+      {/* Header bar */}
+      <div className="m-navbar">
+        <button type="button" className="m-navback" onClick={onClose}>
+          <I.chevL size={22} /><span>Task</span>
+        </button>
+        <span className="m-navtitle">Date</span>
+        <div className="m-navright">
+          {end != null && (
+            <button type="button" onClick={setNoDate} style={{ color: 'var(--p1)', fontWeight: 800, fontSize: 14.5 }}>
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 18px 120px' }}>
+        {/* Horizontal presets scroll */}
+        <div className="scroll-x" style={{ marginBottom: 18 }}>
+          {QUICK.map(q => {
+            const on = !rangeOn && end === q.off;
+            return (
+              <button key={q.label} type="button" onClick={() => handleQuickChip(q.off)} style={{
+                height: 36, padding: '0 16px', borderRadius: 99, fontSize: 14, fontWeight: 800,
+                border: `1.5px solid ${on ? 'transparent' : 'var(--border-2)'}`,
+                background: on ? 'var(--accent)' : 'var(--bg-elev)',
+                color: on ? '#fff' : 'var(--text-2)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}>{q.label}</button>
+            );
+          })}
+        </div>
+
+        {/* Selected Start/End summary display card */}
+        <div className="m-group" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 12, cursor: 'pointer' }} onClick={() => setPicking('start')}>
+            <span style={{ color: (picking === 'start' || !rangeOn) ? 'var(--accent)' : 'var(--text-3)', display: 'flex' }}>
+              <I.calendar size={20} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                {rangeOn ? 'Start' : 'Date'}
+              </div>
+              <div style={{ fontSize: 15.5, fontWeight: 800, color: (picking === 'start' || !rangeOn) ? 'var(--accent-text)' : 'var(--text)' }}>
+                {rangeOn ? (start != null ? fmtDate(start) : 'Pick start') : (end != null ? fmtDate(end) : 'No date')}
+              </div>
+            </div>
+          </div>
+          {rangeOn && (
+            <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', gap: 12, borderTop: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setPicking('end')}>
+              <span style={{ color: picking === 'end' ? 'var(--accent)' : 'var(--text-3)', display: 'flex' }}>
+                <I.arrowR size={20} />
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>End</div>
+                <div style={{ fontSize: 15.5, fontWeight: 800, color: picking === 'end' ? 'var(--accent-text)' : 'var(--text)' }}>
+                  {end != null ? fmtDate(end) : 'Pick end'}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Calendar grid card */}
+        <div className="m-group" style={{ padding: '12px 12px 14px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 6px 10px' }}>
+            <span style={{ fontSize: 16, fontWeight: 800 }}>{H.MONTHS_LONG[month]} {year}</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button type="button" className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMonthShift(m => m - 1)}>
+                <I.chevL size={18} />
+              </button>
+              <button type="button" className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMonthShift(m => m + 1)}>
+                <I.chevR size={18} />
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4 }}>
+            {H.DOW.map(d => (
+              <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', padding: '4px 0' }}>
+                {d[0]}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', rowGap: 4 }}>
+            {cells.map((d, i) => {
+              const off = offOf(d);
+              const inMonth = d.getMonth() === month;
+              const isToday = off === 0;
+              const isStart = rangeOn && off === start;
+              const isEnd = off === end;
+              const isSel = isEnd || isStart;
+              const inRange = rangeOn && start != null && end != null && off > start && off < end;
+              return (
+                <div key={i} style={{ display: 'grid', placeItems: 'center', position: 'relative', height: 42 }}>
+                  {inRange && <div style={{ position: 'absolute', inset: '4px -1px', background: 'var(--accent-soft)' }} />}
+                  {(isStart && end > start) && <div style={{ position: 'absolute', top: 4, bottom: 4, left: '50%', right: -1, background: 'var(--accent-soft)' }} />}
+                  {(isEnd && rangeOn && end > start) && <div style={{ position: 'absolute', top: 4, bottom: 4, right: '50%', left: -1, background: 'var(--accent-soft)' }} />}
+                  <button type="button" onClick={() => tapDay(off)} style={{
+                    position: 'relative', width: 34, height: 34, borderRadius: 999,
+                    fontSize: 14, fontWeight: isSel ? 800 : 700,
+                    background: isSel ? 'var(--accent)' : 'transparent',
+                    color: isSel ? '#fff' : (inMonth ? 'var(--text)' : 'var(--text-3)'),
+                    border: isToday && !isSel ? '1.5px solid var(--accent)' : 'none',
+                    opacity: inMonth ? 1 : 0.4,
+                    cursor: 'pointer',
+                    display: 'grid',
+                    placeItems: 'center'
+                  }}>
+                    {d.getDate()}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Toggles settings card */}
+        <div className="m-group">
+          <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
+            <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.calendar size={19} /></span>
+            <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>End date</span>
+            <IOSToggle value={rangeOn} onChange={toggleRange} />
+          </div>
+          <div className="m-toggle-row">
+            <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
+            <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Include time</span>
+            <IOSToggle value={timeOn} onChange={toggleTime} />
+          </div>
+          {timeOn && (
+            <div className="m-toggle-row" style={{ borderTop: '1px solid var(--border)' }}>
+              <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
+              <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time</span>
+              <input type="time" value={task.time || '09:00'} onChange={e => updateTask(task.id, { time: e.target.value })}
+                className="m-timeinput" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

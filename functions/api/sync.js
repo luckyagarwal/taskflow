@@ -16,7 +16,10 @@ const TABLES = ['tasks', 'projects', 'labels', 'sections'];
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    },
   });
 }
 
@@ -24,7 +27,10 @@ export async function onRequestPost(context) {
   const { request, env } = context;
 
   const email = request.headers.get('Cf-Access-Authenticated-User-Email');
-  if (!email) return new Response('Unauthorized', { status: 401 });
+  if (!email) return new Response('Unauthorized', {
+    status: 401,
+    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+  });
 
   const db = env.DB;
   if (!db) return json({ error: 'D1 binding "DB" not configured' }, 500);
@@ -90,7 +96,10 @@ export async function onRequestDelete(context) {
   const { request, env } = context;
 
   const email = request.headers.get('Cf-Access-Authenticated-User-Email');
-  if (!email) return new Response('Unauthorized', { status: 401 });
+  if (!email) return new Response('Unauthorized', {
+    status: 401,
+    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+  });
 
   const db = env.DB;
   if (!db) return json({ error: 'D1 binding "DB" not configured' }, 500);

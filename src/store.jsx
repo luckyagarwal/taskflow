@@ -695,74 +695,10 @@ export function useStore() {
     }, 4000);
   }, []);
 
-  const addReminder = useCallback((taskId, timestamp) => {
-    setTasks((ts) => ts.map((t) => {
-      if (t.id !== taskId) return t;
-      const reminders = t.reminders || [];
-      const newRem = { id: 'rem_' + Date.now(), time: timestamp, fired: false };
-      const updated = { ...t, reminders: [...reminders, newRem] };
-      db.tasks.put(updated).catch(() => {});
-      return updated;
-    }));
-  }, []);
-
-  const deleteReminder = useCallback((taskId, reminderId) => {
-    setTasks((ts) => ts.map((t) => {
-      if (t.id !== taskId) return t;
-      const reminders = t.reminders || [];
-      const updated = { ...t, reminders: reminders.filter(r => r.id !== reminderId) };
-      db.tasks.put(updated).catch(() => {});
-      return updated;
-    }));
-  }, []);
-
-  const markReminderFired = useCallback((taskId, reminderId) => {
-    setTasks((ts) => ts.map((t) => {
-      if (t.id !== taskId) return t;
-      const reminders = t.reminders || [];
-      const updated = { ...t, reminders: reminders.map(r => r.id === reminderId ? { ...r, fired: true } : r) };
-      db.tasks.put(updated).catch(() => {});
-      return updated;
-    }));
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      tasks.forEach((t) => {
-        if (t.done) return;
-        const activeRems = t.reminders || [];
-        activeRems.forEach((r) => {
-          if (!r.fired && r.time <= now) {
-            markReminderFired(t.id, r.id);
-            addToast(`Reminder: ${t.title}`);
-            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-              new Notification(t.title, { body: t.note || 'Task Reminder' });
-            }
-            try {
-              const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-              const osc = audioCtx.createOscillator();
-              const gain = audioCtx.createGain();
-              osc.connect(gain);
-              gain.connect(audioCtx.destination);
-              osc.type = 'sine';
-              osc.frequency.value = 880;
-              gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-              osc.start();
-              osc.stop(audioCtx.currentTime + 0.15);
-            } catch (e) {}
-          }
-        });
-      });
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [tasks, markReminderFired, addToast]);
-
-
   const resetDatabase = useCallback(async () => {
     setWipingDb(true);
     try {
-      await fetch('/api/sync', { method: 'DELETE' }).catch(err => {
+      await fetch('/api/sync', { method: 'DELETE', cache: 'no-store' }).catch(err => {
         console.error("Failed to clear server database", err);
       });
     } catch (e) {
@@ -786,6 +722,16 @@ export function useStore() {
         db.sections.clear(),
         db._tombstones.clear()
       ]);
+
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
+      }
+
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(r => r.unregister()));
+      }
     } catch (e) {
       console.error("Failed to clear local database", e);
     } finally {
@@ -819,12 +765,12 @@ export function useStore() {
       downloadAnchor.remove();
       URL.revokeObjectURL(url);
 
-      setToasts(prev => [...prev, { id: Date.now(), text: "Backup exported successfully!" }]);
+      addToast("Backup exported successfully!");
     } catch (err) {
       console.error("Failed to export backup", err);
-      setToasts(prev => [...prev, { id: Date.now(), text: "Failed to export backup!" }]);
+      addToast("Failed to export backup!");
     }
-  }, []);
+  }, [addToast]);
 
   const importDatabase = useCallback(async (jsonData) => {
     try {
@@ -845,7 +791,7 @@ export function useStore() {
       if (backup.labels && backup.labels.length) await db.labels.bulkPut(backup.labels);
       if (backup.sections && backup.sections.length) await db.sections.bulkPut(backup.sections);
 
-      setToasts(prev => [...prev, { id: Date.now(), text: "Backup imported successfully! Reloading..." }]);
+      addToast("Backup imported successfully! Reloading...");
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -853,7 +799,7 @@ export function useStore() {
       console.error("Failed to import backup", err);
       alert("Failed to import backup: " + err.message);
     }
-  }, []);
+  }, [addToast]);
 
   return {
     tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,
@@ -868,9 +814,6 @@ export function useStore() {
     addLabel, updateLabel, deleteLabel,
     addSection, deleteSection, updateSection, reorderSections,
     toasts,
-    addReminder,
-    deleteReminder,
-    markReminderFired,
     theme,
     setTheme,
     density,

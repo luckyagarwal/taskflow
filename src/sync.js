@@ -101,6 +101,7 @@ export async function sync() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ since, changes }),
+      cache: 'no-store'
     });
     if (res.status === 401) return;       // not signed in via Cloudflare Access
     if (!res.ok) throw new Error("sync HTTP " + res.status);
