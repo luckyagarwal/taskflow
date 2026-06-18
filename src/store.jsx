@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
 import { db } from './db.js';
-import { startSync, disableSync } from './sync.js';
+import { startSync, disableSync, getSyncHeaders } from './sync.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -726,7 +726,11 @@ export function useStore() {
 
     setWipingDb(true);
     try {
-      const res = await fetch('/api/sync', { method: 'DELETE', cache: 'no-store' });
+      const res = await fetch('/api/sync', {
+        method: 'DELETE',
+        headers: getSyncHeaders(null),
+        cache: 'no-store'
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         console.error(`Failed to clear server database: ${res.status} ${text}`);

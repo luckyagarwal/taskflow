@@ -98,6 +98,25 @@ export function disableSync() {
   clearTimeout(debounceTimer);
 }
 
+export function getSyncHeaders(contentType = 'application/json') {
+  const headers = {};
+  if (contentType) headers['Content-Type'] = contentType;
+  
+  if (typeof window !== 'undefined') {
+    const hn = window.location.hostname;
+    const isLocal = hn === 'localhost' || 
+                    hn === '127.0.0.1' || 
+                    hn.startsWith('192.168.') || 
+                    hn.startsWith('10.') || 
+                    hn.startsWith('172.16.') || 
+                    hn.endsWith('.local');
+    if (isLocal) {
+      headers['Cf-Access-Authenticated-User-Email'] = 'dev@example.com';
+    }
+  }
+  return headers;
+}
+
 export async function sync() {
   if (syncDisabled) return;
   if (inFlight) { pending = true; return; }
@@ -107,7 +126,7 @@ export async function sync() {
     const changes = await collectDirty();
     const res = await fetch(API, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getSyncHeaders('application/json'),
       body: JSON.stringify({ since, changes }),
       cache: 'no-store'
     });
