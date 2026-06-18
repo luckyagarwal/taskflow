@@ -127,7 +127,11 @@ export function SectionHeader({ title, count, color, icon, right, collapsible, c
   return (
     <div onClick={collapsible ? onToggle : undefined} style={{
       display: 'flex', alignItems: 'center', gap: 8, padding: '18px 8px 7px', borderBottom: '1px solid var(--border)', marginBottom: 4,
-      cursor: collapsible ? 'pointer' : 'default', userSelect: 'none'
+      cursor: collapsible ? 'pointer' : 'default', userSelect: 'none',
+      position: 'sticky',
+      top: 0,
+      background: 'var(--bg)',
+      zIndex: 20
     }}>
       {collapsible && (
         <span style={{
