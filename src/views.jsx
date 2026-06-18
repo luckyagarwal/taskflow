@@ -129,9 +129,10 @@ export function SectionHeader({ title, count, color, icon, right, collapsible, c
       display: 'flex', alignItems: 'center', gap: 8, padding: '18px 8px 7px', borderBottom: '1px solid var(--border)', marginBottom: 4,
       cursor: collapsible ? 'pointer' : 'default', userSelect: 'none',
       position: 'sticky',
-      top: 0,
+      top: 'var(--sticky-top, 0px)',
       background: 'var(--bg)',
-      zIndex: 20
+      zIndex: 20,
+      transition: 'top 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
     }}>
       {collapsible && (
         <span style={{

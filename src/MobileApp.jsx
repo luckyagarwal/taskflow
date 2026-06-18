@@ -586,7 +586,15 @@ export function MobileApp() {
 
   const selecting = !!(multiSelectedIds && multiSelectedIds.length > 0);
   return (
-    <div style={{ position: 'relative', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+    <div style={{
+      position: 'relative',
+      height: '100%',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg)',
+      '--sticky-top': barsVisible ? `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 50px)` : '0px'
+    }}>
       <MobileHeader visible={barsVisible} />
       <BackBar visible={barsVisible} />
       <div 

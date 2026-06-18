@@ -903,7 +903,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
                 {rangeOn ? 'Start' : 'Date'}
               </div>
               <div style={{ fontSize: 15.5, fontWeight: 800, color: (picking === 'start' || !rangeOn) ? 'var(--accent-text)' : 'var(--text)' }}>
-                {rangeOn ? (start != null ? fmtDate(start) : 'Pick start') : (end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'No date')}
+                {rangeOn ? (start != null ? `${fmtDate(start)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'Pick start') : (end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'No date')}
               </div>
             </div>
           </div>
