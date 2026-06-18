@@ -10,6 +10,7 @@ import { CalendarView } from './calendar.jsx';
 // ── Animated task group (handles complete-and-leave) ─────────
 export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }) {
   const { toggleTask, setSelectedId, selectedId, reorderTasks } = useApp();
+  const narrow = useIsNarrow();
   const [exiting, setExiting] = useState({});
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [draggableId, setDraggableId] = useState(null);
@@ -81,10 +82,11 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
             cursor: (reorderable && draggableId === task.id) ? 'grabbing' : 'default',
             display: 'flex',
             alignItems: 'center',
-            gap: 2
+            gap: 2,
+            position: 'relative'
           }}
         >
-          {reorderable && (
+          {reorderable && !narrow && (
             <span
               onMouseDown={() => setDraggableId(task.id)}
               onMouseUp={() => setDraggableId(null)}
@@ -96,7 +98,11 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
                 display: 'flex',
                 alignItems: 'center',
                 padding: '0 4px',
-                flexShrink: 0
+                flexShrink: 0,
+                position: 'absolute',
+                left: -20,
+                height: '100%',
+                zIndex: 10
               }}
               title="Drag to reorder"
             >
