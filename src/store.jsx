@@ -20,6 +20,7 @@ export function useStore() {
   const [sections, setSections] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [loaded, setLoaded] = useState(false);
+  const [wipingDb, setWipingDb] = useState(false);
 
   const [theme, setTheme] = useState(() => {
     try {
@@ -511,6 +512,23 @@ export function useStore() {
     });
   }, []);
 
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem('todo-proto-view-filters');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const setViewFilter = useCallback((viewKey, val) => {
+    setFilters((prev) => {
+      const next = { ...prev, [viewKey]: val };
+      localStorage.setItem('todo-proto-view-filters', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const reorderTasks = useCallback((draggedId, targetId) => {
     setTasks((prev) => {
       const next = [...prev];
@@ -742,19 +760,37 @@ export function useStore() {
 
 
   const resetDatabase = useCallback(async () => {
-    localStorage.removeItem('todo-proto-sidebar-collapsed');
-    localStorage.removeItem('todo-proto-sidebar-width');
-    localStorage.removeItem('todo-proto-project-sort');
-    localStorage.removeItem('todo-proto-view-sorts');
-    localStorage.removeItem('todo-proto-theme');
-    localStorage.removeItem('todo-proto-density');
-    
-    await db.tasks.clear();
-    await db.projects.clear();
-    await db.labels.clear();
-    await db.sections.clear();
-    
-    window.location.reload();
+    setWipingDb(true);
+    try {
+      await fetch('/api/sync', { method: 'DELETE' }).catch(err => {
+        console.error("Failed to clear server database", err);
+      });
+    } catch (e) {
+      console.error("Failed to delete remote sync database", e);
+    }
+
+    try {
+      localStorage.removeItem('todo-proto-sidebar-collapsed');
+      localStorage.removeItem('todo-proto-sidebar-width');
+      localStorage.removeItem('todo-proto-project-sort');
+      localStorage.removeItem('todo-proto-view-sorts');
+      localStorage.removeItem('todo-proto-theme');
+      localStorage.removeItem('todo-proto-density');
+      localStorage.removeItem('todo-proto-view-filters');
+      localStorage.removeItem('taskflow-sync-since');
+      
+      await Promise.all([
+        db.tasks.clear(),
+        db.projects.clear(),
+        db.labels.clear(),
+        db.sections.clear(),
+        db._tombstones.clear()
+      ]);
+    } catch (e) {
+      console.error("Failed to clear local database", e);
+    } finally {
+      window.location.reload();
+    }
   }, []);
 
   const exportDatabase = useCallback(async () => {
@@ -823,7 +859,7 @@ export function useStore() {
     tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,
     collapsedSections, setCollapsedSections, toggleSection,
     multiSelectedIds, toggleMultiSelect, clearMultiSelect, bulkDelete, bulkComplete,
-    sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded,
+    sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded, wipingDb,
     sorts, setViewSort, reorderTasks,
     setView: (v) => { setView(v); setSelectedId(null); setMultiSelectedIds([]); },
     setSelectedId, setQuickAdd, setSearch,

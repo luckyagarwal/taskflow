@@ -85,3 +85,26 @@ export async function onRequestPost(context) {
 
   return json({ now: Date.now(), changes: out });
 }
+
+export async function onRequestDelete(context) {
+  const { request, env } = context;
+
+  const email = request.headers.get('Cf-Access-Authenticated-User-Email');
+  if (!email) return new Response('Unauthorized', { status: 401 });
+
+  const db = env.DB;
+  if (!db) return json({ error: 'D1 binding "DB" not configured' }, 500);
+
+  const stmts = TABLES.map((t) => 
+    db.prepare(`DELETE FROM ${t} WHERE user_email = ?`).bind(email)
+  );
+
+  try {
+    await db.batch(stmts);
+  } catch (err) {
+    return json({ error: 'Failed to clear server database', details: err.message }, 500);
+  }
+
+  return json({ success: true, wipedAt: Date.now() });
+}
+

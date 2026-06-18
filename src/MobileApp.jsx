@@ -13,7 +13,11 @@ import { InlineComposer } from './composer.jsx';
 const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers the notch/island in standalone mode
 
 function MobileHeader() {
-  const { setSearch, theme, setTheme } = useApp();
+  const { view } = useApp();
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
+
+  if (showBack) return null;
+
   return (
     <div className="frosted-glass" style={{
       flex: 'none',
@@ -43,13 +47,6 @@ function MobileHeader() {
         <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text)' }}>TaskFlow</span>
         <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Personal Workspace</span>
       </div>
-      <button className="icon-btn active-scale" style={{ border: 'none', background: 'transparent', width: 36, height: 36, borderRadius: 10, color: 'var(--text-2)' }} onClick={() => setSearch(true)}>
-        <I.search size={18} />
-      </button>
-      <button className="icon-btn active-scale" style={{ border: 'none', background: 'transparent', width: 36, height: 36, borderRadius: 10, color: 'var(--text-2)' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-        <I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} />
-        <I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} />
-      </button>
     </div>
   );
 }
@@ -323,9 +320,34 @@ function BackBar() {
   const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
   if (!showBack) return null;
   return (
-    <button onClick={() => setView({ type: 'browse' })} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 12px 0', color: 'var(--accent)', fontWeight: 700, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}>
-      <I.chevL size={18} /> Browse
-    </button>
+    <div className="frosted-glass" style={{
+      flex: 'none',
+      padding: `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 4px) 18px 14px`,
+      display: 'flex',
+      alignItems: 'center',
+      borderBottom: '1px solid var(--border)',
+      zIndex: 50
+    }}>
+      <button 
+        onClick={() => setView({ type: 'browse' })} 
+        className="active-scale" 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 6, 
+          color: 'var(--accent)', 
+          fontWeight: 800, 
+          fontSize: 18, 
+          border: 'none', 
+          background: 'transparent', 
+          cursor: 'pointer',
+          padding: '4px 0',
+          margin: 0
+        }}
+      >
+        <I.chevL size={22} style={{ strokeWidth: 3 }} /> Browse
+      </button>
+    </div>
   );
 }
 

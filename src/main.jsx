@@ -16,15 +16,21 @@ function Root() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  if (!store.loaded) {
+  if (!store.loaded || store.wipingDb) {
     const savedTheme = localStorage.getItem('todo-proto-theme') || 'light';
     return (
       <div style={{
         display: 'grid', placeItems: 'center', height: '100dvh', width: '100vw',
-        background: savedTheme === 'dark' ? '#141416' : '#f7f6f4', color: savedTheme === 'dark' ? '#ededee' : '#25241f',
-        fontSize: 16, fontWeight: 800, fontFamily: 'sans-serif'
+        background: savedTheme === 'dark' ? '#141416' : '#FAF9F6', 
+        color: savedTheme === 'dark' ? '#ECECED' : '#1E1E1C',
+        fontFamily: "'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif"
       }}>
-        Loading Casex Tasks...
+        <div className="pulse-loader">
+          <div className="spinner" />
+          <div className="pulse-loader-text">
+            {store.wipingDb ? "Resetting Database..." : "Loading Tasks..."}
+          </div>
+        </div>
       </div>
     );
   }

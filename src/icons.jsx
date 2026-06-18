@@ -38,6 +38,7 @@ export const Icons = {
   grid: (p) => <S {...p}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></S>,
   list: (p) => <S {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></S>,
   sliders: (p) => <S {...p}><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></S>,
+  sort: (p) => <S {...p}><path d="m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16"/></S>,
   menu: (p) => <S {...p}><path d="M3 6h18M3 12h18M3 18h18"/></S>,
   arrowR: (p) => <S {...p}><path d="M5 12h14M13 5l7 7-7 7"/></S>,
   trash: (p) => <S {...p}><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></S>,

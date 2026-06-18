@@ -3,7 +3,7 @@ import { test, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { makeFakeD1 } from "./fakeD1.mjs";
-import { onRequestPost } from "../functions/api/sync.js";
+import { onRequestPost, onRequestDelete } from "../functions/api/sync.js";
 import { db, setApplyingRemote } from "../src/db.js";
 import { sync } from "../src/sync.js";
 
@@ -23,8 +23,12 @@ let sendHeader = true; // toggle to simulate missing Cloudflare Access identity
 globalThis.fetch = async (url, opts) => {
   const headers = { "Content-Type": "application/json" };
   if (sendHeader) headers["Cf-Access-Authenticated-User-Email"] = EMAIL;
-  const request = new Request("http://localhost" + url, { method: opts.method, headers, body: opts.body });
-  return onRequestPost({ request, env: { DB: makeFakeD1(serverStore) } });
+  const request = new Request("http://localhost" + url, { method: opts.method || "GET", headers, body: opts.body });
+  const context = { request, env: { DB: makeFakeD1(serverStore) } };
+  if (opts && opts.method === "DELETE") {
+    return onRequestDelete(context);
+  }
+  return onRequestPost(context);
 };
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -140,3 +144,16 @@ test("missing Access identity returns 401 and does not crash the engine", async 
   assert.equal((await db.tasks.get("t7"))._dirty, 1, "record stays dirty when unauthenticated");
   assert.equal(srv("tasks", "t7"), undefined, "nothing written server-side");
 });
+
+test("DELETE /api/sync wipes the database for user on server", async () => {
+  seedServer("tasks", "t8", { id: "t8", title: "server-data" }, Date.now());
+  assert.ok(srv("tasks", "t8"), "server task exists");
+
+  const response = await fetch("/api/sync", { method: "DELETE" });
+  assert.equal(response.status, 200, "wipe response is 200");
+  const body = await response.json();
+  assert.equal(body.success, true, "wipe returns success");
+
+  assert.equal(srv("tasks", "t8"), undefined, "server task was wiped");
+});
+

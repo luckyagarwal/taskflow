@@ -169,9 +169,19 @@ export function dateString(off) {
   return `${H.DOW_LONG[d.getDay()]}, ${H.MONTHS_LONG[d.getMonth()]} ${d.getDate()}`;
 }
 
-export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject, onRenameProject, onProjectSettings }) {
+export function HeaderActions({ 
+  sortBy, 
+  setSortBy, 
+  filterBy, 
+  setFilterBy, 
+  items = [], 
+  onDeleteProject, 
+  onRenameProject, 
+  onProjectSettings 
+}) {
   const { multiSelectedIds = [], toggleMultiSelect, clearMultiSelect, bulkDelete, bulkComplete } = useApp();
   const [sortMenu, setSortMenu] = useState(false);
+  const [filterMenu, setFilterMenu] = useState(false);
   const [selectMenu, setSelectMenu] = useState(false);
 
   const sortOptions = [
@@ -179,6 +189,18 @@ export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject, 
     { label: 'Sort by Due Date', value: 'due' },
     { label: 'Sort by Priority', value: 'priority' },
     { label: 'Sort by Creation Date', value: 'created' }
+  ];
+
+  const filterOptions = [
+    { label: 'All Tasks', value: 'all' },
+    { label: 'High Priority (P1)', value: 'prio-1' },
+    { label: 'Medium Priority (P2)', value: 'prio-2' },
+    { label: 'Low Priority (P3)', value: 'prio-3' },
+    { label: 'No Priority (P4)', value: 'prio-4' },
+    { label: 'In Progress', value: 'status-inprogress' },
+    { label: 'Planned', value: 'status-planned' },
+    { label: 'Blocked', value: 'status-blocked' },
+    { label: 'Waiting', value: 'status-waiting' }
   ];
 
   const targetItems = items.filter(t => !t.done).length > 0 ? items.filter(t => !t.done) : items;
@@ -205,9 +227,32 @@ export function HeaderActions({ sortBy, setSortBy, items = [], onDeleteProject, 
 
   return (
     <div style={{ display: 'flex', gap: 2, position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+      {/* Filter CTA */}
+      {setFilterBy && (
+        <button className="icon-btn" title="Filter" onClick={() => { setFilterMenu(!filterMenu); setSortMenu(false); setSelectMenu(false); }} style={{ background: filterBy && filterBy !== 'all' ? 'var(--hover-strong)' : undefined }}>
+          <I.sliders size={18} style={{ color: filterBy && filterBy !== 'all' ? 'var(--accent)' : undefined }} />
+        </button>
+      )}
+      {filterMenu && setFilterBy && (
+        <Popover onClose={() => setFilterMenu(false)} style={{ top: 34, right: 80, zIndex: 100, minWidth: 180 }}>
+          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Filter Tasks</div>
+          {filterOptions.map((opt) => (
+            <div key={opt.value} className="pop-item" style={{
+              fontWeight: filterBy === opt.value ? 800 : 600,
+              color: filterBy === opt.value ? 'var(--accent)' : 'var(--text)',
+              justifyContent: 'space-between'
+            }} onClick={() => { setFilterBy(opt.value); setFilterMenu(false); }}>
+              {opt.label}
+              {filterBy === opt.value && <I.check size={14} style={{ color: 'var(--accent)' }} />}
+            </div>
+          ))}
+        </Popover>
+      )}
+
+      {/* Sort CTA */}
       {setSortBy && (
-        <button className="icon-btn" title="Sort" onClick={() => { setSortMenu(!sortMenu); setSelectMenu(false); }} style={{ background: sortBy && sortBy !== 'default' ? 'var(--hover-strong)' : undefined }}>
-          <I.sliders size={18} style={{ color: sortBy && sortBy !== 'default' ? 'var(--accent)' : undefined }} />
+        <button className="icon-btn" title="Sort" onClick={() => { setSortMenu(!sortMenu); setFilterMenu(false); setSelectMenu(false); }} style={{ background: sortBy && sortBy !== 'default' ? 'var(--hover-strong)' : undefined }}>
+          <I.sort size={18} style={{ color: sortBy && sortBy !== 'default' ? 'var(--accent)' : undefined }} />
         </button>
       )}
       {sortMenu && setSortBy && (

@@ -21,6 +21,16 @@ export function makeFakeD1(store = new Map()) {
         return { results };
       },
       async run() {
+        if (sql.includes("DELETE FROM")) {
+          const table = sql.match(/DELETE FROM (\w+)/)[1];
+          const [user] = this._args;
+          for (const [k, v] of store.entries()) {
+            if (v.table === table && v.user === user) {
+              store.delete(k);
+            }
+          }
+          return { success: true };
+        }
         const table = sql.match(/INSERT INTO (\w+)/)[1];
         const [id, user, data, updated_at, deleted] = this._args;
         const k = key(table, user, id);
