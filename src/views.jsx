@@ -124,19 +124,11 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
 
 // ── Section header ──────────────────────────────────────────
 export function SectionHeader({ title, count, color, icon, right, collapsible, collapsed, onToggle }) {
-  const { barsVisible } = useApp();
-  const narrow = useIsNarrow();
-  const stickyTop = narrow ? (barsVisible ? 'calc(max(env(safe-area-inset-top), 12px) + 50px)' : '0px') : '0px';
-
   return (
     <div onClick={collapsible ? onToggle : undefined} style={{
       display: 'flex', alignItems: 'center', gap: 8, padding: '18px 8px 7px', borderBottom: '1px solid var(--border)', marginBottom: 4,
       cursor: collapsible ? 'pointer' : 'default', userSelect: 'none',
-      position: 'sticky',
-      top: stickyTop,
-      background: 'var(--bg)',
-      zIndex: 20,
-      transition: 'top 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+      background: 'var(--bg)'
     }}>
       {collapsible && (
         <span style={{

@@ -591,8 +591,7 @@ export function MobileApp() {
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
-      background: 'var(--bg)',
-      '--sticky-top': barsVisible ? `calc(max(env(safe-area-inset-top), ${STATUS_PAD}px) + 50px)` : '0px'
+      background: 'var(--bg)'
     }}>
       <MobileHeader visible={barsVisible} />
       <BackBar visible={barsVisible} />
