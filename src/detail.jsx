@@ -1,9 +1,10 @@
 // detail.jsx — task detail / edit panel
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
-import { Checkbox, Dot, LabelChip, Ring } from './ui.jsx';
+import { Checkbox, Dot, LabelChip, Ring, useIsNarrow } from './ui.jsx';
 import { Popover, DUE_OPTIONS, PRIO, WhenPicker } from './composer.jsx';
 
 const STATUS_CHOICES = {
@@ -55,6 +56,21 @@ function SubtaskItem({
   const { updateSubtask, deleteSubtask, tasks } = useApp();
   const [menu, setMenu] = useState(null);
   const [hovered, setHovered] = useState(false);
+  const [localTitle, setLocalTitle] = useState(s.title);
+
+  useEffect(() => {
+    setLocalTitle(s.title);
+  }, [s.title]);
+
+  const saveTitle = () => {
+    const trimmed = localTitle.trim();
+    if (trimmed && trimmed !== s.title) {
+      updateSubtask(taskId, s.id, { title: trimmed });
+    } else {
+      setLocalTitle(s.title);
+    }
+  };
+
   const dueLbl = H.dueLabel(s.dueOffset);
   const startLbl = H.dueLabel(s.startOffset);
   const prioOpt = PRIO.find((p) => p.p === s.priority) || PRIO[3];
@@ -133,8 +149,15 @@ function SubtaskItem({
 
       {/* 2. Subtask Title (Editable Inline) */}
       <textarea
-        value={s.title}
-        onChange={(e) => updateSubtask(taskId, s.id, { title: e.target.value })}
+        value={localTitle}
+        onChange={(e) => setLocalTitle(e.target.value)}
+        onBlur={saveTitle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+          }
+        }}
         placeholder="Subtask title..."
         rows={1}
         ref={(el) => {
@@ -248,6 +271,38 @@ export function TaskEditor({ taskId, inline, mobile }) {
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
 
+  const [localTitle, setLocalTitle] = useState(task ? task.title : '');
+  const [localNote, setLocalNote] = useState(task ? (task.note || '') : '');
+
+  useEffect(() => {
+    if (task) {
+      setLocalTitle(task.title);
+    }
+  }, [task?.title]);
+
+  useEffect(() => {
+    if (task) {
+      setLocalNote(task.note || '');
+    }
+  }, [task?.note]);
+
+  const saveTitle = () => {
+    if (!task) return;
+    const trimmed = localTitle.trim();
+    if (trimmed && trimmed !== task.title) {
+      updateTask(task.id, { title: trimmed });
+    } else {
+      setLocalTitle(task.title);
+    }
+  };
+
+  const saveNote = () => {
+    if (!task) return;
+    if (localNote !== (task.note || '')) {
+      updateTask(task.id, { note: localNote });
+    }
+  };
+
   const handleCreateLabel = () => {
     if (newLabelName.trim()) {
       const newId = addLabel(newLabelName.trim());
@@ -329,10 +384,17 @@ export function TaskEditor({ taskId, inline, mobile }) {
           <Checkbox done={task.done} priority={task.priority} size={22} onToggle={() => toggleTask(task.id)} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <textarea value={task.title} onChange={(e) => updateTask(task.id, { title: e.target.value })} rows={1}
+          <textarea value={localTitle} onChange={(e) => setLocalTitle(e.target.value)} onBlur={saveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.target.blur();
+              }
+            }}
+            rows={1}
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 19, fontWeight: 800, lineHeight: 1.3, color: task.done ? 'var(--text-3)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none', fontFamily: 'inherit' }} />
-          <textarea value={task.note} onChange={(e) => updateTask(task.id, { note: e.target.value })} placeholder="Add a description…" rows={1}
+          <textarea value={localNote} onChange={(e) => setLocalNote(e.target.value)} onBlur={saveNote} placeholder="Add a description…" rows={1}
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: 'var(--text-2)', marginTop: 6, fontFamily: 'inherit', minHeight: 24 }} />
         </div>
@@ -665,25 +727,45 @@ function IOSToggle({ value, onChange }) {
   );
 }
 
-function DatePage({ task, onClose }) {
+export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose }) {
   const { updateTask } = useApp();
-  const hasRange = task.startOffset !== null && task.startOffset !== undefined;
+
+  const initialStart = task ? task.startOffset : startOffset;
+  const initialDue = task ? task.dueOffset : dueOffset;
+  const initialTime = task ? task.time : time;
+
+  const hasRange = initialStart !== null && initialStart !== undefined;
   const [rangeOn, setRangeOn] = useState(hasRange);
-  const [timeOn, setTimeOn] = useState(!!task.time);
+  const [timeOn, setTimeOn] = useState(!!initialTime);
   const [picking, setPicking] = useState('start'); // 'start' | 'end'
   const today = H.startOfToday();
-  const initial = task.dueOffset != null ? task.dueOffset : 0;
+  const initial = initialDue != null ? initialDue : 0;
+  
   const [monthShift, setMonthShift] = useState(() => {
     const d = H.dateFromOffset(initial);
     return d ? (d.getFullYear() - today.getFullYear()) * 12 + (d.getMonth() - today.getMonth()) : 0;
   });
 
-  const start = rangeOn ? (task.startOffset ?? task.dueOffset) : null;
-  const end = task.dueOffset;
+  const start = rangeOn ? (initialStart ?? initialDue) : null;
+  const end = initialDue;
 
-  const setSingle = (off) => updateTask(task.id, { dueOffset: off, startOffset: null });
+  const triggerChange = (newStart, newDue, newTime) => {
+    let s = newStart;
+    let d = newDue;
+    if (typeof s === 'number' && typeof d === 'number' && d < s) {
+      d = s;
+    }
+    if (task) {
+      updateTask(task.id, { startOffset: s, dueOffset: d, time: newTime });
+    }
+    if (onChange) {
+      onChange(s, d, newTime);
+    }
+  };
+
+  const setSingle = (off) => triggerChange(null, off, timeOn ? initialTime : null);
   const setNoDate = () => {
-    updateTask(task.id, { dueOffset: null, startOffset: null, time: null });
+    triggerChange(null, null, null);
     setTimeOn(false);
     setRangeOn(false);
   };
@@ -696,23 +778,23 @@ function DatePage({ task, onClose }) {
     if (picking === 'start') {
       const e = end == null ? off : end;
       const lo = Math.min(off, e), hi = Math.max(off, e);
-      updateTask(task.id, { startOffset: lo, dueOffset: hi });
+      triggerChange(lo, hi, timeOn ? initialTime : null);
       setPicking('end');
     } else {
       const s = start == null ? off : start;
       const lo = Math.min(off, s), hi = Math.max(off, s);
-      updateTask(task.id, { startOffset: lo, dueOffset: hi });
+      triggerChange(lo, hi, timeOn ? initialTime : null);
       setPicking('start');
     }
   };
 
   const toggleRange = () => {
     if (rangeOn) {
-      updateTask(task.id, { startOffset: null });
+      triggerChange(null, end, timeOn ? initialTime : null);
       setRangeOn(false);
     } else {
       const base = end == null ? 0 : end;
-      updateTask(task.id, { startOffset: base, dueOffset: base });
+      triggerChange(base, base, timeOn ? initialTime : null);
       setRangeOn(true);
       setPicking('end');
     }
@@ -720,10 +802,10 @@ function DatePage({ task, onClose }) {
 
   const toggleTime = () => {
     if (timeOn) {
-      updateTask(task.id, { time: null });
+      triggerChange(start, end, null);
       setTimeOn(false);
     } else {
-      updateTask(task.id, { time: task.time || '09:00' });
+      triggerChange(start, end, initialTime || '09:00');
       setTimeOn(true);
     }
   };
@@ -740,12 +822,12 @@ function DatePage({ task, onClose }) {
       if (picking === 'start') {
         const e = end == null ? off : end;
         const lo = Math.min(off, e), hi = Math.max(off, e);
-        updateTask(task.id, { startOffset: lo, dueOffset: hi });
+        triggerChange(lo, hi, timeOn ? initialTime : null);
         setPicking('end');
       } else {
         const s = start == null ? off : start;
         const lo = Math.min(off, s), hi = Math.max(off, s);
-        updateTask(task.id, { startOffset: lo, dueOffset: hi });
+        triggerChange(lo, hi, timeOn ? initialTime : null);
       }
     } else {
       setSingle(off);
@@ -821,7 +903,7 @@ function DatePage({ task, onClose }) {
                 {rangeOn ? 'Start' : 'Date'}
               </div>
               <div style={{ fontSize: 15.5, fontWeight: 800, color: (picking === 'start' || !rangeOn) ? 'var(--accent-text)' : 'var(--text)' }}>
-                {rangeOn ? (start != null ? fmtDate(start) : 'Pick start') : (end != null ? fmtDate(end) : 'No date')}
+                {rangeOn ? (start != null ? fmtDate(start) : 'Pick start') : (end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'No date')}
               </div>
             </div>
           </div>
@@ -833,7 +915,7 @@ function DatePage({ task, onClose }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>End</div>
                 <div style={{ fontSize: 15.5, fontWeight: 800, color: picking === 'end' ? 'var(--accent-text)' : 'var(--text)' }}>
-                  {end != null ? fmtDate(end) : 'Pick end'}
+                  {end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'Pick end'}
                 </div>
               </div>
             </div>
@@ -909,7 +991,7 @@ function DatePage({ task, onClose }) {
             <div className="m-toggle-row" style={{ borderTop: '1px solid var(--border)' }}>
               <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
               <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time</span>
-              <input type="time" value={task.time || '09:00'} onChange={e => updateTask(task.id, { time: e.target.value })}
+              <input type="time" value={initialTime || '09:00'} onChange={e => triggerChange(start, end, e.target.value)}
                 className="m-timeinput" />
             </div>
           )}
@@ -917,4 +999,40 @@ function DatePage({ task, onClose }) {
       </div>
     </div>
   );
+}
+
+export function DateSelectorModal({ task, startOffset, dueOffset, time, onChange, onClose }) {
+  const narrow = useIsNarrow();
+  const initStart = task ? task.startOffset : startOffset;
+  const initDue = task ? task.dueOffset : dueOffset;
+  const initTime = task ? task.time : time;
+
+  const content = (
+    <DatePage
+      task={task}
+      startOffset={initStart}
+      dueOffset={initDue}
+      time={initTime}
+      onChange={onChange}
+      onClose={onClose}
+    />
+  );
+
+  if (narrow) {
+    return createPortal(
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }}>
+        {content}
+      </div>,
+      document.body
+    );
+  } else {
+    return createPortal(
+      <div className="scrim" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onMouseDown={onClose}>
+        <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 380, height: 600, borderRadius: 16, background: 'var(--bg)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', overflow: 'hidden', position: 'relative' }}>
+          {content}
+        </div>
+      </div>,
+      document.body
+    );
+  }
 }

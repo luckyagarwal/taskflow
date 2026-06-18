@@ -5,6 +5,7 @@ import { Icons as I } from './icons.jsx';
 import { H, parseTask } from './data.js';
 import { useApp } from './store.jsx';
 import { Dot, DueBadge } from './ui.jsx';
+import { DateSelectorModal } from './detail.jsx';
 
 export const DUE_OPTIONS = [
   { label: 'Today', off: 0, color: 'var(--today)', icon: (p) => <I.today {...p} /> },
@@ -221,10 +222,12 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
         finalStart = 0;
         finalDue = 1;
       }
-      if (finalStart > finalDue) {
-        const temp = finalStart;
-        finalStart = finalDue;
-        finalDue = temp;
+      if (typeof finalStart === 'number' && typeof finalDue === 'number') {
+        if (finalStart > finalDue) {
+          const temp = finalStart;
+          finalStart = finalDue;
+          finalDue = temp;
+        }
       }
     } else {
       finalStart = null;
@@ -560,19 +563,17 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
             onClick={() => setMenu(menu === 'due' ? null : 'due')}
           />
           {menu === 'due' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 36, left: 0, minWidth: 200 }}>
-              <WhenPicker
-                startOffset={start}
-                dueOffset={due}
-                time={time}
-                onChange={(startVal, dueVal, newTime) => {
-                  setStart(startVal);
-                  setDue(dueVal);
-                  setTime(newTime);
-                }}
-                onClose={() => setMenu(null)}
-              />
-            </Popover>
+            <DateSelectorModal
+              startOffset={start}
+              dueOffset={due}
+              time={time}
+              onChange={(startVal, dueVal, newTime) => {
+                setStart(startVal);
+                setDue(dueVal);
+                setTime(newTime);
+              }}
+              onClose={() => setMenu(null)}
+            />
           )}
         </div>
 

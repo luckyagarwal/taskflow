@@ -3,7 +3,8 @@ import React from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
-import { Popover, WhenPicker, PRIO } from './composer.jsx';
+import { Popover, PRIO } from './composer.jsx';
+import { DateSelectorModal } from './detail.jsx';
 
 // True on phone-width viewports — used to reflow task rows so the project
 // label drops below the title instead of stealing a fixed right column.
@@ -128,6 +129,31 @@ export function Segmented({ value, onChange, options }) {
 export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true }) {
   const { updateTask, deleteTask, labels: customLabels, multiSelectedIds = [], toggleMultiSelect, projects } = useApp();
   const [menu, setMenu] = React.useState(null);
+  const [localTitle, setLocalTitle] = React.useState(task.title);
+  const [localNote, setLocalNote] = React.useState(task.note || '');
+
+  React.useEffect(() => {
+    setLocalTitle(task.title);
+  }, [task.title]);
+
+  React.useEffect(() => {
+    setLocalNote(task.note || '');
+  }, [task.note]);
+
+  const saveTitle = () => {
+    const trimmed = localTitle.trim();
+    if (trimmed && trimmed !== task.title) {
+      updateTask(task.id, { title: trimmed });
+    } else {
+      setLocalTitle(task.title);
+    }
+  };
+
+  const saveNote = () => {
+    if (localNote !== (task.note || '')) {
+      updateTask(task.id, { note: localNote });
+    }
+  };
 
   const proj = task.projectId && task.projectId !== 'inbox' ? (projects.find(p => p.id === task.projectId) || H.projectById(task.projectId)) : null;
   const narrow = useIsNarrow();
@@ -199,11 +225,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
             <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} />
           </button>
           {menu === 'due' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 24, left: 0, zIndex: 100, minWidth: 200 }}>
-              <WhenPicker startOffset={task.startOffset} dueOffset={task.dueOffset} time={task.time} onChange={(startVal, dueVal, newTime) => {
-                updateTask(task.id, { startOffset: startVal, dueOffset: dueVal, time: newTime });
-              }} onClose={() => setMenu(null)} />
-            </Popover>
+            <DateSelectorModal
+              task={task}
+              onClose={() => setMenu(null)}
+            />
           )}
         </div>
       )}
@@ -323,9 +348,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <textarea
-            value={task.title}
+            value={localTitle}
             readOnly={!selected}
-            onChange={(e) => updateTask(task.id, { title: e.target.value })}
+            onChange={(e) => setLocalTitle(e.target.value)}
+            onBlur={saveTitle}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -361,8 +387,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           />
           {selected ? (
             <textarea
-              value={task.note || ''}
-              onChange={(e) => updateTask(task.id, { note: e.target.value })}
+              value={localNote}
+              onChange={(e) => setLocalNote(e.target.value)}
+              onBlur={saveNote}
               onClick={(e) => e.stopPropagation()}
               placeholder="Add note..."
               rows={1}
@@ -463,11 +490,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 <I.calendar size={15} />
               </button>
               {menu === 'due_btn' && (
-                <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 200 }}>
-                  <WhenPicker startOffset={task.startOffset} dueOffset={task.dueOffset} time={task.time} onChange={(startVal, dueVal, newTime) => {
-                    updateTask(task.id, { startOffset: startVal, dueOffset: dueVal, time: newTime });
-                  }} onClose={() => setMenu(null)} />
-                </Popover>
+                <DateSelectorModal
+                  task={task}
+                  onClose={() => setMenu(null)}
+                />
               )}
             </div>
 

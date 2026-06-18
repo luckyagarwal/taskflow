@@ -277,6 +277,15 @@ export function useStore() {
     setTasks((ts) => ts.map((t) => {
       if (t.id === id) {
         const updated = { ...t, ...patch };
+        if (typeof updated.startOffset === 'number' && typeof updated.dueOffset === 'number') {
+          if (updated.dueOffset < updated.startOffset) {
+            if (patch.startOffset !== undefined) {
+              updated.dueOffset = updated.startOffset;
+            } else {
+              updated.startOffset = updated.dueOffset;
+            }
+          }
+        }
         db.tasks.put(updated).catch(() => {});
         return updated;
       }
@@ -329,6 +338,12 @@ export function useStore() {
       recurring: null, createdAt: Date.now(), subtaskSort: 'manual',
       position: minPos - 1, status: 'planned'
     }, partial, { projectId: targetProjectId, labels: finalLabels });
+
+    if (typeof task.startOffset === 'number' && typeof task.dueOffset === 'number') {
+      if (task.dueOffset < task.startOffset) {
+        task.dueOffset = task.startOffset;
+      }
+    }
     
     setTasks((ts) => [task, ...ts]);
     db.tasks.put(task).catch(() => {});
@@ -412,6 +427,15 @@ export function useStore() {
           }
           if (patch.done !== undefined) {
             updatedSub.status = patch.done ? 'done' : 'planned';
+          }
+          if (typeof updatedSub.startOffset === 'number' && typeof updatedSub.dueOffset === 'number') {
+            if (updatedSub.dueOffset < updatedSub.startOffset) {
+              if (patch.startOffset !== undefined) {
+                updatedSub.dueOffset = updatedSub.startOffset;
+              } else {
+                updatedSub.startOffset = updatedSub.dueOffset;
+              }
+            }
           }
           return updatedSub;
         })
