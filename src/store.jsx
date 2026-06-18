@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
 import { db } from './db.js';
-import { startSync } from './sync.js';
+import { startSync, disableSync } from './sync.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -158,17 +158,11 @@ export function useStore() {
         }
         loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       } else {
-        const seeded = localStorage.getItem('taskflow-seeded');
-        if (seeded) {
-          loadedTasks = [];
-          loadedProjects = [];
-          loadedLabels = [];
-          loadedSections = [];
-        } else {
-          const localTasks = localStorage.getItem(KEY_TASKS);
-          const localProjects = localStorage.getItem(KEY_PROJECTS);
-          const localLabels = localStorage.getItem(KEY_LABELS);
+        const localTasks = localStorage.getItem(KEY_TASKS);
+        const localProjects = localStorage.getItem(KEY_PROJECTS);
+        const localLabels = localStorage.getItem(KEY_LABELS);
 
+        if (localTasks || localProjects || localLabels) {
           const normalize = (list) => list.map((t, idx) => {
             const subtasks = (t.subtasks || []).map((sub, sIdx) => ({
               priority: 4,
@@ -187,38 +181,27 @@ export function useStore() {
             };
           });
 
-          if (localTasks || localProjects || localLabels) {
-            loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : normalize(DATA.tasks);
-            loadedProjects = (localProjects ? JSON.parse(localProjects) : DATA.projects).map((p, idx) => ({ position: idx, ...p }));
-            loadedLabels = localLabels ? JSON.parse(localLabels) : DATA.labels.map(l => ({ ...l }));
+          loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : [];
+          loadedProjects = localProjects ? JSON.parse(localProjects).map((p, idx) => ({ position: idx, ...p })) : [];
+          loadedLabels = localLabels ? JSON.parse(localLabels) : [];
 
-            await db.tasks.bulkPut(loadedTasks);
-            await db.projects.bulkPut(loadedProjects);
-            await db.labels.bulkPut(loadedLabels);
+          if (loadedTasks.length) await db.tasks.bulkPut(loadedTasks);
+          if (loadedProjects.length) await db.projects.bulkPut(loadedProjects);
+          if (loadedLabels.length) await db.labels.bulkPut(loadedLabels);
 
-            localStorage.removeItem(KEY_TASKS);
-            localStorage.removeItem(KEY_PROJECTS);
-            localStorage.removeItem(KEY_LABELS);
-          } else {
-            loadedTasks = normalize(DATA.tasks);
-            loadedProjects = DATA.projects.map((p, idx) => ({ ...p, position: idx }));
-            loadedLabels = DATA.labels.map(l => ({ ...l }));
+          localStorage.removeItem(KEY_TASKS);
+          localStorage.removeItem(KEY_PROJECTS);
+          localStorage.removeItem(KEY_LABELS);
 
-            await db.tasks.bulkPut(loadedTasks);
-            await db.projects.bulkPut(loadedProjects);
-            await db.labels.bulkPut(loadedLabels);
-          }
           loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
           loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
           const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
-          if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
-          if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
-          loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
-          await db.sections.bulkPut(loadedSections);
-          loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
-          localStorage.setItem('taskflow-seeded', 'true');
+          if (uniqueProjGroups.length) {
+            loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
+            await db.sections.bulkPut(loadedSections);
+            loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+          }
         }
       }
 
@@ -731,6 +714,8 @@ export function useStore() {
   }, []);
 
   const resetDatabase = useCallback(async () => {
+    disableSync();
+
     // Instantly clear all states so they disappear from UI immediately
     setTasks([]);
     setProjects([]);
@@ -741,22 +726,17 @@ export function useStore() {
 
     setWipingDb(true);
     try {
-      await fetch('/api/sync', { method: 'DELETE', cache: 'no-store' }).catch(err => {
-        console.error("Failed to clear server database", err);
-      });
+      const res = await fetch('/api/sync', { method: 'DELETE', cache: 'no-store' });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        console.error(`Failed to clear server database: ${res.status} ${text}`);
+      }
     } catch (e) {
       console.error("Failed to delete remote sync database", e);
     }
 
     try {
-      localStorage.removeItem('todo-proto-sidebar-collapsed');
-      localStorage.removeItem('todo-proto-sidebar-width');
-      localStorage.removeItem('todo-proto-project-sort');
-      localStorage.removeItem('todo-proto-view-sorts');
-      localStorage.removeItem('todo-proto-theme');
-      localStorage.removeItem('todo-proto-density');
-      localStorage.removeItem('todo-proto-view-filters');
-      localStorage.removeItem('taskflow-sync-since');
+      localStorage.clear();
       localStorage.setItem('taskflow-seeded', 'true');
       
       await Promise.all([
@@ -779,7 +759,13 @@ export function useStore() {
     } catch (e) {
       console.error("Failed to clear local database", e);
     } finally {
-      window.location.reload();
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('t', Date.now().toString());
+        window.location.href = url.toString();
+      } catch {
+        window.location.reload();
+      }
     }
   }, []);
 
@@ -837,7 +823,13 @@ export function useStore() {
 
       addToast("Backup imported successfully! Reloading...");
       setTimeout(() => {
-        window.location.reload();
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set('t', Date.now().toString());
+          window.location.href = url.toString();
+        } catch {
+          window.location.reload();
+        }
       }, 1500);
     } catch (err) {
       console.error("Failed to import backup", err);

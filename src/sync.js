@@ -91,7 +91,15 @@ async function applyRemote(remote) {
   return changed;
 }
 
+let syncDisabled = false;
+
+export function disableSync() {
+  syncDisabled = true;
+  clearTimeout(debounceTimer);
+}
+
 export async function sync() {
+  if (syncDisabled) return;
   if (inFlight) { pending = true; return; }
   inFlight = true;
   try {
@@ -103,23 +111,28 @@ export async function sync() {
       body: JSON.stringify({ since, changes }),
       cache: 'no-store'
     });
+    if (syncDisabled) return;
     if (res.status === 401) return;       // not signed in via Cloudflare Access
     if (!res.ok) throw new Error("sync HTTP " + res.status);
 
     const data = await res.json();
+    if (syncDisabled) return;
     await clearPushed(changes);
+    if (syncDisabled) return;
     const merged = await applyRemote(data.changes);
+    if (syncDisabled) return;
     if (typeof data.now === "number") setSince(data.now);
     if (merged && onMerge) await onMerge();
   } catch (err) {
     console.error("sync failed", err);
   } finally {
     inFlight = false;
-    if (pending) { pending = false; sync(); }
+    if (pending && !syncDisabled) { pending = false; sync(); }
   }
 }
 
 export function scheduleSync(delay = DEBOUNCE_MS) {
+  if (syncDisabled) return;
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => sync(), delay);
 }
@@ -127,10 +140,16 @@ export function scheduleSync(delay = DEBOUNCE_MS) {
 // onMergeCb: re-reads Dexie into React state after remote changes land.
 export function startSync(onMergeCb) {
   onMerge = onMergeCb || null;
-  setOnDirty(() => scheduleSync());
+  setOnDirty(() => {
+    if (!syncDisabled) scheduleSync();
+  });
   sync();
-  setInterval(() => sync(), INTERVAL_MS);
+  setInterval(() => {
+    if (!syncDisabled) sync();
+  }, INTERVAL_MS);
   if (typeof window !== "undefined") {
-    window.addEventListener("online", () => sync());
+    window.addEventListener("online", () => {
+      if (!syncDisabled) sync();
+    });
   }
 }
