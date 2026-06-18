@@ -386,17 +386,19 @@ export function TodayView({ density }) {
   const sortBy = sorts.today || 'default';
   const overdue = Sel.overdue(tasks);
   const todayT = Sel.dueToday(tasks);
+  const completedToday = React.useMemo(() => tasks.filter(t => t.done && t.doneOffset === 0), [tasks]);
   const total = overdue.length + todayT.length;
 
   const sortedOverdue = React.useMemo(() => sortTasks(overdue, sortBy), [overdue, sortBy]);
   const sortedToday = React.useMemo(() => sortTasks(todayT, sortBy), [todayT, sortBy]);
+  const sortedCompleted = React.useMemo(() => sortTasks(completedToday, sortBy), [completedToday, sortBy]);
   
   const reorderable = sortBy === 'default';
 
   const handleToggle = (key, e) => {
     if (e.altKey) {
       // Toggle all sections
-      const sections = ['today-overdue', 'today-today'];
+      const sections = ['today-overdue', 'today-today', 'today-completed'];
       const allCollapsed = sections.every(s => collapsedSections.includes(s));
       sections.forEach(s => toggleSection(s, !allCollapsed));
     } else {
@@ -410,7 +412,7 @@ export function TodayView({ density }) {
         title="Today" subtitle={`${dateString(0)} · ${total} ${total === 1 ? 'task' : 'tasks'}`}
         right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort('today', val)} items={[...overdue, ...todayT]} />} />
       <InlineComposer defaultProject="inbox" defaultDue={0} />
-      {total === 0 && (
+      {total === 0 && completedToday.length === 0 && (
         <Empty icon={<I.check size={30} />} title="You're all done for today" sub="Enjoy the calm. New tasks you add for today will show up here." />
       )}
       {overdue.length > 0 && (
@@ -428,6 +430,13 @@ export function TodayView({ density }) {
           {!collapsedSections.includes('today-today') && <TaskGroup tasks={sortedToday} density={density} showProject reorderable={reorderable} />}
         </>
       )}
+      {completedToday.length > 0 && (
+        <>
+          <SectionHeader title="Completed" count={completedToday.length}
+            collapsible collapsed={collapsedSections.includes('today-completed')} onToggle={(e) => handleToggle('today-completed', e)} />
+          {!collapsedSections.includes('today-completed') && <TaskGroup tasks={sortedCompleted} density={density} showProject />}
+        </>
+      )}
     </div>
   );
 }
@@ -436,13 +445,24 @@ export function TodayView({ density }) {
 export function UpcomingView({ density }) {
   const { tasks, sorts, setViewSort, collapsedSections, toggleSection } = useApp();
   const sortBy = sorts.upcoming || 'default';
-  const up = Sel.upcoming(tasks);
   
-  const sortedUp = React.useMemo(() => sortTasks(up, sortBy), [up, sortBy]);
+  const activeUp = React.useMemo(() => tasks.filter(t => !t.done && t.dueOffset !== null && t.dueOffset >= 0), [tasks]);
+  const completedUp = React.useMemo(() => tasks.filter(t => t.done && t.dueOffset !== null && t.dueOffset >= 0), [tasks]);
   
-  const groups = {};
-  sortedUp.forEach((t) => { (groups[t.dueOffset] = groups[t.dueOffset] || []).push(t); });
-  const offs = Object.keys(groups).map(Number).sort((a, b) => a - b);
+  const sortedActive = React.useMemo(() => sortTasks(activeUp, sortBy), [activeUp, sortBy]);
+  const sortedCompleted = React.useMemo(() => sortTasks(completedUp, sortBy), [completedUp, sortBy]);
+  
+  const activeGroups = {};
+  sortedActive.forEach((t) => { (activeGroups[t.dueOffset] = activeGroups[t.dueOffset] || []).push(t); });
+
+  const completedGroups = {};
+  sortedCompleted.forEach((t) => { (completedGroups[t.dueOffset] = completedGroups[t.dueOffset] || []).push(t); });
+  
+  const offs = React.useMemo(() => {
+    const activeOffs = Object.keys(activeGroups).map(Number);
+    const completedOffs = Object.keys(completedGroups).map(Number);
+    return Array.from(new Set([...activeOffs, ...completedOffs])).sort((a, b) => a - b);
+  }, [activeGroups, completedGroups]);
   
   const reorderable = sortBy === 'default';
 
@@ -458,12 +478,15 @@ export function UpcomingView({ density }) {
   return (
     <div>
       <ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.upcoming size={26} /></span>}
-        title="Upcoming" subtitle={`${up.length} scheduled`}
-        right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort('upcoming', val)} items={up} />} />
+        title="Upcoming" subtitle={`${activeUp.length} scheduled`}
+        right={<HeaderActions sortBy={sortBy} setSortBy={(val) => setViewSort('upcoming', val)} items={activeUp} />} />
       {offs.length === 0 && <Empty icon={<I.upcoming size={30} />} title="Nothing scheduled" sub="Tasks with a future date will appear here, grouped by day." />}
       {offs.map((off) => {
         const d = H.dateFromOffset(off);
         const isCollapsed = collapsedSections.includes(`upcoming-${off}`);
+        const activeForDay = activeGroups[off] || [];
+        const completedForDay = completedGroups[off] || [];
+        
         return (
           <div key={off}>
             <SectionHeader
@@ -473,7 +496,14 @@ export function UpcomingView({ density }) {
             {!isCollapsed && (
               <>
                 <InlineComposer defaultDue={off} />
-                <TaskGroup tasks={groups[off]} density={density} dateMode showProject reorderable={reorderable} />
+                {activeForDay.length > 0 && (
+                  <TaskGroup tasks={activeForDay} density={density} dateMode showProject reorderable={reorderable} />
+                )}
+                {completedForDay.length > 0 && (
+                  <div style={{ marginTop: activeForDay.length > 0 ? 6 : 0, borderTop: activeForDay.length > 0 ? '1px dashed var(--border)' : 'none', paddingTop: activeForDay.length > 0 ? 6 : 0 }}>
+                    <TaskGroup tasks={completedForDay} density={density} dateMode showProject />
+                  </div>
+                )}
               </>
             )}
           </div>
