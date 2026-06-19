@@ -159,9 +159,24 @@ export function useStore() {
     setSections(s);
   }, []);
 
-  const queueSave = useCallback(async (upserts = {}, deletes = {}) => {
-    await saveChanges(upserts, deletes);
+  const addToast = useCallback((msg) => {
+    const id = 'toast_' + Date.now();
+    setToasts((prev) => [...prev, { id, msg }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter(t => t.id !== id));
+    }, 4000);
   }, []);
+
+  const queueSave = useCallback(async (upserts = {}, deletes = {}) => {
+    const ok = await saveChanges(upserts, deletes);
+    if (!ok) {
+      addToast("Failed to save changes to server!");
+      const data = await fetchAllData();
+      if (data) reloadFromServer(data);
+    }
+  }, [addToast, reloadFromServer]);
+
+
 
   useEffect(() => {
     setOnAuthStatusChange((status) => {
@@ -661,13 +676,6 @@ export function useStore() {
     });
   }, [queueSave]);
 
-  const addToast = useCallback((msg) => {
-    const id = 'toast_' + Date.now();
-    setToasts((prev) => [...prev, { id, msg }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter(t => t.id !== id));
-    }, 4000);
-  }, []);
 
   const resetDatabase = useCallback(async () => {
     setTasks([]);

@@ -112,7 +112,10 @@ export async function saveChanges(upserts = {}, deletes = {}) {
       return false;
     }
     
-    if (!res.ok) throw new Error("Save failed: HTTP " + res.status);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(`Save failed (HTTP ${res.status}): ${errBody.details || errBody.error || 'Unknown error'}`);
+    }
     
     if (!isAuthorized) {
       isAuthorized = true;

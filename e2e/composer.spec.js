@@ -27,7 +27,6 @@ test("composer preview pills reflect parsed tokens", async ({ page }) => {
 
   await page.goto("/");
 
-
   // Open the first inline "Add task" composer.
   await page.getByRole("button", { name: "Add task" }).first().click();
 
