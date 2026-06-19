@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
 import { db, setOnDbChange } from './db.js';
-import { startSync, disableSync, getSyncHeaders } from './sync.js';
+import { startSync, disableSync, getSyncHeaders, sync } from './sync.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -846,6 +846,17 @@ export function useStore() {
     }
   }, [addToast]);
 
+  const forceSync = useCallback(async () => {
+    try {
+      localStorage.removeItem('taskflow-sync-since');
+      await sync();
+      addToast("Force sync completed!");
+    } catch (e) {
+      console.error(e);
+      addToast("Force sync failed!");
+    }
+  }, [addToast]);
+
   return {
     tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,
     collapsedSections, setCollapsedSections, toggleSection,
@@ -867,6 +878,8 @@ export function useStore() {
     importDatabase,
     barsVisible,
     setBarsVisible,
+    forceSync,
+    addToast,
   };
 }
 

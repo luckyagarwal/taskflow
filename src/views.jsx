@@ -785,7 +785,7 @@ export function LogbookView() {
 
 // ── SETTINGS ────────────────────────────────────────────────
 export function SettingsView() {
-  const { theme, setTheme, density, setDensity, resetDatabase, exportDatabase, importDatabase } = useApp();
+  const { theme, setTheme, density, setDensity, resetDatabase, exportDatabase, importDatabase, forceSync } = useApp();
   const narrow = useIsNarrow();
   const fileInputRef = React.useRef(null);
 
@@ -947,6 +947,31 @@ export function SettingsView() {
               accept=".json"
               style={{ display: 'none' }}
             />
+
+            <button
+              onClick={forceSync}
+              style={{
+                flex: '1 1 100%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '10px 16px',
+                borderRadius: 8,
+                fontSize: 13.5,
+                fontWeight: 750,
+                border: '1px solid var(--border-2)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                transition: 'background .15s',
+                marginTop: 6
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg)'}
+            >
+              <I.repeat size={14} /> Force Sync Now
+            </button>
 
             <button
               onClick={() => {
