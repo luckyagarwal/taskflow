@@ -119,9 +119,10 @@ export function getSyncHeaders(contentType = 'application/json') {
     const hn = window.location.hostname;
     const isLocal = hn === 'localhost' || 
                     hn === '127.0.0.1' || 
+                    hn === '[::1]' ||
                     hn.startsWith('192.168.') || 
                     hn.startsWith('10.') || 
-                    hn.startsWith('172.16.') || 
+                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hn) ||
                     hn.endsWith('.local');
     if (isLocal) {
       headers['Cf-Access-Authenticated-User-Email'] = 'dev@example.com';
