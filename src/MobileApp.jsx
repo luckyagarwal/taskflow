@@ -613,9 +613,10 @@ export function MobileApp() {
 
       {/* FAB — hidden during multi-select (contextual action bar takes over) */}
       {!selecting && (
-        <button 
-          onClick={() => setQuickAdd(true)} 
+        <button
+          onClick={() => setQuickAdd(true)}
           className="active-scale"
+          aria-label="Add task"
           style={{
             position: 'absolute', right: 20, bottom: 100, width: 56, height: 56, borderRadius: 18,
             background: 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center',

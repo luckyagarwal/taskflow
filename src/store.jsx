@@ -6,7 +6,13 @@ import { saveChanges, fetchAllData, startOnlineSync, getSyncHeaders, setOnAuthSt
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
-let _n = 10000;
+// Globally-unique id generator. Task/subtask ids must be unique ACROSS app
+// instances: the server upserts by id, so a deterministic per-session counter
+// would make two devices generate the same id and silently overwrite each
+// other's records. Combine a timestamp with randomness to avoid collisions.
+function uid(prefix) {
+  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 export function AppProvider({ children, value }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -246,13 +252,13 @@ export function useStore() {
   }, [queueSave]);
 
   const addTask = useCallback((partial) => {
-    const id = 'task_n' + (++_n);
+    const id = uid('task_');
     let targetProjectId = partial.projectId || 'inbox';
     
     let npToSave = null;
     if (typeof targetProjectId === 'string' && targetProjectId.startsWith('__new__')) {
       const newProjName = targetProjectId.replace('__new__', '');
-      const newProjId = 'p_' + Date.now();
+      const newProjId = uid('p_');
       const np = {
         id: newProjId,
         name: newProjName,
@@ -367,7 +373,7 @@ export function useStore() {
   const addSubtask = useCallback((taskId, title) => {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== taskId) return t;
-      const updated = { ...t, subtasks: [...t.subtasks, { id: 's' + (++_n), title, done: false, priority: 4, status: 'planned', startOffset: null, dueOffset: null, createdAt: Date.now() }] };
+      const updated = { ...t, subtasks: [...t.subtasks, { id: uid('s_'), title, done: false, priority: 4, status: 'planned', startOffset: null, dueOffset: null, createdAt: Date.now() }] };
       queueSave({ tasks: [updated] });
       return updated;
     }));
@@ -416,7 +422,7 @@ export function useStore() {
   const addProject = useCallback((name, group = 'Personal') => {
     if (!name || !name.trim()) return;
     const np = {
-      id: 'p_' + Date.now(),
+      id: uid('p_'),
       name: name.trim(),
       color: ['#2D7FF9', '#7C5CFC', '#14B8C4', '#1F9D55', '#E8588A', '#F5A623'][projects.length % 6],
       group: (group && group.trim()) || 'Personal',
@@ -577,7 +583,7 @@ export function useStore() {
     if (sections.some(s => s.name.toLowerCase() === cleanName.toLowerCase())) return null;
     
     const newSec = {
-      id: 'sec_' + Date.now(),
+      id: uid('sec_'),
       name: cleanName,
       position: sections.length
     };
