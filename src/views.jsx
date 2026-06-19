@@ -146,28 +146,66 @@ export function SectionHeader({ title, count, color, icon, right, collapsible, c
 
 // ── View header (big title) ─────────────────────────────────
 export function ViewHeader({ icon, title, color, subtitle, right }) {
-  const { sidebarCollapsed, setSidebarCollapsed } = useApp();
+  const { sidebarCollapsed, setSidebarCollapsed, isAuthorized } = useApp();
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 14 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {sidebarCollapsed && (
-            <button
-              className="icon-btn"
-              onClick={() => setSidebarCollapsed(false)}
-              style={{ marginRight: 4, flexShrink: 0 }}
-              title="Expand sidebar"
-            >
-              <I.menu size={20} />
-            </button>
-          )}
-          {icon}
-          <h1 style={{ margin: 0, fontSize: 27, fontWeight: 800, letterSpacing: '-.02em', color: color || 'var(--text)' }}>{title}</h1>
+    <>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {sidebarCollapsed && (
+              <button
+                className="icon-btn"
+                onClick={() => setSidebarCollapsed(false)}
+                style={{ marginRight: 4, flexShrink: 0 }}
+                title="Expand sidebar"
+              >
+                <I.menu size={20} />
+              </button>
+            )}
+            {icon}
+            <h1 style={{ margin: 0, fontSize: 27, fontWeight: 800, letterSpacing: '-.02em', color: color || 'var(--text)' }}>{title}</h1>
+          </div>
+          {subtitle && <div style={{ marginTop: 4, marginLeft: (icon ? 34 : 0) + (sidebarCollapsed ? 38 : 0), fontSize: 13.5, fontWeight: 700, color: 'var(--text-3)' }}>{subtitle}</div>}
         </div>
-        {subtitle && <div style={{ marginTop: 4, marginLeft: (icon ? 34 : 0) + (sidebarCollapsed ? 38 : 0), fontSize: 13.5, fontWeight: 700, color: 'var(--text-3)' }}>{subtitle}</div>}
+        {right}
       </div>
-      {right}
-    </div>
+
+      {!isAuthorized && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '10px 14px',
+          borderRadius: 8,
+          background: 'color-mix(in srgb, var(--p1) 10%, var(--bg-elev))',
+          border: '1px solid var(--p1)',
+          color: 'var(--p1)',
+          fontSize: 13,
+          fontWeight: 700,
+          marginBottom: 16
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>⚠️</span>
+            <span>Sync is paused. Please log in to resume syncing.</span>
+          </div>
+          <a
+            href="/api/auth"
+            style={{
+              textDecoration: 'none',
+              background: 'var(--p1)',
+              color: 'white',
+              padding: '4px 10px',
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 800
+            }}
+          >
+            Log In
+          </a>
+        </div>
+      )}
+    </>
   );
 }
 

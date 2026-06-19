@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
 import { db, setOnDbChange } from './db.js';
-import { startSync, disableSync, getSyncHeaders, sync } from './sync.js';
+import { startSync, disableSync, getSyncHeaders, sync, setOnAuthStatusChange } from './sync.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -22,6 +22,7 @@ export function useStore() {
   const [loaded, setLoaded] = useState(false);
   const [wipingDb, setWipingDb] = useState(false);
   const [barsVisible, setBarsVisible] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(true);
 
   const [theme, setTheme] = useState(() => {
     try {
@@ -233,6 +234,13 @@ export function useStore() {
     setOnDbChange(reloadFromDb);
     return () => setOnDbChange(null);
   }, [reloadFromDb]);
+
+  useEffect(() => {
+    setOnAuthStatusChange((status) => {
+      setIsAuthorized(status);
+    });
+    return () => setOnAuthStatusChange(null);
+  }, []);
 
   // Start background sync once initial load completes (runs once).
   useEffect(() => {
@@ -880,6 +888,7 @@ export function useStore() {
     setBarsVisible,
     forceSync,
     addToast,
+    isAuthorized,
   };
 }
 

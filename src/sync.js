@@ -94,6 +94,17 @@ async function applyRemote(remote) {
 let syncDisabled = false;
 let pollTimer = null;
 
+let isAuthorized = true;
+let onAuthStatusChange = null;
+
+export function setOnAuthStatusChange(fn) {
+  onAuthStatusChange = fn;
+}
+
+export function getIsAuthorized() {
+  return isAuthorized;
+}
+
 export function disableSync() {
   syncDisabled = true;
   clearTimeout(debounceTimer);
@@ -133,8 +144,26 @@ export async function sync() {
       cache: 'no-store'
     });
     if (syncDisabled) return;
-    if (res.status === 401) return;       // not signed in via Cloudflare Access
+
+    // Detect Cloudflare Access redirect to login page (which is HTML, not JSON, or returns 401/redirected)
+    const contentType = res.headers.get('content-type') || '';
+    const isHtml = contentType.includes('text/html');
+    const unauthorized = res.status === 401 || res.redirected || isHtml;
+
+    if (unauthorized) {
+      if (isAuthorized) {
+        isAuthorized = false;
+        if (onAuthStatusChange) onAuthStatusChange(false);
+      }
+      return;
+    }
+
     if (!res.ok) throw new Error("sync HTTP " + res.status);
+
+    if (!isAuthorized) {
+      isAuthorized = true;
+      if (onAuthStatusChange) onAuthStatusChange(true);
+    }
 
     const data = await res.json();
     if (syncDisabled) return;
