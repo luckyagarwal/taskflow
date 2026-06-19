@@ -33,6 +33,28 @@ export function isApplyingRemote() { return _applyingRemote; }
 let _onDirty = null;
 export function setOnDirty(fn) { _onDirty = fn; }
 
+const channel = typeof window !== 'undefined' ? new BroadcastChannel('taskflow-db-channel') : null;
+
+let _onDbChange = null;
+export function setOnDbChange(fn) { _onDbChange = fn; }
+
+if (channel) {
+  channel.onmessage = (event) => {
+    if (event.data && event.data.type === 'db-changed' && _onDbChange) {
+      _onDbChange();
+    }
+  };
+}
+
+let broadcastTimer = null;
+export function broadcastDbChange() {
+  if (!channel) return;
+  clearTimeout(broadcastTimer);
+  broadcastTimer = setTimeout(() => {
+    channel.postMessage({ type: 'db-changed' });
+  }, 100);
+}
+
 SYNCED_TABLES.forEach((t) => {
   db[t].hook("creating", function (primKey, obj) {
     if (_applyingRemote) {
@@ -42,11 +64,13 @@ SYNCED_TABLES.forEach((t) => {
     if (obj.updatedAt === undefined) obj.updatedAt = Date.now();
     obj._dirty = 1;
     if (_onDirty) _onDirty();
+    broadcastDbChange();
   });
 
   db[t].hook("updating", function (mods, primKey, obj) {
     if (_applyingRemote) return; // keep incoming mods verbatim
     if (_onDirty) _onDirty();
+    broadcastDbChange();
     return { updatedAt: Date.now(), _dirty: 1 };
   });
 
@@ -58,5 +82,6 @@ SYNCED_TABLES.forEach((t) => {
     const tomb = { table: t, id: primKey, updatedAt: Date.now(), _dirty: 1 };
     Dexie.ignoreTransaction(() => db._tombstones.put(tomb).catch(() => {}));
     if (_onDirty) _onDirty();
+    broadcastDbChange();
   });
 });

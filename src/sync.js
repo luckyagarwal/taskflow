@@ -92,10 +92,12 @@ async function applyRemote(remote) {
 }
 
 let syncDisabled = false;
+let pollTimer = null;
 
 export function disableSync() {
   syncDisabled = true;
   clearTimeout(debounceTimer);
+  clearTimeout(pollTimer);
 }
 
 export function getSyncHeaders(contentType = 'application/json') {
@@ -156,19 +158,48 @@ export function scheduleSync(delay = DEBOUNCE_MS) {
   debounceTimer = setTimeout(() => sync(), delay);
 }
 
+function getPollInterval() {
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+    return 30000; // 30s in background
+  }
+  return 5000; // 5s in foreground
+}
+
+function runPollingLoop() {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => {
+    if (!syncDisabled) {
+      await sync();
+    }
+    runPollingLoop();
+  }, getPollInterval());
+}
+
+function handleVisibilityOrFocus() {
+  if (!syncDisabled && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    sync();
+    runPollingLoop();
+  }
+}
+
 // onMergeCb: re-reads Dexie into React state after remote changes land.
 export function startSync(onMergeCb) {
   onMerge = onMergeCb || null;
   setOnDirty(() => {
     if (!syncDisabled) scheduleSync();
   });
+  
+  // Initial sync
   sync();
-  setInterval(() => {
-    if (!syncDisabled) sync();
-  }, INTERVAL_MS);
+  
+  // Start polling
+  runPollingLoop();
+
   if (typeof window !== "undefined") {
     window.addEventListener("online", () => {
       if (!syncDisabled) sync();
     });
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
   }
 }

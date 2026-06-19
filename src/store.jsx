@@ -1,7 +1,7 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
-import { db } from './db.js';
+import { db, setOnDbChange } from './db.js';
 import { startSync, disableSync, getSyncHeaders } from './sync.js';
 
 export const AppContext = createContext(null);
@@ -228,6 +228,11 @@ export function useStore() {
     setCustomLabels(l);
     setSections(s);
   }, []);
+
+  useEffect(() => {
+    setOnDbChange(reloadFromDb);
+    return () => setOnDbChange(null);
+  }, [reloadFromDb]);
 
   // Start background sync once initial load completes (runs once).
   useEffect(() => {
