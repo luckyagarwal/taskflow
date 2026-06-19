@@ -1,6 +1,5 @@
-// Minimal in-memory D1 stand-in that understands exactly the two SQL shapes
-// used by functions/api/sync.js: the LWW UPSERT and the pull-since SELECT.
-// Lets us exercise the real Pages Function without Cloudflare.
+// Minimal in-memory D1 stand-in that understands exactly the SQL shapes
+// used by the new online-only data, save, and events endpoints.
 
 export function makeFakeD1(store = new Map()) {
   const key = (table, id) => `${table}|${id}`;
@@ -10,54 +9,61 @@ export function makeFakeD1(store = new Map()) {
       _args: [],
       bind(...args) { this._args = args; return this; },
       async all() {
-        const table = sql.match(/FROM (\w+)/)[1];
-        const [since] = this._args;
+        // Handle max updated_at query (for SSE events)
+        if (sql.includes("MAX(val)")) {
+          let maxVal = 0;
+          for (const v of store.values()) {
+            if (v.updated_at > maxVal) {
+              maxVal = v.updated_at;
+            }
+          }
+          return { results: [{ max_val: maxVal }] };
+        }
+
+        // Handle SELECT id, data FROM table WHERE deleted = 0
+        const tableMatch = sql.match(/FROM (\w+)/);
+        if (!tableMatch) return { results: [] };
+        const table = tableMatch[1];
+        
         const results = [];
         for (const v of store.values()) {
-          if (v.table === table && v.updated_at > since) {
-            results.push({ id: v.id, data: v.data, updated_at: v.updated_at, deleted: v.deleted });
+          if (v.table === table && !v.deleted) {
+            results.push({ id: v.id, data: v.data });
           }
         }
         return { results };
       },
       async run() {
         if (sql.includes("DELETE FROM")) {
-          const table = sql.match(/DELETE FROM (\w+)/)[1];
-          for (const [k, v] of store.entries()) {
-            if (v.table === table) {
-              store.delete(k);
+          const tableMatch = sql.match(/DELETE FROM (\w+)/);
+          if (!tableMatch) return { success: false };
+          const table = tableMatch[1];
+          
+          if (sql.includes("WHERE id = ?")) {
+            const [id] = this._args;
+            const k = key(table, id);
+            store.delete(k);
+          } else {
+            // Wipe whole table
+            for (const [k, v] of store.entries()) {
+              if (v.table === table) {
+                store.delete(k);
+              }
             }
           }
           return { success: true };
         }
-        const table = sql.match(/INSERT INTO (\w+)/)[1];
-        const [id, data, server_time, deleted, client_time] = this._args;
-        const k = key(table, id);
-        const cur = store.get(k);
 
-        let shouldUpdate = false;
-        if (!cur) {
-          shouldUpdate = true;
-        } else {
-          let curClientTime = 0;
-          if (cur.data) {
-            try {
-              curClientTime = JSON.parse(cur.data).updatedAt || cur.updated_at;
-            } catch {
-              curClientTime = cur.updated_at;
-            }
-          } else {
-            curClientTime = cur.updated_at;
-          }
-
-          if (client_time > curClientTime) {
-            shouldUpdate = true;
-          }
+        if (sql.includes("INSERT INTO")) {
+          const tableMatch = sql.match(/INSERT INTO (\w+)/);
+          if (!tableMatch) return { success: false };
+          const table = tableMatch[1];
+          const [id, data, updated_at] = this._args;
+          const k = key(table, id);
+          store.set(k, { table, id, data, updated_at, deleted: 0 });
+          return { success: true };
         }
 
-        if (shouldUpdate) {
-          store.set(k, { table, id, data, updated_at: server_time, deleted });
-        }
         return { success: true };
       },
     };

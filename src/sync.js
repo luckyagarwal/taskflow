@@ -1,101 +1,29 @@
-// Local-first sync engine. Pushes dirty Dexie records to /api/sync and merges
-// back anything newer from other devices. Conflict resolution is last-write-wins
-// by `updatedAt`; deletions travel as tombstones.
-
-import { db, SYNCED_TABLES as TABLES, setApplyingRemote, setOnDirty } from "./db.js";
-
-const API = "/api/sync";
-const SINCE_KEY = "taskflow-sync-since";
-const DEBOUNCE_MS = 2000;
-const INTERVAL_MS = 30000;
-
-let inFlight = false;
-let pending = false;
-let debounceTimer = null;
-let onMerge = null; // refresh React state after a merge changes Dexie
-
-function getSince() { return Number(localStorage.getItem(SINCE_KEY)) || 0; }
-function setSince(v) { localStorage.setItem(SINCE_KEY, String(v)); }
-
-function stripMeta(record) {
-  const o = { ...record };
-  delete o._dirty;
-  return o;
-}
-
-// Gather every record/ tombstone not yet acknowledged by the server.
-async function collectDirty() {
-  const changes = {};
-  for (const t of TABLES) {
-    const rows = await db[t].where("_dirty").equals(1).toArray();
-    changes[t] = rows.map((r) => ({
-      id: r.id,
-      data: stripMeta(r),
-      updatedAt: r.updatedAt,
-      deleted: 0,
-    }));
-  }
-  const tombs = await db._tombstones.where("_dirty").equals(1).toArray();
-  for (const tomb of tombs) {
-    if (!changes[tomb.table]) changes[tomb.table] = [];
-    changes[tomb.table].push({ id: tomb.id, data: null, updatedAt: tomb.updatedAt, deleted: 1 });
-  }
-  return changes;
-}
-
-// Clear dirty flags for exactly what we pushed — but only if the record hasn't
-// been edited again since (updatedAt unchanged), so concurrent edits still push.
-async function clearPushed(changes) {
-  setApplyingRemote(true);
-  try {
-    for (const t of TABLES) {
-      for (const c of changes[t] || []) {
-        if (c.deleted) {
-          await db._tombstones.delete([t, c.id]).catch(() => {});
-        } else {
-          await db[t]
-            .where("id").equals(c.id)
-            .and((r) => r.updatedAt === c.updatedAt && r._dirty === 1)
-            .modify({ _dirty: 0 })
-            .catch(() => {});
-        }
-      }
-    }
-  } finally {
-    setApplyingRemote(false);
-  }
-}
-
-// Merge server rows into Dexie. Incoming wins only if strictly newer locally.
-async function applyRemote(remote) {
-  if (!remote) return false;
-  let changed = false;
-  setApplyingRemote(true);
-  try {
-    for (const t of TABLES) {
-      for (const rec of remote[t] || []) {
-        const local = await db[t].get(rec.id);
-        if (rec.deleted) {
-          if (local) { await db[t].delete(rec.id); changed = true; }
-          continue;
-        }
-        if (!local || rec.updated_at > (local.updatedAt || 0)) {
-          await db[t].put({ ...rec.data, id: rec.id, updatedAt: rec.updated_at, _dirty: 0 });
-          changed = true;
-        }
-      }
-    }
-  } finally {
-    setApplyingRemote(false);
-  }
-  return changed;
-}
-
-let syncDisabled = false;
-let pollTimer = null;
+// src/sync.js
+const DATA_API = "/api/data";
+const SAVE_API = "/api/save";
+const POLL_INTERVAL_MS = 15000;
 
 let isAuthorized = true;
 let onAuthStatusChange = null;
+let pollTimer = null;
+let onDataReload = null;
+
+const channel = typeof window !== 'undefined' ? new BroadcastChannel('taskflow-api-channel') : null;
+
+if (channel) {
+  channel.onmessage = async (event) => {
+    if (event.data && event.data.type === 'api-changed' && onDataReload) {
+      const data = await fetchAllData();
+      if (data) onDataReload(data);
+    }
+  };
+}
+
+function broadcastChange() {
+  if (channel) {
+    channel.postMessage({ type: 'api-changed' });
+  }
+}
 
 export function setOnAuthStatusChange(fn) {
   onAuthStatusChange = fn;
@@ -103,12 +31,6 @@ export function setOnAuthStatusChange(fn) {
 
 export function getIsAuthorized() {
   return isAuthorized;
-}
-
-export function disableSync() {
-  syncDisabled = true;
-  clearTimeout(debounceTimer);
-  clearTimeout(pollTimer);
 }
 
 function isLocalHostname() {
@@ -143,109 +65,132 @@ export function getSyncHeaders(contentType = 'application/json') {
   return headers;
 }
 
-export async function sync() {
-  if (syncDisabled) return;
-  if (inFlight) { pending = true; return; }
-  inFlight = true;
+export async function fetchAllData() {
   try {
-    const since = getSince();
-    const changes = await collectDirty();
-    const res = await fetch(API, {
-      method: "POST",
-      headers: getSyncHeaders('application/json'),
-      body: JSON.stringify({ since, changes }),
+    const res = await fetch(DATA_API, {
+      method: "GET",
+      headers: getSyncHeaders(null),
       cache: 'no-store'
     });
-    if (syncDisabled) return;
-
-    // Detect Cloudflare Access redirect to login page (which is HTML, not JSON, or returns 401/redirected)
-    const contentType = res.headers.get('content-type') || '';
-    const isHtml = contentType.includes('text/html');
     
-    let unauthorized = res.status === 401;
-    if (res.redirected && isHtml && !isLocalHostname()) {
-      unauthorized = true;
-    }
-
-    if (unauthorized) {
+    if (res.status === 401 || res.redirected) {
       if (isAuthorized) {
         isAuthorized = false;
         if (onAuthStatusChange) onAuthStatusChange(false);
       }
-      return;
+      return null;
     }
-
-    if (!res.ok) throw new Error("sync HTTP " + res.status);
-
+    
+    if (!res.ok) throw new Error("Fetch failed: HTTP " + res.status);
+    
     if (!isAuthorized) {
       isAuthorized = true;
       if (onAuthStatusChange) onAuthStatusChange(true);
     }
-
-    const data = await res.json();
-    if (syncDisabled) return;
-    await clearPushed(changes);
-    if (syncDisabled) return;
-    const merged = await applyRemote(data.changes);
-    if (syncDisabled) return;
-    if (typeof data.now === "number") setSince(data.now);
-    if (merged && onMerge) await onMerge();
+    
+    return await res.json();
   } catch (err) {
-    console.error("sync failed", err);
-  } finally {
-    inFlight = false;
-    if (pending && !syncDisabled) { pending = false; sync(); }
+    console.error("fetch failed", err);
+    return null;
   }
 }
 
-export function scheduleSync(delay = DEBOUNCE_MS) {
-  if (syncDisabled) return;
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => sync(), delay);
+export async function saveChanges(upserts = {}, deletes = {}) {
+  try {
+    const res = await fetch(SAVE_API, {
+      method: "POST",
+      headers: getSyncHeaders('application/json'),
+      body: JSON.stringify({ upserts, deletes }),
+      cache: 'no-store'
+    });
+    
+    if (res.status === 401 || res.redirected) {
+      if (isAuthorized) {
+        isAuthorized = false;
+        if (onAuthStatusChange) onAuthStatusChange(false);
+      }
+      return false;
+    }
+    
+    if (!res.ok) throw new Error("Save failed: HTTP " + res.status);
+    
+    if (!isAuthorized) {
+      isAuthorized = true;
+      if (onAuthStatusChange) onAuthStatusChange(true);
+    }
+    
+    broadcastChange();
+    return true;
+  } catch (err) {
+    console.error("save failed", err);
+    return false;
+  }
 }
 
-function getPollInterval() {
-  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-    return 30000; // 30s in background
+let eventSource = null;
+
+function setupEventSource() {
+  if (typeof EventSource === 'undefined') return;
+  if (eventSource) {
+    try { eventSource.close(); } catch (e) {}
   }
-  return 5000; // 5s in foreground
+  
+  eventSource = new EventSource('/api/events');
+  eventSource.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data && data.type === 'api-changed' && onDataReload) {
+        const newData = await fetchAllData();
+        if (newData) onDataReload(newData);
+      }
+    } catch (err) {
+      console.error("SSE parse error", err);
+    }
+  };
+  eventSource.onerror = (err) => {
+    console.error("SSE connection error", err);
+  };
 }
 
 function runPollingLoop() {
   clearTimeout(pollTimer);
   pollTimer = setTimeout(async () => {
-    if (!syncDisabled) {
-      await sync();
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      const data = await fetchAllData();
+      if (data && onDataReload) onDataReload(data);
     }
     runPollingLoop();
-  }, getPollInterval());
+  }, POLL_INTERVAL_MS);
 }
 
 function handleVisibilityOrFocus() {
-  if (!syncDisabled && typeof document !== 'undefined' && document.visibilityState === 'visible') {
-    sync();
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+    fetchAllData().then((data) => {
+      if (data && onDataReload) onDataReload(data);
+    });
     runPollingLoop();
+    // Re-verify/re-establish SSE connection if it got closed
+    if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+      setupEventSource();
+    }
   }
 }
 
-// onMergeCb: re-reads Dexie into React state after remote changes land.
-export function startSync(onMergeCb) {
-  onMerge = onMergeCb || null;
-  setOnDirty(() => {
-    if (!syncDisabled) scheduleSync();
+export function startOnlineSync(onDataReloadCb) {
+  onDataReload = onDataReloadCb;
+  
+  // Initial pull
+  fetchAllData().then((data) => {
+    if (data && onDataReload) onDataReload(data);
   });
   
-  // Initial sync
-  sync();
-  
-  // Start polling
+  // Start background loop
   runPollingLoop();
 
   if (typeof window !== "undefined") {
-    window.addEventListener("online", () => {
-      if (!syncDisabled) sync();
-    });
+    setupEventSource();
     window.addEventListener("focus", handleVisibilityOrFocus);
     document.addEventListener("visibilitychange", handleVisibilityOrFocus);
   }
 }
+

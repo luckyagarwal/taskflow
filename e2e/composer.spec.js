@@ -3,7 +3,30 @@ import { test, expect } from "@playwright/test";
 // Regression for the parsing-preview fix: typing natural-language tokens must
 // light up the composer's Date / Priority / Label / Project pills live.
 test("composer preview pills reflect parsed tokens", async ({ page }) => {
+  // Mock API endpoints to support online-only mode in E2E tests
+  await page.route("**/api/data", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        tasks: [],
+        projects: [],
+        labels: [],
+        sections: []
+      })
+    });
+  });
+
+  await page.route("**/api/events", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      body: "data: {\"type\":\"connected\"}\n\n"
+    });
+  });
+
   await page.goto("/");
+
 
   // Open the first inline "Add task" composer.
   await page.getByRole("button", { name: "Add task" }).first().click();

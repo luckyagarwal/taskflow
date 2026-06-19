@@ -1,8 +1,7 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
-import { db, setOnDbChange } from './db.js';
-import { startSync, disableSync, getSyncHeaders, sync, setOnAuthStatusChange } from './sync.js';
+import { saveChanges, fetchAllData, startOnlineSync, getSyncHeaders, setOnAuthStatusChange } from './sync.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -94,146 +93,75 @@ export function useStore() {
   const [collapsedSections, setCollapsedSections] = useState([]);
 
   // Database initialization and migration
-  useEffect(() => {
-    async function init() {
-      const tasksCount = await db.tasks.count();
-      const projectsCount = await db.projects.count();
-      const labelsCount = await db.labels.count();
-      const sectionsCount = await db.sections.count();
-      
-      let loadedTasks = [];
-      let loadedProjects = [];
-      let loadedLabels = [];
-      let loadedSections = [];
+  const reloadFromServer = useCallback((data) => {
+    if (!data) return;
+    let t = data.tasks || [];
+    let p = data.projects || [];
+    let l = data.labels || [];
+    let s = data.sections || [];
 
-      const KEY_TASKS = 'todo-proto-tasks';
-      const KEY_PROJECTS = 'todo-proto-projects';
-      const KEY_LABELS = 'todo-proto-labels';
+    const KEY_TASKS = 'todo-proto-tasks';
+    const KEY_PROJECTS = 'todo-proto-projects';
+    const KEY_LABELS = 'todo-proto-labels';
 
-      if (tasksCount > 0 || projectsCount > 0 || labelsCount > 0 || sectionsCount > 0) {
-        loadedTasks = await db.tasks.toArray();
-        let hasMissingPos = false;
-        loadedTasks.forEach((t, idx) => {
-          if (t.position === undefined) {
-            t.position = idx;
-            hasMissingPos = true;
-          }
+    if (t.length === 0 && p.length === 0 && l.length === 0 && s.length === 0) {
+      const localTasks = localStorage.getItem(KEY_TASKS);
+      const localProjects = localStorage.getItem(KEY_PROJECTS);
+      const localLabels = localStorage.getItem(KEY_LABELS);
+
+      if (localTasks || localProjects || localLabels) {
+        const normalize = (list) => list.map((tItem, idx) => {
+          const subtasks = (tItem.subtasks || []).map((sub, sIdx) => ({
+            priority: 4,
+            status: 'planned',
+            startOffset: null,
+            dueOffset: null,
+            createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
+            ...sub
+          }));
+          return {
+            createdAt: tItem.createdAt || (Date.now() - (1000 - idx) * 60000),
+            subtaskSort: tItem.subtaskSort || 'manual',
+            position: tItem.position !== undefined ? tItem.position : idx,
+            ...tItem,
+            subtasks
+          };
         });
-        if (hasMissingPos) {
-          await db.tasks.bulkPut(loadedTasks);
+
+        t = localTasks ? normalize(JSON.parse(localTasks)) : [];
+        p = localProjects ? JSON.parse(localProjects).map((proj, idx) => ({ position: idx, ...proj })) : [];
+        l = localLabels ? JSON.parse(localLabels) : [];
+
+        localStorage.removeItem(KEY_TASKS);
+        localStorage.removeItem(KEY_PROJECTS);
+        localStorage.removeItem(KEY_LABELS);
+
+        t.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        p.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+        const uniqueProjGroups = Array.from(new Set(p.map(proj => proj.group))).filter(Boolean);
+        if (uniqueProjGroups.length) {
+          s = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
+          s.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         }
-        loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        loadedProjects = await db.projects.toArray();
-        loadedLabels = await db.labels.toArray();
-        loadedSections = await db.sections.toArray();
 
-        let hasMissingProjPos = false;
-        loadedProjects.forEach((p, idx) => {
-          if (p.position === undefined) {
-            p.position = idx;
-            hasMissingProjPos = true;
-          }
-        });
-        if (hasMissingProjPos) {
-          await db.projects.bulkPut(loadedProjects);
-        }
-        loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
-        if (loadedSections.length === 0) {
-          const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
-          if (!uniqueProjGroups.includes('Work')) uniqueProjGroups.push('Work');
-          if (!uniqueProjGroups.includes('Personal')) uniqueProjGroups.push('Personal');
-          loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
-          await db.sections.bulkPut(loadedSections);
-        } else {
-          let hasMissingSecPos = false;
-          loadedSections.forEach((s, idx) => {
-            if (s.position === undefined) {
-              s.position = idx;
-              hasMissingSecPos = true;
-            }
-          });
-          if (hasMissingSecPos) {
-            await db.sections.bulkPut(loadedSections);
-          }
-        }
-        loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      } else {
-        const localTasks = localStorage.getItem(KEY_TASKS);
-        const localProjects = localStorage.getItem(KEY_PROJECTS);
-        const localLabels = localStorage.getItem(KEY_LABELS);
-
-        if (localTasks || localProjects || localLabels) {
-          const normalize = (list) => list.map((t, idx) => {
-            const subtasks = (t.subtasks || []).map((sub, sIdx) => ({
-              priority: 4,
-              status: 'planned',
-              startOffset: null,
-              dueOffset: null,
-              createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
-              ...sub
-            }));
-            return {
-              createdAt: t.createdAt || (Date.now() - (1000 - idx) * 60000),
-              subtaskSort: t.subtaskSort || 'manual',
-              position: t.position !== undefined ? t.position : idx,
-              ...t,
-              subtasks
-            };
-          });
-
-          loadedTasks = localTasks ? normalize(JSON.parse(localTasks)) : [];
-          loadedProjects = localProjects ? JSON.parse(localProjects).map((p, idx) => ({ position: idx, ...p })) : [];
-          loadedLabels = localLabels ? JSON.parse(localLabels) : [];
-
-          if (loadedTasks.length) await db.tasks.bulkPut(loadedTasks);
-          if (loadedProjects.length) await db.projects.bulkPut(loadedProjects);
-          if (loadedLabels.length) await db.labels.bulkPut(loadedLabels);
-
-          localStorage.removeItem(KEY_TASKS);
-          localStorage.removeItem(KEY_PROJECTS);
-          localStorage.removeItem(KEY_LABELS);
-
-          loadedTasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-          loadedProjects.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
-          const uniqueProjGroups = Array.from(new Set(loadedProjects.map(p => p.group))).filter(Boolean);
-          if (uniqueProjGroups.length) {
-            loadedSections = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
-            await db.sections.bulkPut(loadedSections);
-            loadedSections.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-          }
-        }
+        saveChanges({ tasks: t, projects: p, labels: l, sections: s }, {});
       }
-
-      setTasks(loadedTasks);
-      setProjects(loadedProjects);
-      setCustomLabels(loadedLabels);
-      setSections(loadedSections);
-      setLoaded(true);
     }
-    
-    init().catch(err => console.error("Database initialization failed", err));
-  }, []);
 
-  // Re-read Dexie into React state after a remote sync merges in changes.
-  const reloadFromDb = useCallback(async () => {
-    const [t, p, l, s] = await Promise.all([
-      db.tasks.toArray(), db.projects.toArray(), db.labels.toArray(), db.sections.toArray()
-    ]);
     t.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     p.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     s.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
     setTasks(t);
     setProjects(p);
     setCustomLabels(l);
     setSections(s);
   }, []);
 
-  useEffect(() => {
-    setOnDbChange(reloadFromDb);
-    return () => setOnDbChange(null);
-  }, [reloadFromDb]);
+  const queueSave = useCallback(async (upserts = {}, deletes = {}) => {
+    await saveChanges(upserts, deletes);
+  }, []);
 
   useEffect(() => {
     setOnAuthStatusChange((status) => {
@@ -244,9 +172,11 @@ export function useStore() {
 
   // Start background sync once initial load completes (runs once).
   useEffect(() => {
-    if (!loaded) return;
-    startSync(reloadFromDb);
-  }, [loaded, reloadFromDb]);
+    startOnlineSync((data) => {
+      reloadFromServer(data);
+      setLoaded(true);
+    });
+  }, [reloadFromServer]);
 
   useEffect(() => {
     localStorage.setItem(KEY_SIDEBAR_COLLAPSED, JSON.stringify(sidebarCollapsed));
@@ -275,10 +205,10 @@ export function useStore() {
         const nextDone = !t.done;
         updated = { ...t, done: nextDone, doneOffset: nextDone ? 0 : null, status: nextDone ? 'done' : 'planned' };
       }
-      db.tasks.put(updated).catch(() => {});
+      queueSave({ tasks: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const updateTask = useCallback((id, patch) => {
     setTasks((ts) => ts.map((t) => {
@@ -293,17 +223,18 @@ export function useStore() {
             }
           }
         }
-        db.tasks.put(updated).catch(() => {});
+        queueSave({ tasks: [updated] });
         return updated;
       }
       return t;
     }));
-  }, []);
+  }, [queueSave]);
 
   const addTask = useCallback((partial) => {
     const id = 'task_n' + (++_n);
     let targetProjectId = partial.projectId || 'inbox';
     
+    let npToSave = null;
     if (typeof targetProjectId === 'string' && targetProjectId.startsWith('__new__')) {
       const newProjName = targetProjectId.replace('__new__', '');
       const newProjId = 'p_' + Date.now();
@@ -315,7 +246,7 @@ export function useStore() {
         parent: null
       };
       setProjects((prev) => [...prev, np]);
-      db.projects.put(np).catch(() => {});
+      npToSave = np;
       targetProjectId = newProjId;
     }
 
@@ -330,7 +261,7 @@ export function useStore() {
         };
         setCustomLabels((prev) => {
           const next = [...prev, newTag];
-          db.labels.put(newTag).catch(() => {});
+          queueSave({ labels: [newTag] });
           return next;
         });
         return newTagId;
@@ -353,15 +284,17 @@ export function useStore() {
     }
     
     setTasks((ts) => [task, ...ts]);
-    db.tasks.put(task).catch(() => {});
+    const upserts = { tasks: [task] };
+    if (npToSave) upserts.projects = [npToSave];
+    queueSave(upserts);
     return id;
-  }, [projects, tasks]);
+  }, [projects, tasks, queueSave]);
 
   const deleteTask = useCallback((id) => {
     setTasks((ts) => ts.filter((t) => t.id !== id));
-    db.tasks.delete(id).catch(() => {});
+    queueSave({}, { tasks: [id] });
     setSelectedId((s) => (s === id ? null : s));
-  }, []);
+  }, [queueSave]);
 
   const toggleMultiSelect = useCallback((id) => {
     setMultiSelectedIds((prev) =>
@@ -377,14 +310,15 @@ export function useStore() {
     const ids = idsToDelete || multiSelectedIds;
     if (!ids.length) return;
     setTasks((ts) => ts.filter((t) => !ids.includes(t.id)));
-    db.tasks.bulkDelete(ids).catch(() => {});
+    queueSave({}, { tasks: ids });
     setMultiSelectedIds((prev) => prev.filter((x) => !ids.includes(x)));
     setSelectedId((s) => (ids.includes(s) ? null : s));
-  }, [multiSelectedIds]);
+  }, [multiSelectedIds, queueSave]);
 
   const bulkComplete = useCallback((idsToComplete) => {
     const ids = idsToComplete || multiSelectedIds;
     if (!ids.length) return;
+    const completedTasks = [];
     setTasks((ts) =>
       ts.map((t) => {
         if (!ids.includes(t.id)) return t;
@@ -396,30 +330,33 @@ export function useStore() {
         } else {
           updated = { ...t, done: true, doneOffset: 0, status: 'done' };
         }
-        db.tasks.put(updated).catch(() => {});
+        completedTasks.push(updated);
         return updated;
       })
     );
+    if (completedTasks.length) {
+      queueSave({ tasks: completedTasks });
+    }
     setMultiSelectedIds((prev) => prev.filter((x) => !ids.includes(x)));
-  }, [multiSelectedIds]);
+  }, [multiSelectedIds, queueSave]);
 
   const toggleSubtask = useCallback((taskId, subId) => {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== taskId) return t;
       const updated = { ...t, subtasks: t.subtasks.map((s) => (s.id === subId ? { ...s, done: !s.done, status: !s.done ? 'done' : 'planned' } : s)) };
-      db.tasks.put(updated).catch(() => {});
+      queueSave({ tasks: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const addSubtask = useCallback((taskId, title) => {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== taskId) return t;
       const updated = { ...t, subtasks: [...t.subtasks, { id: 's' + (++_n), title, done: false, priority: 4, status: 'planned', startOffset: null, dueOffset: null, createdAt: Date.now() }] };
-      db.tasks.put(updated).catch(() => {});
+      queueSave({ tasks: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const updateSubtask = useCallback((taskId, subId, patch) => {
     setTasks((ts) => ts.map((t) => {
@@ -447,19 +384,19 @@ export function useStore() {
           return updatedSub;
         })
       };
-      db.tasks.put(updated).catch(() => {});
+      queueSave({ tasks: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const deleteSubtask = useCallback((taskId, subId) => {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== taskId) return t;
       const updated = { ...t, subtasks: t.subtasks.filter((s) => s.id !== subId) };
-      db.tasks.put(updated).catch(() => {});
+      queueSave({ tasks: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const addProject = useCallback((name, group = 'Personal') => {
     if (!name || !name.trim()) return;
@@ -472,35 +409,36 @@ export function useStore() {
       position: projects.length
     };
     setProjects((prev) => [...prev, np]);
-    db.projects.put(np).catch(() => {});
+    queueSave({ projects: [np] });
     setView({ type: 'project', id: np.id });
-  }, [projects]);
+  }, [projects, queueSave]);
 
   const deleteProject = useCallback((id) => {
     setProjects((prev) => prev.filter((p) => p.id !== id));
-    db.projects.delete(id).catch(() => {});
+    const tasksToUpdate = [];
     setTasks((prev) => {
       const next = prev.map((t) => {
         if (t.projectId === id) {
           const updated = { ...t, projectId: 'inbox' };
-          db.tasks.put(updated).catch(() => {});
+          tasksToUpdate.push(updated);
           return updated;
         }
         return t;
       });
       return next;
     });
+    queueSave({ tasks: tasksToUpdate }, { projects: [id] });
     setView((v) => v.type === 'project' && v.id === id ? { type: 'inbox' } : v);
-  }, []);
+  }, [queueSave]);
 
   const updateProject = useCallback((id, patch) => {
     setProjects((prev) => prev.map((p) => {
       if (p.id !== id) return p;
       const updated = { ...p, ...patch };
-      db.projects.put(updated).catch(() => {});
+      queueSave({ projects: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const reorderProjects = useCallback((draggedId, targetId) => {
     setProjects((prev) => {
@@ -515,16 +453,15 @@ export function useStore() {
         if (removed.group !== next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group) {
           const newGroup = next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group || removed.group;
           removed.group = newGroup;
-          db.projects.put(removed).catch(() => {});
         }
 
         const updated = next.map((p, idx) => ({ ...p, position: idx }));
-        db.projects.bulkPut(updated).catch(err => console.error(err));
+        queueSave({ projects: updated });
         return updated;
       }
       return prev;
     });
-  }, []);
+  }, [queueSave]);
 
   const [sorts, setSorts] = useState(() => {
     try {
@@ -570,12 +507,12 @@ export function useStore() {
         next.splice(targetIdx, 0, removed);
         
         const updated = next.map((t, idx) => ({ ...t, position: idx }));
-        db.tasks.bulkPut(updated).catch(err => console.error(err));
+        queueSave({ tasks: updated });
         return updated;
       }
       return prev;
     });
-  }, []);
+  }, [queueSave]);
 
   const addLabel = useCallback((name) => {
     if (!name || !name.trim()) return null;
@@ -587,36 +524,37 @@ export function useStore() {
     };
     setCustomLabels((prev) => {
       const next = [...prev, newTag];
-      db.labels.put(newTag).catch(() => {});
+      queueSave({ labels: [newTag] });
       return next;
     });
     return newTagId;
-  }, []);
+  }, [queueSave]);
 
   const updateLabel = useCallback((id, patch) => {
     setCustomLabels((prev) => prev.map((l) => {
       if (l.id !== id) return l;
       const updated = { ...l, ...patch };
-      db.labels.put(updated).catch(() => {});
+      queueSave({ labels: [updated] });
       return updated;
     }));
-  }, []);
+  }, [queueSave]);
 
   const deleteLabel = useCallback((id) => {
     setCustomLabels((prev) => prev.filter((l) => l.id !== id));
-    db.labels.delete(id).catch(() => {});
+    const tasksToUpdate = [];
     setTasks((prev) => {
       const next = prev.map((t) => {
         if ((t.labels || []).includes(id)) {
           const updated = { ...t, labels: t.labels.filter((x) => x !== id) };
-          db.tasks.put(updated).catch(() => {});
+          tasksToUpdate.push(updated);
           return updated;
         }
         return t;
       });
       return next;
     });
-  }, []);
+    queueSave({ tasks: tasksToUpdate }, { labels: [id] });
+  }, [queueSave]);
 
   const addSection = useCallback((name) => {
     if (!name || !name.trim()) return null;
@@ -629,9 +567,9 @@ export function useStore() {
       position: sections.length
     };
     setSections((prev) => [...prev, newSec]);
-    db.sections.put(newSec).catch(() => {});
+    queueSave({ sections: [newSec] });
     return newSec;
-  }, [sections]);
+  }, [sections, queueSave]);
 
   const deleteSection = useCallback((id) => {
     setSections((prev) => {
@@ -639,24 +577,24 @@ export function useStore() {
       if (!secToDelete) return prev;
       
       const newSecs = prev.filter((s) => s.id !== id);
-      db.sections.delete(id).catch(() => {});
       
-      // Also delete projects belonging to this section
+      const projectsToDelete = [];
+      const tasksToUpdate = [];
+      
       setProjects((pPrev) => {
         const projsInSec = pPrev.filter((p) => p.group === secToDelete.name);
         const nextProjs = pPrev.filter((p) => p.group !== secToDelete.name);
         
         projsInSec.forEach((p) => {
-          db.projects.delete(p.id).catch(() => {});
+          projectsToDelete.push(p.id);
         });
         
-        // Update tasks of these deleted projects to 'inbox'
         setTasks((tPrev) => {
           const nextTasks = tPrev.map((t) => {
             const isTaskInDeletedProject = projsInSec.some((p) => p.id === t.projectId);
             if (isTaskInDeletedProject) {
               const updated = { ...t, projectId: 'inbox' };
-              db.tasks.put(updated).catch(() => {});
+              tasksToUpdate.push(updated);
               return updated;
             }
             return t;
@@ -667,9 +605,10 @@ export function useStore() {
         return nextProjs;
       });
 
+      queueSave({ tasks: tasksToUpdate }, { sections: [id], projects: projectsToDelete });
       return newSecs;
     });
-  }, []);
+  }, [queueSave]);
 
   const updateSection = useCallback((id, patch) => {
     setSections((prev) => {
@@ -679,27 +618,31 @@ export function useStore() {
       const updatedSecs = prev.map((s) => {
         if (s.id !== id) return s;
         const updated = { ...s, ...patch };
-        db.sections.put(updated).catch(() => {});
+        queueSave({ sections: [updated] });
         return updated;
       });
 
       if (patch.name && patch.name !== sec.name) {
         setProjects((pPrev) => {
+          const projectsToUpdate = [];
           const nextProjs = pPrev.map((p) => {
             if (p.group === sec.name) {
               const updatedProj = { ...p, group: patch.name };
-              db.projects.put(updatedProj).catch(() => {});
+              projectsToUpdate.push(updatedProj);
               return updatedProj;
             }
             return p;
           });
+          if (projectsToUpdate.length) {
+            queueSave({ projects: projectsToUpdate });
+          }
           return nextProjs;
         });
       }
 
       return updatedSecs;
     });
-  }, []);
+  }, [queueSave]);
 
   const reorderSections = useCallback((draggedId, targetId) => {
     setSections((prev) => {
@@ -711,12 +654,12 @@ export function useStore() {
         next.splice(targetIdx, 0, removed);
         
         const updated = next.map((s, idx) => ({ ...s, position: idx }));
-        db.sections.bulkPut(updated).catch(err => console.error(err));
+        queueSave({ sections: updated });
         return updated;
       }
       return prev;
     });
-  }, []);
+  }, [queueSave]);
 
   const addToast = useCallback((msg) => {
     const id = 'toast_' + Date.now();
@@ -727,9 +670,6 @@ export function useStore() {
   }, []);
 
   const resetDatabase = useCallback(async () => {
-    disableSync();
-
-    // Instantly clear all states so they disappear from UI immediately
     setTasks([]);
     setProjects([]);
     setCustomLabels([]);
@@ -739,7 +679,7 @@ export function useStore() {
 
     setWipingDb(true);
     try {
-      const res = await fetch('/api/sync', {
+      const res = await fetch('/api/save', {
         method: 'DELETE',
         headers: getSyncHeaders(null),
         cache: 'no-store'
@@ -756,14 +696,6 @@ export function useStore() {
       localStorage.clear();
       localStorage.setItem('taskflow-seeded', 'true');
       
-      await Promise.all([
-        db.tasks.clear(),
-        db.projects.clear(),
-        db.labels.clear(),
-        db.sections.clear(),
-        db._tombstones.clear()
-      ]);
-
       if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(key => caches.delete(key)));
@@ -788,17 +720,12 @@ export function useStore() {
 
   const exportDatabase = useCallback(async () => {
     try {
-      const allTasks = await db.tasks.toArray();
-      const allProjects = await db.projects.toArray();
-      const allLabels = await db.labels.toArray();
-      const allSections = await db.sections.toArray();
-
       const backup = {
         version: 3,
-        tasks: allTasks,
-        projects: allProjects,
-        labels: allLabels,
-        sections: allSections,
+        tasks,
+        projects,
+        labels: customLabels,
+        sections,
         exportedAt: new Date().toISOString()
       };
 
@@ -817,7 +744,7 @@ export function useStore() {
       console.error("Failed to export backup", err);
       addToast("Failed to export backup!");
     }
-  }, [addToast]);
+  }, [tasks, projects, customLabels, sections, addToast]);
 
   const importDatabase = useCallback(async (jsonData) => {
     try {
@@ -828,15 +755,12 @@ export function useStore() {
         throw new Error("Missing required tables: tasks or projects");
       }
 
-      await db.tasks.clear();
-      await db.projects.clear();
-      await db.labels.clear();
-      await db.sections.clear();
-
-      if (backup.tasks.length) await db.tasks.bulkPut(backup.tasks);
-      if (backup.projects.length) await db.projects.bulkPut(backup.projects);
-      if (backup.labels && backup.labels.length) await db.labels.bulkPut(backup.labels);
-      if (backup.sections && backup.sections.length) await db.sections.bulkPut(backup.sections);
+      await saveChanges({
+        tasks: backup.tasks,
+        projects: backup.projects,
+        labels: backup.labels || [],
+        sections: backup.sections || []
+      }, {});
 
       addToast("Backup imported successfully! Reloading...");
       setTimeout(() => {
@@ -856,14 +780,18 @@ export function useStore() {
 
   const forceSync = useCallback(async () => {
     try {
-      localStorage.removeItem('taskflow-sync-since');
-      await sync();
-      addToast("Force sync completed!");
+      const data = await fetchAllData();
+      if (data) {
+        reloadFromServer(data);
+        addToast("Force sync completed!");
+      } else {
+        throw new Error("Force sync returned no data");
+      }
     } catch (e) {
       console.error(e);
       addToast("Force sync failed!");
     }
-  }, [addToast]);
+  }, [addToast, reloadFromServer]);
 
   return {
     tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,
