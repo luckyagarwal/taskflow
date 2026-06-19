@@ -61,7 +61,11 @@ SYNCED_TABLES.forEach((t) => {
       if (obj._dirty === undefined) obj._dirty = 0;
       return;
     }
-    if (obj.updatedAt === undefined) obj.updatedAt = Date.now();
+    if (obj.updatedAt === undefined) {
+      obj.updatedAt = Date.now();
+    } else {
+      obj.updatedAt = Math.max(Date.now(), obj.updatedAt + 1);
+    }
     obj._dirty = 1;
     if (_onDirty) _onDirty();
     broadcastDbChange();
@@ -71,7 +75,8 @@ SYNCED_TABLES.forEach((t) => {
     if (_applyingRemote) return; // keep incoming mods verbatim
     if (_onDirty) _onDirty();
     broadcastDbChange();
-    return { updatedAt: Date.now(), _dirty: 1 };
+    const nextTs = Math.max(Date.now(), (obj.updatedAt || 0) + 1);
+    return { updatedAt: nextTs, _dirty: 1 };
   });
 
   db[t].hook("deleting", function (primKey, obj) {

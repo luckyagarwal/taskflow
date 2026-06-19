@@ -31,12 +31,32 @@ export function makeFakeD1(store = new Map()) {
           return { success: true };
         }
         const table = sql.match(/INSERT INTO (\w+)/)[1];
-        const [id, data, updated_at, deleted] = this._args;
+        const [id, data, server_time, deleted, client_time] = this._args;
         const k = key(table, id);
         const cur = store.get(k);
-        // LWW: only overwrite when strictly newer (mirrors the SQL WHERE clause).
-        if (!cur || updated_at > cur.updated_at) {
-          store.set(k, { table, id, data, updated_at, deleted });
+
+        let shouldUpdate = false;
+        if (!cur) {
+          shouldUpdate = true;
+        } else {
+          let curClientTime = 0;
+          if (cur.data) {
+            try {
+              curClientTime = JSON.parse(cur.data).updatedAt || cur.updated_at;
+            } catch {
+              curClientTime = cur.updated_at;
+            }
+          } else {
+            curClientTime = cur.updated_at;
+          }
+
+          if (client_time > curClientTime) {
+            shouldUpdate = true;
+          }
+        }
+
+        if (shouldUpdate) {
+          store.set(k, { table, id, data, updated_at: server_time, deleted });
         }
         return { success: true };
       },

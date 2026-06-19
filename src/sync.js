@@ -116,11 +116,21 @@ function isLocalHostname() {
   const hn = window.location.hostname;
   return hn === 'localhost' || 
          hn === '127.0.0.1' || 
+         hn === '0.0.0.0' ||
          hn === '[::1]' ||
+         hn === '[::]' ||
          hn.startsWith('192.168.') || 
          hn.startsWith('10.') || 
          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hn) ||
-         hn.endsWith('.local');
+         hn.endsWith('.local') ||
+         hn.endsWith('.test') ||
+         hn.endsWith('.localhost') ||
+         hn.includes('github.dev') ||
+         hn.includes('gitpod.io') ||
+         hn.includes('webcontainer.io') ||
+         hn.includes('ngrok-free.app') ||
+         hn.includes('ngrok.io') ||
+         hn.includes('trycloudflare.com');
 }
 
 export function getSyncHeaders(contentType = 'application/json') {
@@ -152,8 +162,8 @@ export async function sync() {
     const contentType = res.headers.get('content-type') || '';
     const isHtml = contentType.includes('text/html');
     
-    let unauthorized = res.status === 401 || res.redirected;
-    if (isHtml && !isLocalHostname()) {
+    let unauthorized = res.status === 401;
+    if (res.redirected && isHtml && !isLocalHostname()) {
       unauthorized = true;
     }
 

@@ -38,6 +38,7 @@ export async function onRequestPost(context) {
   const changes = body.changes || {};
 
   // 1. Upsert all incoming records in one batch (last-write-wins guard in WHERE).
+  const serverTime = Date.now();
   const stmts = [];
   for (const t of TABLES) {
     const recs = Array.isArray(changes[t]) ? changes[t] : [];
@@ -52,13 +53,14 @@ export async function onRequestPost(context) {
                data = excluded.data,
                updated_at = excluded.updated_at,
                deleted = excluded.deleted
-             WHERE excluded.updated_at > ${t}.updated_at`
+             WHERE ? > CAST(coalesce(json_extract(${t}.data, '$.updatedAt'), ${t}.updated_at) AS INTEGER)`
           )
           .bind(
             rec.id,
             rec.data == null ? null : JSON.stringify(rec.data),
-            Number(rec.updatedAt) || Date.now(),
-            rec.deleted ? 1 : 0
+            serverTime,
+            rec.deleted ? 1 : 0,
+            Number(rec.updatedAt) || serverTime
           )
       );
     }
