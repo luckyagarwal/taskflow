@@ -111,22 +111,24 @@ export function disableSync() {
   clearTimeout(pollTimer);
 }
 
+function isLocalHostname() {
+  if (typeof window === 'undefined') return false;
+  const hn = window.location.hostname;
+  return hn === 'localhost' || 
+         hn === '127.0.0.1' || 
+         hn === '[::1]' ||
+         hn.startsWith('192.168.') || 
+         hn.startsWith('10.') || 
+         /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hn) ||
+         hn.endsWith('.local');
+}
+
 export function getSyncHeaders(contentType = 'application/json') {
   const headers = {};
   if (contentType) headers['Content-Type'] = contentType;
   
-  if (typeof window !== 'undefined') {
-    const hn = window.location.hostname;
-    const isLocal = hn === 'localhost' || 
-                    hn === '127.0.0.1' || 
-                    hn === '[::1]' ||
-                    hn.startsWith('192.168.') || 
-                    hn.startsWith('10.') || 
-                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hn) ||
-                    hn.endsWith('.local');
-    if (isLocal) {
-      headers['Cf-Access-Authenticated-User-Email'] = 'dev@example.com';
-    }
+  if (isLocalHostname()) {
+    headers['Cf-Access-Authenticated-User-Email'] = 'dev@example.com';
   }
   return headers;
 }
@@ -149,7 +151,11 @@ export async function sync() {
     // Detect Cloudflare Access redirect to login page (which is HTML, not JSON, or returns 401/redirected)
     const contentType = res.headers.get('content-type') || '';
     const isHtml = contentType.includes('text/html');
-    const unauthorized = res.status === 401 || res.redirected || isHtml;
+    
+    let unauthorized = res.status === 401 || res.redirected;
+    if (isHtml && !isLocalHostname()) {
+      unauthorized = true;
+    }
 
     if (unauthorized) {
       if (isAuthorized) {
