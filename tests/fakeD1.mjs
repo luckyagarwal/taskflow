@@ -3,7 +3,7 @@
 // Lets us exercise the real Pages Function without Cloudflare.
 
 export function makeFakeD1(store = new Map()) {
-  const key = (table, user, id) => `${table}|${user}|${id}`;
+  const key = (table, id) => `${table}|${id}`;
 
   function prepare(sql) {
     const stmt = {
@@ -11,10 +11,10 @@ export function makeFakeD1(store = new Map()) {
       bind(...args) { this._args = args; return this; },
       async all() {
         const table = sql.match(/FROM (\w+)/)[1];
-        const [user, since] = this._args;
+        const [since] = this._args;
         const results = [];
         for (const v of store.values()) {
-          if (v.table === table && v.user === user && v.updated_at > since) {
+          if (v.table === table && v.updated_at > since) {
             results.push({ id: v.id, data: v.data, updated_at: v.updated_at, deleted: v.deleted });
           }
         }
@@ -23,21 +23,20 @@ export function makeFakeD1(store = new Map()) {
       async run() {
         if (sql.includes("DELETE FROM")) {
           const table = sql.match(/DELETE FROM (\w+)/)[1];
-          const [user] = this._args;
           for (const [k, v] of store.entries()) {
-            if (v.table === table && v.user === user) {
+            if (v.table === table) {
               store.delete(k);
             }
           }
           return { success: true };
         }
         const table = sql.match(/INSERT INTO (\w+)/)[1];
-        const [id, user, data, updated_at, deleted] = this._args;
-        const k = key(table, user, id);
+        const [id, data, updated_at, deleted] = this._args;
+        const k = key(table, id);
         const cur = store.get(k);
         // LWW: only overwrite when strictly newer (mirrors the SQL WHERE clause).
         if (!cur || updated_at > cur.updated_at) {
-          store.set(k, { table, user, id, data, updated_at, deleted });
+          store.set(k, { table, id, data, updated_at, deleted });
         }
         return { success: true };
       },

@@ -1,8 +1,6 @@
 // Cloudflare Pages Function: POST /api/sync
 //
-// Local-first sync endpoint. Identity comes from Cloudflare Access (Google OAuth)
-// via the Cf-Access-Authenticated-User-Email header — no auth code here, the app
-// just trusts the verified header. Every row is scoped to that email.
+// Local-first sync endpoint. Single-user configuration, no email scoping.
 //
 // Request body:  { since: <ms>, changes: { tasks:[...], projects:[...], labels:[...], sections:[...] } }
 //   each change: { id, data: <object|null>, updatedAt: <ms>, deleted: 0|1 }
@@ -26,12 +24,6 @@ function json(obj, status = 200) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  const email = request.headers.get('Cf-Access-Authenticated-User-Email');
-  if (!email) return new Response('Unauthorized', {
-    status: 401,
-    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-  });
-
   const db = env.DB;
   if (!db) return json({ error: 'D1 binding "DB" not configured' }, 500);
 
@@ -54,9 +46,9 @@ export async function onRequestPost(context) {
       stmts.push(
         db
           .prepare(
-            `INSERT INTO ${t} (id, user_email, data, updated_at, deleted)
-             VALUES (?, ?, ?, ?, ?)
-             ON CONFLICT(user_email, id) DO UPDATE SET
+            `INSERT INTO ${t} (id, data, updated_at, deleted)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
                data = excluded.data,
                updated_at = excluded.updated_at,
                deleted = excluded.deleted
@@ -64,7 +56,6 @@ export async function onRequestPost(context) {
           )
           .bind(
             rec.id,
-            email,
             rec.data == null ? null : JSON.stringify(rec.data),
             Number(rec.updatedAt) || Date.now(),
             rec.deleted ? 1 : 0
@@ -78,8 +69,8 @@ export async function onRequestPost(context) {
   const out = {};
   for (const t of TABLES) {
     const { results } = await db
-      .prepare(`SELECT id, data, updated_at, deleted FROM ${t} WHERE user_email = ? AND updated_at > ?`)
-      .bind(email, since)
+      .prepare(`SELECT id, data, updated_at, deleted FROM ${t} WHERE updated_at > ?`)
+      .bind(since)
       .all();
     out[t] = (results || []).map((r) => ({
       id: r.id,
@@ -93,19 +84,13 @@ export async function onRequestPost(context) {
 }
 
 export async function onRequestDelete(context) {
-  const { request, env } = context;
-
-  const email = request.headers.get('Cf-Access-Authenticated-User-Email');
-  if (!email) return new Response('Unauthorized', {
-    status: 401,
-    headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-  });
+  const { env } = context;
 
   const db = env.DB;
   if (!db) return json({ error: 'D1 binding "DB" not configured' }, 500);
 
   const stmts = TABLES.map((t) => 
-    db.prepare(`DELETE FROM ${t} WHERE user_email = ?`).bind(email)
+    db.prepare(`DELETE FROM ${t}`)
   );
 
   try {
@@ -116,4 +101,3 @@ export async function onRequestDelete(context) {
 
   return json({ success: true, wipedAt: Date.now() });
 }
-

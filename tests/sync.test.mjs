@@ -7,8 +7,6 @@ import { onRequestPost, onRequestDelete } from "../functions/api/sync.js";
 import { db, setApplyingRemote } from "../src/db.js";
 import { sync } from "../src/sync.js";
 
-const EMAIL = "tester@example.com";
-
 // ---- environment stubs (browser globals the engine relies on) ----
 const _ls = new Map();
 globalThis.localStorage = {
@@ -18,11 +16,16 @@ globalThis.localStorage = {
 };
 
 let serverStore = new Map();
-let sendHeader = true; // toggle to simulate missing Cloudflare Access identity
+let simulateAuthError = false; // toggle to simulate Cloudflare Access block
 
 globalThis.fetch = async (url, opts) => {
+  if (simulateAuthError) {
+    return new Response("Unauthorized", {
+      status: 401,
+      headers: { "Content-Type": "text/plain" }
+    });
+  }
   const headers = { "Content-Type": "application/json" };
-  if (sendHeader) headers["Cf-Access-Authenticated-User-Email"] = EMAIL;
   const request = new Request("http://localhost" + url, { method: opts.method || "GET", headers, body: opts.body });
   const context = { request, env: { DB: makeFakeD1(serverStore) } };
   if (opts && opts.method === "DELETE") {
@@ -44,13 +47,13 @@ async function waitFor(fn, { tries = 50, gap = 5 } = {}) {
 }
 
 function seedServer(table, id, obj, updated_at, deleted = 0) {
-  serverStore.set(`${table}|${EMAIL}|${id}`, {
-    table, user: EMAIL, id,
+  serverStore.set(`${table}|${id}`, {
+    table, id,
     data: deleted ? null : JSON.stringify(obj),
     updated_at, deleted,
   });
 }
-const srv = (table, id) => serverStore.get(`${table}|${EMAIL}|${id}`);
+const srv = (table, id) => serverStore.get(`${table}|${id}`);
 
 before(async () => { await db.open(); });
 
@@ -60,7 +63,7 @@ beforeEach(async () => {
   setApplyingRemote(false);
   serverStore = new Map();
   _ls.clear();
-  sendHeader = true;
+  simulateAuthError = false;
 });
 
 test("local write is stamped dirty then pushed to server", async () => {
@@ -138,14 +141,14 @@ test("remote tombstone removes the local record", async () => {
 });
 
 test("missing Access identity returns 401 and does not crash the engine", async () => {
-  sendHeader = false;
+  simulateAuthError = true;
   await db.tasks.put({ id: "t7", title: "offline-ish" });
   await sync(); // should swallow 401, leave record dirty for retry
   assert.equal((await db.tasks.get("t7"))._dirty, 1, "record stays dirty when unauthenticated");
   assert.equal(srv("tasks", "t7"), undefined, "nothing written server-side");
 });
 
-test("DELETE /api/sync wipes the database for user on server", async () => {
+test("DELETE /api/sync wipes the database on server", async () => {
   seedServer("tasks", "t8", { id: "t8", title: "server-data" }, Date.now());
   assert.ok(srv("tasks", "t8"), "server task exists");
 
@@ -156,4 +159,3 @@ test("DELETE /api/sync wipes the database for user on server", async () => {
 
   assert.equal(srv("tasks", "t8"), undefined, "server task was wiped");
 });
-
