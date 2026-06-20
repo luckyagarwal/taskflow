@@ -82,28 +82,49 @@ function makeCtx(store, url, method, bodyObj) {
 
 test('incremental ?since returns only changed rows including tombstones', async () => {
   const store = new Map();
+  // Use realistic epoch-ms timestamps so the 30-day tombstone purge leaves them.
+  const t1 = Date.now();
+  const t2 = t1 + 1000;
 
-  await onSavePost(makeCtx(store, '/api/save', 'POST', { upserts: { tasks: [{ id: 't1', title: 'A', updatedAt: 1000 }] } }));
+  await onSavePost(makeCtx(store, '/api/save', 'POST', { upserts: { tasks: [{ id: 't1', title: 'A', updatedAt: t1 }] } }));
 
-  let res = await onDataGet(makeCtx(store, '/api/data?since=0', 'GET'));
+  let res = await onDataGet(makeCtx(store, `/api/data?since=${t1 - 1}`, 'GET'));
   let body = await res.json();
   assert.equal(body.tasks.length, 1);
-  assert.equal(body.tasks[0].updatedAt, 1000);
-  assert.equal(body.serverMax, 1000);
+  assert.equal(body.tasks[0].updatedAt, t1);
+  assert.equal(body.serverMax, t1);
 
   // Soft-delete with a newer client timestamp.
-  await onSavePost(makeCtx(store, '/api/save', 'POST', { deletes: { tasks: [{ id: 't1', updatedAt: 2000 }] } }));
+  await onSavePost(makeCtx(store, '/api/save', 'POST', { deletes: { tasks: [{ id: 't1', updatedAt: t2 }] } }));
 
-  res = await onDataGet(makeCtx(store, '/api/data?since=1000', 'GET'));
+  res = await onDataGet(makeCtx(store, `/api/data?since=${t1}`, 'GET'));
   body = await res.json();
   assert.equal(body.tasks.length, 1, 'tombstone is returned to incremental pull');
   assert.equal(body.tasks[0].deleted, 1);
-  assert.equal(body.serverMax, 2000);
+  assert.equal(body.serverMax, t2);
 
   // Full snapshot excludes the tombstone.
   res = await onDataGet(makeCtx(store, '/api/data', 'GET'));
   body = await res.json();
   assert.equal(body.tasks.length, 0);
+});
+
+test('save reaps tombstones past the retention window but keeps recent ones', async () => {
+  const store = new Map();
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+
+  // Seed: an old tombstone (40d), a recent tombstone (1d), and a live record.
+  store.set('tasks|old', { table: 'tasks', id: 'old', data: '', updated_at: now - 40 * day, deleted: 1 });
+  store.set('tasks|recent', { table: 'tasks', id: 'recent', data: '', updated_at: now - day, deleted: 1 });
+  store.set('tasks|live', { table: 'tasks', id: 'live', data: JSON.stringify({ id: 'live', title: 'L' }), updated_at: now, deleted: 0 });
+
+  // Any save triggers the batched purge.
+  await onSavePost(makeCtx(store, '/api/save', 'POST', { upserts: {} }));
+
+  assert.equal(store.has('tasks|old'), false, 'tombstone older than 30d is reaped');
+  assert.equal(store.has('tasks|recent'), true, 'recent tombstone is retained for offline devices');
+  assert.equal(store.has('tasks|live'), true, 'live record is untouched');
 });
 
 test('server rejects a stale write (older client timestamp)', async () => {

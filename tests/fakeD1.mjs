@@ -39,11 +39,21 @@ export function makeFakeD1(store = new Map()) {
         return { results };
       },
       async run() {
-        // Full-table wipe (DELETE /api/save reset).
         if (sql.includes("DELETE FROM")) {
           const tableMatch = sql.match(/DELETE FROM (\w+)/);
           if (!tableMatch) return { success: false };
           const table = tableMatch[1];
+
+          // Tombstone purge: DELETE … WHERE deleted = 1 AND updated_at < ?
+          if (sql.includes("WHERE deleted = 1")) {
+            const cutoff = this._args[0];
+            for (const [k, v] of store.entries()) {
+              if (v.table === table && v.deleted && v.updated_at < cutoff) store.delete(k);
+            }
+            return { success: true };
+          }
+
+          // Full-table wipe (DELETE /api/save reset).
           for (const [k, v] of store.entries()) {
             if (v.table === table) store.delete(k);
           }

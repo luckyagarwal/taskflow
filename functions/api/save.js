@@ -1,6 +1,11 @@
 // functions/api/save.js
 const TABLES = ['tasks', 'projects', 'labels', 'sections'];
 
+// How long soft-delete tombstones are retained before being reaped. Must exceed
+// any realistic offline gap, so a device that's been offline still learns about
+// a deletion via incremental sync before the tombstone is purged.
+const TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -70,6 +75,13 @@ export async function onRequestPost(context) {
           `).bind(id, ts)
         );
       }
+    }
+
+    // Reap tombstones past the retention window, batched into this save (one
+    // round trip). updated_at is indexed, so the range scan is cheap.
+    const purgeCutoff = now - TOMBSTONE_TTL_MS;
+    for (const t of TABLES) {
+      stmts.push(db.prepare(`DELETE FROM ${t} WHERE deleted = 1 AND updated_at < ?`).bind(purgeCutoff));
     }
 
     if (stmts.length) {
