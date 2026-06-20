@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskflow-cache-v2';
+const CACHE_NAME = 'taskflow-cache-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -33,6 +33,11 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
   if (url.pathname.includes('hmr') || (url.hostname === 'localhost' && url.port === '5173')) return;
+
+  // Never cache the sync API. Data (/api/data), saves, and the SSE stream
+  // (/api/events) must always hit the network — caching them serves stale data
+  // across devices and breaks live push. Let these pass straight through.
+  if (url.pathname.startsWith('/api/')) return;
 
   const isHtml = e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname === '/mobile';
 
