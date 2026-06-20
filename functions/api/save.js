@@ -29,10 +29,14 @@ export async function onRequestPost(context) {
 
   try {
     for (const t of TABLES) {
-      // 1. Process upserts
+      // 1. Process upserts. The client supplies `updatedAt` (the real edit time)
+      //    so last-write-wins resolves by when the edit happened, not when the
+      //    request happened to land. The guarded ON CONFLICT means a delayed,
+      //    stale write can never clobber a newer record.
       const upList = upserts[t] || [];
       for (const item of upList) {
         if (!item || !item.id) continue;
+        const ts = typeof item.updatedAt === 'number' ? item.updatedAt : now;
         const dataStr = JSON.stringify(item);
         stmts.push(
           db.prepare(`
@@ -42,16 +46,28 @@ export async function onRequestPost(context) {
               data = excluded.data,
               updated_at = excluded.updated_at,
               deleted = 0
-          `).bind(item.id, dataStr, now)
+            WHERE excluded.updated_at >= ${t}.updated_at
+          `).bind(item.id, dataStr, ts)
         );
       }
 
-      // 2. Process deletes (physical delete is cleaner for online-only)
+      // 2. Process deletes as soft-delete tombstones (deleted=1) so the deletion
+      //    propagates to other devices via incremental sync. Entries may be a
+      //    bare id or { id, updatedAt }; same LWW guard applies.
       const delList = deletes[t] || [];
-      for (const id of delList) {
+      for (const d of delList) {
+        const id = typeof d === 'string' ? d : (d && d.id);
         if (!id) continue;
+        const ts = (d && typeof d.updatedAt === 'number') ? d.updatedAt : now;
         stmts.push(
-          db.prepare(`DELETE FROM ${t} WHERE id = ?`).bind(id)
+          db.prepare(`
+            INSERT INTO ${t} (id, data, updated_at, deleted)
+            VALUES (?, '', ?, 1)
+            ON CONFLICT(id) DO UPDATE SET
+              updated_at = excluded.updated_at,
+              deleted = 1
+            WHERE excluded.updated_at >= ${t}.updated_at
+          `).bind(id, ts)
         );
       }
     }

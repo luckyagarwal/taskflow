@@ -20,36 +20,32 @@ export function makeFakeD1(store = new Map()) {
           return { results: [{ max_val: maxVal }] };
         }
 
-        // Handle SELECT id, data FROM table WHERE deleted = 0
         const tableMatch = sql.match(/FROM (\w+)/);
         if (!tableMatch) return { results: [] };
         const table = tableMatch[1];
-        
+
+        // Incremental: WHERE updated_at > ?  → changed rows incl. tombstones.
+        // Full snapshot: WHERE deleted = 0   → live rows only.
+        const incremental = sql.includes("updated_at > ?");
+        const since = incremental ? this._args[0] : null;
+
         const results = [];
         for (const v of store.values()) {
-          if (v.table === table && !v.deleted) {
-            results.push({ id: v.id, data: v.data });
+          if (v.table !== table) continue;
+          if (incremental ? v.updated_at > since : !v.deleted) {
+            results.push({ id: v.id, data: v.data, updated_at: v.updated_at, deleted: v.deleted });
           }
         }
         return { results };
       },
       async run() {
+        // Full-table wipe (DELETE /api/save reset).
         if (sql.includes("DELETE FROM")) {
           const tableMatch = sql.match(/DELETE FROM (\w+)/);
           if (!tableMatch) return { success: false };
           const table = tableMatch[1];
-          
-          if (sql.includes("WHERE id = ?")) {
-            const [id] = this._args;
-            const k = key(table, id);
-            store.delete(k);
-          } else {
-            // Wipe whole table
-            for (const [k, v] of store.entries()) {
-              if (v.table === table) {
-                store.delete(k);
-              }
-            }
+          for (const [k, v] of store.entries()) {
+            if (v.table === table) store.delete(k);
           }
           return { success: true };
         }
@@ -58,9 +54,21 @@ export function makeFakeD1(store = new Map()) {
           const tableMatch = sql.match(/INSERT INTO (\w+)/);
           if (!tableMatch) return { success: false };
           const table = tableMatch[1];
-          const [id, data, updated_at] = this._args;
+
+          // Tombstone delete: VALUES (?, '', ?, 1) binds [id, updated_at].
+          // Upsert:           VALUES (?, ?, ?, 0)  binds [id, data, updated_at].
+          const isTombstone = sql.includes("VALUES (?, '', ?, 1)");
+          const id = this._args[0];
+          const updated_at = isTombstone ? this._args[1] : this._args[2];
+          const data = isTombstone ? '' : this._args[1];
+          const deleted = isTombstone ? 1 : 0;
+
           const k = key(table, id);
-          store.set(k, { table, id, data, updated_at, deleted: 0 });
+          const existing = store.get(k);
+          // LWW guard mirrors the SQL `WHERE excluded.updated_at >= updated_at`.
+          if (existing && updated_at < existing.updated_at) return { success: true };
+
+          store.set(k, { table, id, data, updated_at, deleted });
           return { success: true };
         }
 

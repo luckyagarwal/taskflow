@@ -14,11 +14,41 @@ export function createMockDb() {
     projects: [],
     labels: [],
     sections: [],
+    // Monotonic logical clock for server-assigned timestamps. Seeded from wall
+    // time so it stays ahead of any client-supplied `updatedAt` (real epoch ms).
+    _clock: Date.now(),
     _updateCounter: 0,
     _saveLog: [], // records every save call for assertions
   };
 
   return db;
+}
+
+/** Next monotonic server timestamp (>= wall clock, strictly increasing). */
+function nextStamp(db) {
+  db._clock = Math.max(db._clock + 1, Date.now());
+  return db._clock;
+}
+
+/**
+ * Simulate a record being upserted on the server by ANOTHER device, with a
+ * fresh server timestamp so last-write-wins accepts it on the next pull.
+ */
+export function remoteUpsert(mockDb, table, record) {
+  const updatedAt = nextStamp(mockDb);
+  const idx = mockDb[table].findIndex((x) => x.id === record.id);
+  const next = { ...(idx >= 0 ? mockDb[table][idx] : {}), ...record, updatedAt, deleted: 0 };
+  if (idx >= 0) mockDb[table][idx] = next;
+  else mockDb[table].push(next);
+  return next;
+}
+
+/** Simulate a record being deleted on the server by ANOTHER device (tombstone). */
+export function remoteDelete(mockDb, table, id) {
+  const updatedAt = nextStamp(mockDb);
+  const idx = mockDb[table].findIndex((x) => x.id === id);
+  if (idx >= 0) mockDb[table][idx] = { ...mockDb[table][idx], deleted: 1, updatedAt };
+  else mockDb[table].push({ id, data: "", updatedAt, deleted: 1 });
 }
 
 /**
@@ -163,6 +193,14 @@ export function seedMockDb(db) {
     { id: "sec_personal", name: "Personal", position: 1 },
   ];
 
+  // Stamp every seed record like the server would (updatedAt + live tombstone).
+  for (const table of ["tasks", "projects", "labels", "sections"]) {
+    for (const rec of db[table]) {
+      rec.updatedAt = nextStamp(db);
+      rec.deleted = 0;
+    }
+  }
+
   return db;
 }
 
@@ -174,28 +212,41 @@ export function seedMockDb(db) {
  * @param {object} opts    — { onSave?: function } callback when save happens
  */
 export async function setupApiMocks(page, mockDb, opts = {}) {
-  // GET /api/data — returns current DB state
-  await page.route("**/api/data", async (route) => {
+  const TABLES = ["tasks", "projects", "labels", "sections"];
+
+  // GET /api/data[?since=] — mirrors functions/api/data.js: incremental delta
+  // (changed rows incl. tombstones) when `since` is present, else a full
+  // snapshot of live rows. Always returns a `serverMax` watermark.
+  await page.route("**/api/data*", async (route) => {
+    const url = new URL(route.request().url());
+    const sinceRaw = url.searchParams.get("since");
+    const incremental = sinceRaw != null;
+    const since = incremental ? Number(sinceRaw) || 0 : 0;
+
+    const out = {};
+    let serverMax = since;
+    for (const table of TABLES) {
+      out[table] = mockDb[table]
+        .filter((r) => (incremental ? r.updatedAt > since : !r.deleted))
+        .map((r) => {
+          if (r.updatedAt > serverMax) serverMax = r.updatedAt;
+          return { ...r };
+        });
+    }
+    out.serverMax = serverMax;
+
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        tasks: [...mockDb.tasks],
-        projects: [...mockDb.projects],
-        labels: [...mockDb.labels],
-        sections: [...mockDb.sections],
-      }),
+      body: JSON.stringify(out),
     });
   });
 
-  // POST /api/save — upserts and deletes, mutates shared mockDb
+  // POST/DELETE /api/save — mirrors functions/api/save.js: client-timestamped
+  // LWW upserts and soft-delete tombstones.
   await page.route("**/api/save", async (route, request) => {
     if (request.method() === "DELETE") {
-      // Wipe all data
-      mockDb.tasks = [];
-      mockDb.projects = [];
-      mockDb.labels = [];
-      mockDb.sections = [];
+      for (const table of TABLES) mockDb[table] = [];
       mockDb._updateCounter++;
       await route.fulfill({
         status: 200,
@@ -208,26 +259,32 @@ export async function setupApiMocks(page, mockDb, opts = {}) {
     try {
       const body = JSON.parse(request.postData() || "{}");
       const { upserts = {}, deletes = {} } = body;
-
-      // Record save for assertions
       mockDb._saveLog.push({ upserts, deletes, at: Date.now() });
 
-      // Apply upserts
-      for (const table of ["tasks", "projects", "labels", "sections"]) {
-        const upList = upserts[table] || [];
-        for (const item of upList) {
+      for (const table of TABLES) {
+        for (const item of upserts[table] || []) {
           if (!item || !item.id) continue;
+          const ts = typeof item.updatedAt === "number" ? item.updatedAt : nextStamp(mockDb);
           const idx = mockDb[table].findIndex((x) => x.id === item.id);
           if (idx >= 0) {
-            mockDb[table][idx] = { ...mockDb[table][idx], ...item };
+            if (ts < mockDb[table][idx].updatedAt) continue; // LWW guard
+            mockDb[table][idx] = { ...item, updatedAt: ts, deleted: 0 };
           } else {
-            mockDb[table].push(item);
+            mockDb[table].push({ ...item, updatedAt: ts, deleted: 0 });
           }
         }
 
-        const delList = deletes[table] || [];
-        for (const id of delList) {
-          mockDb[table] = mockDb[table].filter((x) => x.id !== id);
+        for (const d of deletes[table] || []) {
+          const id = typeof d === "string" ? d : d && d.id;
+          if (!id) continue;
+          const ts = d && typeof d.updatedAt === "number" ? d.updatedAt : nextStamp(mockDb);
+          const idx = mockDb[table].findIndex((x) => x.id === id);
+          if (idx >= 0) {
+            if (ts < mockDb[table][idx].updatedAt) continue; // LWW guard
+            mockDb[table][idx] = { ...mockDb[table][idx], deleted: 1, updatedAt: ts };
+          } else {
+            mockDb[table].push({ id, data: "", updatedAt: ts, deleted: 1 });
+          }
         }
       }
 

@@ -137,9 +137,11 @@ test.describe("Desktop App — Core Functionality", () => {
     await deleteBtn.dispatchEvent("click");
     await page.waitForTimeout(500);
 
-    // Verify deleted from mock DB
+    // Verify deleted on the server. Deletion is now a soft-delete tombstone
+    // (deleted=1) so it can propagate to other devices via incremental sync —
+    // the record is gone from the live set, not physically removed.
     const task = mockDb.tasks.find((t) => t.id === "task_seed_1");
-    expect(task).toBeUndefined();
+    expect(task === undefined || task.deleted === 1).toBe(true);
   });
 
   test("composer preview pills reflect parsed tokens", async ({ page }) => {

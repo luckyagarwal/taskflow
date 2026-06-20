@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 // light up the composer's Date / Priority / Label / Project pills live.
 test("composer preview pills reflect parsed tokens", async ({ page }) => {
   // Mock API endpoints to support online-only mode in E2E tests
-  await page.route("**/api/data", async (route) => {
+  await page.route("**/api/data*", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -12,7 +12,8 @@ test("composer preview pills reflect parsed tokens", async ({ page }) => {
         tasks: [],
         projects: [],
         labels: [],
-        sections: []
+        sections: [],
+        serverMax: 0
       })
     });
   });

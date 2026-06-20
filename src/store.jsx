@@ -1,7 +1,8 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
-import { saveChanges, fetchAllData, startOnlineSync, getSyncHeaders, setOnAuthStatusChange } from './sync.js';
+import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange } from './sync.js';
+import * as repo from './repo.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -98,71 +99,73 @@ export function useStore() {
   const [expandedIds, setExpandedIds] = useState([]);
   const [collapsedSections, setCollapsedSections] = useState([]);
 
-  // Database initialization and migration
-  const reloadFromServer = useCallback((data) => {
+  // Per-task debounce timers for text edits (title/note), so typing coalesces
+  // into a single local write instead of one per keystroke.
+  const textDebounce = useRef({});
+
+  // Apply a {tasks,projects,labels,sections} snapshot (from the local store) to
+  // React state. This is the single render path — the sync engine calls it after
+  // every local load and every server merge.
+  const applyToState = useCallback((data) => {
     if (!data) return;
-    let t = data.tasks || [];
-    let p = data.projects || [];
-    let l = data.labels || [];
-    let s = data.sections || [];
-
-    const KEY_TASKS = 'todo-proto-tasks';
-    const KEY_PROJECTS = 'todo-proto-projects';
-    const KEY_LABELS = 'todo-proto-labels';
-
-    if (t.length === 0 && p.length === 0 && l.length === 0 && s.length === 0) {
-      const localTasks = localStorage.getItem(KEY_TASKS);
-      const localProjects = localStorage.getItem(KEY_PROJECTS);
-      const localLabels = localStorage.getItem(KEY_LABELS);
-
-      if (localTasks || localProjects || localLabels) {
-        const normalize = (list) => list.map((tItem, idx) => {
-          const subtasks = (tItem.subtasks || []).map((sub, sIdx) => ({
-            priority: 4,
-            status: 'planned',
-            startOffset: null,
-            dueOffset: null,
-            createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
-            ...sub
-          }));
-          return {
-            createdAt: tItem.createdAt || (Date.now() - (1000 - idx) * 60000),
-            subtaskSort: tItem.subtaskSort || 'manual',
-            position: tItem.position !== undefined ? tItem.position : idx,
-            ...tItem,
-            subtasks
-          };
-        });
-
-        t = localTasks ? normalize(JSON.parse(localTasks)) : [];
-        p = localProjects ? JSON.parse(localProjects).map((proj, idx) => ({ position: idx, ...proj })) : [];
-        l = localLabels ? JSON.parse(localLabels) : [];
-
-        localStorage.removeItem(KEY_TASKS);
-        localStorage.removeItem(KEY_PROJECTS);
-        localStorage.removeItem(KEY_LABELS);
-
-        t.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        p.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
-        const uniqueProjGroups = Array.from(new Set(p.map(proj => proj.group))).filter(Boolean);
-        if (uniqueProjGroups.length) {
-          s = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
-          s.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-        }
-
-        saveChanges({ tasks: t, projects: p, labels: l, sections: s }, {});
-      }
-    }
-
-    t.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-    p.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-    s.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
+    const t = (data.tasks || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const p = (data.projects || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const l = data.labels || [];
+    const s = (data.sections || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     setTasks(t);
     setProjects(p);
     setCustomLabels(l);
     setSections(s);
+  }, []);
+
+  // One-time migration of legacy localStorage task data into the local store.
+  // Runs only when both the local store and the server are empty.
+  const migrateLegacyLocalStorage = useCallback(async (local) => {
+    const KEY_TASKS = 'todo-proto-tasks';
+    const KEY_PROJECTS = 'todo-proto-projects';
+    const KEY_LABELS = 'todo-proto-labels';
+
+    const empty = (local.tasks || []).length === 0 && (local.projects || []).length === 0 &&
+                  (local.labels || []).length === 0 && (local.sections || []).length === 0;
+    if (!empty) return false;
+
+    const localTasks = localStorage.getItem(KEY_TASKS);
+    const localProjects = localStorage.getItem(KEY_PROJECTS);
+    const localLabels = localStorage.getItem(KEY_LABELS);
+    if (!localTasks && !localProjects && !localLabels) return false;
+
+    const normalize = (list) => list.map((tItem, idx) => {
+      const subtasks = (tItem.subtasks || []).map((sub, sIdx) => ({
+        priority: 4, status: 'planned', startOffset: null, dueOffset: null,
+        createdAt: sub.createdAt || (Date.now() - (100 - sIdx) * 1000),
+        ...sub
+      }));
+      return {
+        createdAt: tItem.createdAt || (Date.now() - (1000 - idx) * 60000),
+        subtaskSort: tItem.subtaskSort || 'manual',
+        position: tItem.position !== undefined ? tItem.position : idx,
+        ...tItem,
+        subtasks
+      };
+    });
+
+    const t = localTasks ? normalize(JSON.parse(localTasks)) : [];
+    const p = localProjects ? JSON.parse(localProjects).map((proj, idx) => ({ position: idx, ...proj })) : [];
+    const l = localLabels ? JSON.parse(localLabels) : [];
+
+    localStorage.removeItem(KEY_TASKS);
+    localStorage.removeItem(KEY_PROJECTS);
+    localStorage.removeItem(KEY_LABELS);
+
+    let s = [];
+    const uniqueProjGroups = Array.from(new Set(p.map((proj) => proj.group))).filter(Boolean);
+    if (uniqueProjGroups.length) {
+      s = uniqueProjGroups.map((g, idx) => ({ id: `sec_${idx}_${Date.now()}`, name: g, position: idx }));
+    }
+
+    // Write durably into the local store + outbox (syncs in the background).
+    await repo.enqueue({ tasks: t, projects: p, labels: l, sections: s }, {});
+    return true;
   }, []);
 
   const addToast = useCallback((msg) => {
@@ -173,16 +176,12 @@ export function useStore() {
     }, 4000);
   }, []);
 
-  const queueSave = useCallback(async (upserts = {}, deletes = {}) => {
-    const ok = await saveChanges(upserts, deletes);
-    if (!ok) {
-      addToast("Failed to save changes to server!");
-      const data = await fetchAllData();
-      if (data) reloadFromServer(data);
-    }
-  }, [addToast, reloadFromServer]);
-
-
+  // Durable, non-blocking save: writes to the local store + outbox immediately
+  // and lets the sync engine flush to the server with retry. No await, no
+  // reload-on-failure — failed network writes stay queued, never lost.
+  const queueSave = useCallback((upserts = {}, deletes = {}) => {
+    repo.enqueue(upserts, deletes);
+  }, []);
 
   useEffect(() => {
     setOnAuthStatusChange((status) => {
@@ -191,13 +190,23 @@ export function useStore() {
     return () => setOnAuthStatusChange(null);
   }, []);
 
-  // Start background sync once initial load completes (runs once).
+  // Boot: render from the local store instantly (offline-capable), run the
+  // one-time legacy migration, then start background sync with the server.
   useEffect(() => {
-    startOnlineSync((data) => {
-      reloadFromServer(data);
+    let cancelled = false;
+    (async () => {
+      const local = await repo.loadAll();
+      if (cancelled) return;
+      applyToState(local);
       setLoaded(true);
-    });
-  }, [reloadFromServer]);
+
+      const migrated = await migrateLegacyLocalStorage(local);
+      if (migrated && !cancelled) applyToState(await repo.loadAll());
+
+      startOnlineSync((data) => { if (!cancelled) applyToState(data); });
+    })();
+    return () => { cancelled = true; };
+  }, [applyToState, migrateLegacyLocalStorage]);
 
   useEffect(() => {
     localStorage.setItem(KEY_SIDEBAR_COLLAPSED, JSON.stringify(sidebarCollapsed));
@@ -244,7 +253,18 @@ export function useStore() {
             }
           }
         }
-        queueSave({ tasks: [updated] });
+        // Debounce pure text edits; persist everything else immediately. Either
+        // way, cancel any pending text timer so a stale write can't land late.
+        clearTimeout(textDebounce.current[id]);
+        const isTextOnly = Object.keys(patch).every((k) => k === 'title' || k === 'note');
+        if (isTextOnly) {
+          textDebounce.current[id] = setTimeout(() => {
+            repo.putRecord('tasks', updated);
+            delete textDebounce.current[id];
+          }, 350);
+        } else {
+          queueSave({ tasks: [updated] });
+        }
         return updated;
       }
       return t;
@@ -707,9 +727,10 @@ export function useStore() {
     }
 
     try {
+      await repo.clearAll();
       localStorage.clear();
       localStorage.setItem('taskflow-seeded', 'true');
-      
+
       if ('caches' in window) {
         const keys = await caches.keys();
         await Promise.all(keys.map(key => caches.delete(key)));
@@ -776,6 +797,10 @@ export function useStore() {
         sections: backup.sections || []
       }, {});
 
+      // Wipe the local store so the post-reload full sync rebuilds it cleanly
+      // from the server (the import replaced server state).
+      await repo.clearAll();
+
       addToast("Backup imported successfully! Reloading...");
       setTimeout(() => {
         try {
@@ -794,9 +819,8 @@ export function useStore() {
 
   const forceSync = useCallback(async () => {
     try {
-      const data = await fetchAllData();
+      const data = await fullSync();
       if (data) {
-        reloadFromServer(data);
         addToast("Force sync completed!");
       } else {
         throw new Error("Force sync returned no data");
@@ -805,7 +829,7 @@ export function useStore() {
       console.error(e);
       addToast("Force sync failed!");
     }
-  }, [addToast, reloadFromServer]);
+  }, [addToast]);
 
   return {
     tasks, projects, labels: customLabels, sections, view, selectedId, quickAdd, search, expandedIds,

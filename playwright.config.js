@@ -19,7 +19,7 @@ export default defineConfig({
       // Desktop UI (rendered at "/") + cross-instance sync tests (which spin up
       // their own desktop/mobile pages) both run under a desktop viewport.
       name: "desktop-chrome",
-      testMatch: /(desktop|sync)\.spec\.js/,
+      testMatch: /(desktop|sync|storage)\.spec\.js/,
       use: { ...devices["Desktop Chrome"] },
     },
     {

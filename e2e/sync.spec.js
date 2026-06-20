@@ -16,6 +16,8 @@ import {
   taskRowByTitle,
   addTaskViaComposer,
   openMobileQuickAdd,
+  remoteUpsert,
+  remoteDelete,
 } from "./helpers.js";
 
 test.describe("Cross-Instance Sync — Desktop ↔ Mobile", () => {
@@ -151,8 +153,8 @@ test.describe("Cross-Instance Sync — Desktop ↔ Mobile", () => {
     await waitForAppLoad(desktopPage);
     await waitForAppLoad(mobilePage);
 
-    // === Delete task from mock DB (simulating deletion on another device) ===
-    mockDb.tasks = mockDb.tasks.filter((t) => t.id !== "task_seed_1");
+    // === Delete task on the server (simulating deletion on another device) ===
+    remoteDelete(mockDb, "tasks", "task_seed_1");
 
     // === Trigger sync on desktop ===
     await triggerSyncOnPage(desktopPage);
@@ -186,8 +188,8 @@ test.describe("Cross-Instance Sync — Desktop ↔ Mobile", () => {
     await waitForAppLoad(page1);
     await waitForAppLoad(page2);
 
-    // === Add project to mockDb ===
-    mockDb.projects.push({
+    // === Add project on the server (another device) ===
+    remoteUpsert(mockDb, "projects", {
       id: "p_test_sync",
       name: "Synced Project",
       color: "#E8588A",
@@ -319,9 +321,8 @@ test.describe("Cross-Tab Sync — BroadcastChannel", () => {
     await waitForAppLoad(tab1);
     await waitForAppLoad(tab2);
 
-    // === Edit task in mockDb (simulating save from tab1) ===
-    const task = mockDb.tasks.find((t) => t.id === "task_seed_1");
-    task.title = "Buy groceries UPDATED";
+    // === Edit task on the server (simulating save from another device) ===
+    remoteUpsert(mockDb, "tasks", { id: "task_seed_1", title: "Buy groceries UPDATED" });
 
     // === Trigger sync on tab2 ===
     await triggerSyncOnPage(tab2);
@@ -357,10 +358,10 @@ test.describe("Sync — Edge Cases", () => {
     );
   });
 
-  test("save failure triggers toast and re-fetches", async ({ page }) => {
+  test("save failure does not lose the edit (durable local-first)", async ({ page }) => {
     await setupApiMocks(page, mockDb);
 
-    // Override save to fail
+    // Server save fails for every attempt.
     await page.route("**/api/save", async (route) => {
       await route.fulfill({
         status: 500,
@@ -372,18 +373,17 @@ test.describe("Sync — Edge Cases", () => {
     await page.goto("/");
     await waitForAppLoad(page);
 
-    // Add a task — save will fail
-    await page.getByRole("button", { name: "Add task" }).first().click();
-    const input = page.getByPlaceholder("Task name");
-    if (await input.isVisible({ timeout: 3000 })) {
-      await input.fill("This will fail");
-      await input.press("Enter");
-      await page.waitForTimeout(2000);
+    await addTaskViaComposer(page, "Survives failed save");
+    await page.waitForTimeout(1500);
 
-      // Toast about failure should appear
-      const toast = page.getByText("Failed to save", { exact: false });
-      await expect(toast).toBeVisible({ timeout: 5000 });
-    }
+    // The edit is written to the local store first, so it stays put and is NOT
+    // reverted by the failed network save (old behavior clobbered it).
+    await expect(taskByTitle(page, "Survives failed save")).toBeVisible({ timeout: 5000 });
+
+    // It is durable: still present after a reload, replayed from the outbox.
+    await page.reload();
+    await waitForAppLoad(page);
+    await expect(taskByTitle(page, "Survives failed save")).toBeVisible({ timeout: 5000 });
   });
 
   test("concurrent adds from different instances preserve both", async ({
@@ -435,7 +435,7 @@ test.describe("Sync — Edge Cases", () => {
   });
 
   test("auth failure (401) does not crash app", async ({ page }) => {
-    await page.route("**/api/data", async (route) => {
+    await page.route("**/api/data*", async (route) => {
       await route.fulfill({
         status: 401,
         contentType: "application/json",
@@ -465,7 +465,7 @@ test.describe("Sync — Edge Cases", () => {
 
     let fetchCount = 0;
 
-    await page.route("**/api/data", async (route) => {
+    await page.route("**/api/data*", async (route) => {
       fetchCount++;
       await route.fulfill({
         status: 200,
@@ -475,6 +475,7 @@ test.describe("Sync — Edge Cases", () => {
           projects: [...mockDb.projects],
           labels: [...mockDb.labels],
           sections: [...mockDb.sections],
+          serverMax: Date.now(),
         }),
       });
     });
@@ -547,11 +548,11 @@ test.describe("Sync — Data Integrity", () => {
     await waitForAppLoad(page1);
     await waitForAppLoad(page2);
 
-    // === Complete subtask in mockDb ===
+    // === Complete subtask on the server (another device) ===
     const parentTask = mockDb.tasks.find((t) => t.id === "task_seed_2");
     expect(parentTask.subtasks.length).toBe(1);
-    parentTask.subtasks[0].done = true;
-    parentTask.subtasks[0].status = "done";
+    const subtasks = parentTask.subtasks.map((s) => ({ ...s, done: true, status: "done" }));
+    remoteUpsert(mockDb, "tasks", { ...parentTask, subtasks });
 
     // === Sync to page2 ===
     await triggerSyncOnPage(page2);
@@ -582,8 +583,8 @@ test.describe("Sync — Data Integrity", () => {
     await waitForAppLoad(page1);
     await waitForAppLoad(page2);
 
-    // === Add a new label to mockDb ===
-    mockDb.labels.push({
+    // === Add a new label on the server (another device) ===
+    remoteUpsert(mockDb, "labels", {
       id: "l_synced",
       name: "synced-label",
       color: "#E8588A",
@@ -639,8 +640,8 @@ test.describe("Sync — Data Integrity", () => {
     await waitForAppLoad(page1);
     await waitForAppLoad(page2);
 
-    // === Add section to mockDb ===
-    mockDb.sections.push({
+    // === Add section on the server (another device) ===
+    remoteUpsert(mockDb, "sections", {
       id: "sec_synced",
       name: "Synced Section",
       position: 2,
