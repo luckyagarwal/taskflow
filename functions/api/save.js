@@ -16,6 +16,18 @@ function json(obj, status = 200) {
   });
 }
 
+// The current reset generation (0 until the first reset). Bumped by every reset
+// so the server can reject writes minted before the wipe.
+async function getGeneration(db) {
+  try {
+    const { results } = await db.prepare(`SELECT value FROM meta WHERE key = ?`).bind('reset_generation').all();
+    return results && results.length ? results[0].value : 0;
+  } catch {
+    // `meta` may not exist yet on a backend that hasn't run the migration.
+    return 0;
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   const db = env.DB;
@@ -28,7 +40,17 @@ export async function onRequestPost(context) {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const { upserts = {}, deletes = {} } = body;
+  const { upserts = {}, deletes = {}, generation = null } = body;
+
+  // Reject writes minted before a reset the client hasn't seen yet. This is what
+  // stops an offline device's outbox (rows the server never tombstoned because it
+  // never knew about them) from resurrecting a wiped database. `generation` is
+  // omitted by older clients → treated as current (back-compat).
+  const serverGen = await getGeneration(db);
+  if (typeof generation === 'number' && generation < serverGen) {
+    return json({ success: true, rejected: true, generation: serverGen });
+  }
+
   const stmts = [];
   const now = Date.now();
 
@@ -108,11 +130,21 @@ export async function onRequestDelete(context) {
     db.prepare(`UPDATE ${t} SET data = '', updated_at = ?, deleted = 1 WHERE deleted = 0`).bind(now)
   );
 
+  // Bump the reset generation so other devices adopt the wipe and can't replay a
+  // pre-reset outbox over it. Read-then-write is fine: resets are rare and manual.
+  const nextGen = (await getGeneration(db)) + 1;
+  stmts.push(
+    db.prepare(`
+      INSERT INTO meta (key, value) VALUES (?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    `).bind('reset_generation', nextGen)
+  );
+
   try {
     await db.batch(stmts);
   } catch (err) {
     return json({ error: 'Failed to clear server database', details: err.message }, 500);
   }
 
-  return json({ success: true, wipedAt: now });
+  return json({ success: true, wipedAt: now, generation: nextGen });
 }

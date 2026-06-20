@@ -143,6 +143,17 @@ export async function setToken(value) {
   await db.meta.put({ key: 'syncToken', value });
 }
 
+// The reset generation this device has adopted. A server generation higher than
+// this means a reset happened elsewhere and we must wipe + re-adopt (see sync.js).
+export async function getGeneration() {
+  const m = await db.meta.get('resetGeneration');
+  return m ? m.value : 0;
+}
+
+export async function setGeneration(value) {
+  await db.meta.put({ key: 'resetGeneration', value });
+}
+
 export async function clearAll() {
   await Promise.all([
     ...RECORD_TABLES.map((t) => db[t].clear()),

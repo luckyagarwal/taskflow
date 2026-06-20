@@ -149,6 +149,73 @@ test('reset (DELETE /api/save) tombstones rows so the wipe propagates to other d
   assert.ok(tomb && tomb.deleted === 1, 'old record is tombstoned, not silently hard-deleted');
 });
 
+// ── Reset generation: a wipe must beat un-synced data on every device ──────
+// Tombstones alone can't cover rows the server has never seen (an offline
+// device's outbox). A monotonic reset generation lets the server reject any
+// write minted in a pre-reset world, so a reset can't be resurrected.
+
+test('GET /api/data reports the current reset generation', async () => {
+  const store = new Map();
+
+  let body = await (await onDataGet(makeCtx(store, '/api/data', 'GET'))).json();
+  assert.equal(body.generation, 0, 'fresh server starts at generation 0');
+
+  await onSaveDelete(makeCtx(store, '/api/save', 'DELETE'));
+
+  body = await (await onDataGet(makeCtx(store, '/api/data', 'GET'))).json();
+  assert.equal(body.generation, 1, 'reset is observable to other devices via the pulled generation');
+});
+
+test('after reset, a write carrying a stale generation is rejected (no resurrection)', async () => {
+  const store = new Map();
+  const t0 = Date.now() - 10000;
+
+  // Device B had previously synced a project in the generation-0 world.
+  await onSavePost(makeCtx(store, '/api/save', 'POST', {
+    upserts: { projects: [{ id: 'p_old', name: 'Old', updatedAt: t0 }] }, generation: 0,
+  }));
+
+  // Reset from device A bumps the server generation to 1.
+  const delBody = await (await onSaveDelete(makeCtx(store, '/api/save', 'DELETE'))).json();
+  assert.equal(delBody.generation, 1, 'reset bumps the server generation');
+
+  // Device B, still living in generation 0, flushes its outbox: a row the server
+  // has never seen (never-synced) plus a re-push of p_old, both with fresh
+  // timestamps that would otherwise win last-write-wins.
+  await onSavePost(makeCtx(store, '/api/save', 'POST', {
+    upserts: {
+      tasks: [{ id: 't_zombie', title: 'Zombie', updatedAt: Date.now() }],
+      projects: [{ id: 'p_old', name: 'Old', updatedAt: Date.now() }],
+    },
+    generation: 0,
+  }));
+
+  const snap = await (await onDataGet(makeCtx(store, '/api/data', 'GET'))).json();
+  assert.equal(snap.tasks.length, 0, 'never-synced row is NOT resurrected onto a reset server');
+  assert.equal(snap.projects.length, 0, 'stale re-push does NOT resurrect a wiped project');
+});
+
+test('a write carrying the current generation is accepted after a reset', async () => {
+  const store = new Map();
+  await onSaveDelete(makeCtx(store, '/api/save', 'DELETE')); // generation → 1
+
+  await onSavePost(makeCtx(store, '/api/save', 'POST', {
+    upserts: { sections: [{ id: 'sec1', name: 'New', updatedAt: Date.now() }] }, generation: 1,
+  }));
+
+  const snap = await (await onDataGet(makeCtx(store, '/api/data', 'GET'))).json();
+  assert.equal(snap.sections.length, 1, 'a current-generation create after reset is kept');
+});
+
+test('a legacy write with no generation field is still accepted (back-compat)', async () => {
+  const store = new Map();
+  await onSavePost(makeCtx(store, '/api/save', 'POST', {
+    upserts: { tasks: [{ id: 't1', title: 'A', updatedAt: Date.now() }] },
+  }));
+  const snap = await (await onDataGet(makeCtx(store, '/api/data', 'GET'))).json();
+  assert.equal(snap.tasks.length, 1, 'omitted generation is not treated as stale');
+});
+
 test('server rejects a stale write (older client timestamp)', async () => {
   const store = new Map();
   await onSavePost(makeCtx(store, '/api/save', 'POST', { upserts: { tasks: [{ id: 't1', title: 'new', updatedAt: 5000 }] } }));

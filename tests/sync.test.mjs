@@ -1,10 +1,12 @@
+import "fake-indexeddb/auto";
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { onRequestGet as onDataGet } from "../functions/api/data.js";
 import { onRequestPost as onSavePost, onRequestDelete as onSaveDelete } from "../functions/api/save.js";
 import { onRequestGet as onEventsGet } from "../functions/api/events.js";
-import { fetchAllData, saveChanges, setOnAuthStatusChange } from "../src/sync.js";
+import { fetchAllData, saveChanges, setOnAuthStatusChange, pullChanges } from "../src/sync.js";
+import * as repo from "../src/repo.js";
 import { makeFakeD1 } from "./fakeD1.mjs";
 
 let serverStore = new Map();
@@ -136,6 +138,26 @@ test("401 status triggers unauthorized flag change", async () => {
   const data = await fetchAllData();
   assert.equal(data, null);
   assert.equal(authStatus, false);
+});
+
+test("a reset on another device wipes this device's local store and outbox", async () => {
+  // This device holds local data plus an un-synced outbox op — the exact state
+  // that resurrects deleted data after a reset elsewhere.
+  await repo.clearAll();
+  await repo.putRecord("tasks", { id: "t_local", title: "Never synced" });
+  assert.equal((await repo.getOutbox()).length, 1, "precondition: a pending op exists");
+
+  // The server already reflects a reset performed on another device.
+  await fetch("/api/save", { method: "DELETE" }); // generation → 1, rows wiped
+
+  // First incremental pull after the reset.
+  await pullChanges();
+
+  assert.equal((await repo.loadAll()).tasks.length, 0, "local data cleared to match the reset");
+  assert.equal((await repo.getOutbox()).length, 0, "un-synced outbox dropped so it cannot resurrect data");
+  assert.equal(await repo.getGeneration(), 1, "adopted the new reset generation");
+
+  await repo.clearAll();
 });
 
 test("SSE endpoint /api/events sends connected event", async () => {

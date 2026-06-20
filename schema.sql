@@ -32,3 +32,14 @@ CREATE TABLE IF NOT EXISTS sections (
   deleted     INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_sections_updated ON sections(updated_at);
+
+-- Key/value server metadata. Holds `reset_generation`: a monotonic counter bumped
+-- by every reset (DELETE /api/save). Clients store the generation they last saw;
+-- a write minted in a pre-reset world (lower generation) is rejected, and a client
+-- that pulls a higher generation wipes its local store + outbox to adopt the reset.
+-- This covers what tombstones cannot: rows the server has never seen (an offline
+-- device's outbox) can no longer resurrect a wiped database.
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT NOT NULL PRIMARY KEY,
+  value INTEGER NOT NULL
+);

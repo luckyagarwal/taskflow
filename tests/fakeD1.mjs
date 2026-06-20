@@ -9,6 +9,12 @@ export function makeFakeD1(store = new Map()) {
       _args: [],
       bind(...args) { this._args = args; return this; },
       async all() {
+        // meta key/value lookup: SELECT value FROM meta WHERE key = ?
+        if (/FROM meta\b/.test(sql)) {
+          const v = store.get(key('meta', this._args[0]));
+          return { results: v ? [{ value: v.value }] : [] };
+        }
+
         // Handle max updated_at query (for SSE events)
         if (sql.includes("MAX(val)")) {
           let maxVal = 0;
@@ -71,6 +77,13 @@ export function makeFakeD1(store = new Map()) {
               store.set(k, { ...v, data: '', updated_at: ts, deleted: 1 });
             }
           }
+          return { success: true };
+        }
+
+        // meta upsert: INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT…
+        if (sql.includes("INSERT INTO meta")) {
+          const [k, value] = this._args;
+          store.set(key('meta', k), { table: 'meta', id: k, key: k, value });
           return { success: true };
         }
 

@@ -27,6 +27,15 @@ export async function onRequestGet(context) {
   const out = {};
   let serverMax = since;
   try {
+    // Current reset generation; clients compare it against their own to detect a
+    // wipe performed on another device. Tolerate a missing `meta` table.
+    try {
+      const { results } = await db.prepare(`SELECT value FROM meta WHERE key = ?`).bind('reset_generation').all();
+      out.generation = results && results.length ? results[0].value : 0;
+    } catch {
+      out.generation = 0;
+    }
+
     for (const t of TABLES) {
       const query = incremental
         ? db.prepare(`SELECT id, data, updated_at, deleted FROM ${t} WHERE updated_at > ?`).bind(since)

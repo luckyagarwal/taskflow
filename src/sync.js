@@ -109,10 +109,11 @@ export async function fetchAllData() {
 
 export async function saveChanges(upserts = {}, deletes = {}) {
   try {
+    const generation = await repo.getGeneration();
     const res = await fetch(SAVE_API, {
       method: 'POST',
       headers: getSyncHeaders('application/json'),
-      body: JSON.stringify({ upserts, deletes }),
+      body: JSON.stringify({ upserts, deletes, generation }),
       cache: 'no-store',
     });
 
@@ -126,6 +127,14 @@ export async function saveChanges(upserts = {}, deletes = {}) {
     }
 
     setAuthorized(true);
+    const resBody = await res.json().catch(() => ({}));
+    if (resBody && resBody.rejected) {
+      // These writes were minted before a reset on another device. Returning
+      // true lets the outbox drop them (no infinite retry); pulling now adopts
+      // the wipe so the stale data also disappears from this device's UI.
+      pullChanges();
+      return true;
+    }
     broadcastChange();
     return true;
   } catch (err) {
@@ -193,6 +202,15 @@ export async function pullChanges() {
   const since = await repo.getToken();
   const data = await fetchSince(since);
   if (!data) return null;
+
+  // A higher server generation means a reset happened on another device. The
+  // incremental delta can't express "drop everything you have" — and our outbox
+  // would replay stale rows back — so we wipe locally and re-adopt the snapshot.
+  const localGen = await repo.getGeneration();
+  if (typeof data.generation === 'number' && data.generation > localGen) {
+    return adoptReset(data.generation);
+  }
+
   await repo.applyServerRecords(data);
   if (typeof data.serverMax === 'number' && data.serverMax > since) {
     await repo.setToken(data.serverMax);
@@ -201,12 +219,25 @@ export async function pullChanges() {
   return data;
 }
 
+/** Discard all local state (incl. the outbox) and adopt the post-reset snapshot. */
+async function adoptReset(generation) {
+  const snapshot = await fetchSince(null);
+  if (!snapshot) return null;
+  await repo.clearAll(); // drops local rows, the outbox, the token and old generation
+  await repo.replaceFromSnapshot(snapshot);
+  if (typeof snapshot.serverMax === 'number') await repo.setToken(snapshot.serverMax);
+  await repo.setGeneration(generation);
+  await emitLocal();
+  return snapshot;
+}
+
 /** Full reconcile: replace local with the server snapshot (server authoritative). */
 export async function fullSync() {
   const data = await fetchSince(null);
   if (!data) return null;
   await repo.replaceFromSnapshot(data);
   if (typeof data.serverMax === 'number') await repo.setToken(data.serverMax);
+  if (typeof data.generation === 'number') await repo.setGeneration(data.generation);
   await emitLocal();
   return data;
 }
@@ -245,8 +276,9 @@ function runPollingLoop() {
 
 function handleVisibilityOrFocus() {
   if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-    pullChanges();
-    flushOutbox(); // drain anything queued while hidden/offline
+    // Pull first so a reset elsewhere is adopted (and a stale outbox dropped)
+    // before we try to flush; then drain anything queued while hidden/offline.
+    pullChanges().then(flushOutbox);
     runPollingLoop();
     if (eventSource && eventSource.readyState === EventSource.CLOSED) setupEventSource();
   }
@@ -266,7 +298,7 @@ export async function startOnlineSync(onDataReloadCb) {
     setupEventSource();
     window.addEventListener('focus', handleVisibilityOrFocus);
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-    window.addEventListener('online', () => { flushOutbox(); pullChanges(); });
+    window.addEventListener('online', () => { pullChanges().then(flushOutbox); });
   }
 }
 
