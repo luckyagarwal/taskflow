@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 
 import * as repo from '../src/repo.js';
 import { onRequestGet as onDataGet } from '../functions/api/data.js';
-import { onRequestPost as onSavePost } from '../functions/api/save.js';
+import { onRequestPost as onSavePost, onRequestDelete as onSaveDelete } from '../functions/api/save.js';
 import { makeFakeD1 } from './fakeD1.mjs';
 
 // ── Local repository (Dexie via fake-indexeddb) ───────────────────────────
@@ -125,6 +125,28 @@ test('save reaps tombstones past the retention window but keeps recent ones', as
   assert.equal(store.has('tasks|old'), false, 'tombstone older than 30d is reaped');
   assert.equal(store.has('tasks|recent'), true, 'recent tombstone is retained for offline devices');
   assert.equal(store.has('tasks|live'), true, 'live record is untouched');
+});
+
+test('reset (DELETE /api/save) tombstones rows so the wipe propagates to other devices', async () => {
+  const store = new Map();
+  const t0 = Date.now() - 10000;
+
+  // A record previously synced from another device.
+  await onSavePost(makeCtx(store, '/api/save', 'POST', { upserts: { projects: [{ id: 'p_old', name: 'Old', updatedAt: t0 }] } }));
+
+  // Reset.
+  const res = await onSaveDelete(makeCtx(store, '/api/save', 'DELETE'));
+  assert.equal((await res.json()).success, true);
+
+  // Full snapshot is empty (live rows only).
+  let body = await (await onDataGet(makeCtx(store, '/api/data', 'GET'))).json();
+  assert.equal(body.projects.length, 0);
+
+  // But an incremental pull since the old watermark returns a TOMBSTONE, so a
+  // device still holding p_old learns to delete it (instead of resurrecting it).
+  body = await (await onDataGet(makeCtx(store, `/api/data?since=${t0}`, 'GET'))).json();
+  const tomb = body.projects.find((p) => p.id === 'p_old');
+  assert.ok(tomb && tomb.deleted === 1, 'old record is tombstoned, not silently hard-deleted');
 });
 
 test('server rejects a stale write (older client timestamp)', async () => {

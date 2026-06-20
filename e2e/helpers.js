@@ -246,7 +246,14 @@ export async function setupApiMocks(page, mockDb, opts = {}) {
   // LWW upserts and soft-delete tombstones.
   await page.route("**/api/save", async (route, request) => {
     if (request.method() === "DELETE") {
-      for (const table of TABLES) mockDb[table] = [];
+      // Reset = tombstone every live row (mirrors functions/api/save.js) so the
+      // wipe propagates to other devices via incremental sync.
+      const ts = nextStamp(mockDb);
+      for (const table of TABLES) {
+        for (const rec of mockDb[table]) {
+          if (!rec.deleted) { rec.deleted = 1; rec.updatedAt = ts; }
+        }
+      }
       mockDb._updateCounter++;
       await route.fulfill({
         status: 200,

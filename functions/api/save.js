@@ -99,8 +99,13 @@ export async function onRequestDelete(context) {
   const db = env.DB;
   if (!db) return json({ error: 'D1 binding "DB" not configured' }, 500);
 
-  const stmts = TABLES.map((t) => 
-    db.prepare(`DELETE FROM ${t}`)
+  // Reset = tombstone every live row, NOT a hard delete. A hard DELETE leaves no
+  // trace, so other devices never see the rows in their incremental pull and
+  // keep (and can re-sync) the old data. Tombstones with a fresh timestamp make
+  // the wipe propagate: every other device pulls deleted=1 and drops them.
+  const now = Date.now();
+  const stmts = TABLES.map((t) =>
+    db.prepare(`UPDATE ${t} SET data = '', updated_at = ?, deleted = 1 WHERE deleted = 0`).bind(now)
   );
 
   try {
@@ -109,5 +114,5 @@ export async function onRequestDelete(context) {
     return json({ error: 'Failed to clear server database', details: err.message }, 500);
   }
 
-  return json({ success: true, wipedAt: Date.now() });
+  return json({ success: true, wipedAt: now });
 }

@@ -60,6 +60,20 @@ export function makeFakeD1(store = new Map()) {
           return { success: true };
         }
 
+        // Reset: UPDATE <t> SET data='', updated_at=?, deleted=1 WHERE deleted=0
+        if (/^\s*UPDATE/.test(sql)) {
+          const tableMatch = sql.match(/UPDATE (\w+)/);
+          if (!tableMatch) return { success: false };
+          const table = tableMatch[1];
+          const ts = this._args[0];
+          for (const [k, v] of store.entries()) {
+            if (v.table === table && !v.deleted) {
+              store.set(k, { ...v, data: '', updated_at: ts, deleted: 1 });
+            }
+          }
+          return { success: true };
+        }
+
         if (sql.includes("INSERT INTO")) {
           const tableMatch = sql.match(/INSERT INTO (\w+)/);
           if (!tableMatch) return { success: false };
