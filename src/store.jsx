@@ -314,7 +314,7 @@ export function useStore() {
     const minPos = tasks.length > 0 ? Math.min(...tasks.map(t => t.position ?? 0)) : 0;
     const task = Object.assign({
       id, title: 'Untitled', note: '', projectId: targetProjectId, startOffset: null, dueOffset: null,
-      time: null, priority: 4, labels: finalLabels, subtasks: [], done: false, doneOffset: null,
+      time: null, duration: null, priority: 4, labels: finalLabels, subtasks: [], done: false, doneOffset: null,
       recurring: null, createdAt: Date.now(), subtaskSort: 'manual',
       position: minPos - 1, status: 'planned'
     }, partial, { projectId: targetProjectId, labels: finalLabels });

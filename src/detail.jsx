@@ -727,6 +727,17 @@ function IOSToggle({ value, onChange }) {
   );
 }
 
+const DURATION_PRESETS = [
+  { label: 'None', value: null },
+  { label: '15m', value: 15 },
+  { label: '30m', value: 30 },
+  { label: '45m', value: 45 },
+  { label: '1h', value: 60 },
+  { label: '1.5h', value: 90 },
+  { label: '2h', value: 120 },
+  { label: '3h', value: 180 },
+];
+
 export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose }) {
   const { updateTask } = useApp();
 
@@ -1027,6 +1038,28 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
             </div>
           )}
         </div>
+
+        {/* Duration preset chips — only when a time is set */}
+        {timeOn && (
+          <div className="m-group" style={{ marginTop: 16, padding: '12px 14px' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>Duration</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {DURATION_PRESETS.map(p => {
+                const cur = task ? (task.duration ?? null) : null;
+                const on = (cur || null) === p.value;
+                return (
+                  <button key={p.label} type="button" onClick={() => { if (task) updateTask(task.id, { duration: p.value }); }} style={{
+                    height: 34, padding: '0 14px', borderRadius: 99, fontSize: 13.5, fontWeight: 800,
+                    border: `1.5px solid ${on ? 'transparent' : 'var(--border-2)'}`,
+                    background: on ? 'var(--accent)' : 'var(--bg-elev)',
+                    color: on ? '#fff' : 'var(--text-2)',
+                    cursor: 'pointer', whiteSpace: 'nowrap'
+                  }}>{p.label}</button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
