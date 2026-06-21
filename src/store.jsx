@@ -602,6 +602,32 @@ export function useStore() {
     });
   }, []);
 
+  const [savedFilters, setSavedFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem('todo-proto-saved-filters');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('todo-proto-saved-filters', JSON.stringify(savedFilters));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [savedFilters]);
+
+  const addSavedFilter = useCallback((name, query) => {
+    if (!name || !name.trim() || !query || !query.trim()) return;
+    setSavedFilters((prev) => [...prev, { id: uid('sf_'), name: name.trim(), query: query.trim() }]);
+  }, []);
+
+  const deleteSavedFilter = useCallback((id) => {
+    setSavedFilters((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+
   const reorderTasks = useCallback((draggedId, targetId) => {
     setTasks((prev) => {
       const next = [...prev];
@@ -907,6 +933,7 @@ export function useStore() {
     addProject, deleteProject, updateProject, setProjectParent, reorderProjects, toggleExpand, resetDatabase,
     addLabel, updateLabel, deleteLabel,
     addSection, deleteSection, updateSection, reorderSections,
+    savedFilters, addSavedFilter, deleteSavedFilter,
     toasts,
     theme,
     setTheme,
