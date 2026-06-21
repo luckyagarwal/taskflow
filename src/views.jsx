@@ -1434,4 +1434,4 @@ export function ProjectSettingsView({ projectId }) {
   );
 }
 
-export const Views = { TodayView, UpcomingView, InboxView, ProjectView, ProjectSettingsView, LabelView, FiltersView, LogbookView, SettingsView, ViewHeader, SectionHeader, TaskGroup, dateString };
+export const Views = { TodayView, UpcomingView, InboxView, ProjectView, ProjectSettingsView, LabelView, FiltersView, SavedFilterView, LogbookView, SettingsView, ViewHeader, SectionHeader, TaskGroup, dateString };
