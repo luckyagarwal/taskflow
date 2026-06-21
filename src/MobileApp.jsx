@@ -6,6 +6,7 @@ import { useApp, Sel } from './store.jsx';
 import { orderedProjectsForSection, hasChildren, eligibleParents } from './projects.js';
 import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
+import { BoardView } from './board.jsx';
 import { CalendarView } from './calendar.jsx';
 import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
@@ -213,6 +214,7 @@ function BrowseView({ onAddProject, onAddSection }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, marginTop: 8 }}>
         <GridCard icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} color="var(--text-2)" onClick={() => setView({ type: 'inbox' })} />
         <GridCard icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
+        <GridCard icon={<I.grid size={20} />} label="Board" color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
         <GridCard icon={<I.filter size={20} />} label="Filters & Labels" color="#8B5CF6" onClick={() => setView({ type: 'filters' })} />
         <GridCard icon={<I.logbook size={20} />} label="Completed" count={tasks.filter(t => t.done).length} color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
       </div>
@@ -338,6 +340,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
     case 'label': return <V.LabelView labelId={view.id} density={density} />;
     case 'filters': return <V.FiltersView />;
     case 'calendar': return <CalendarView density={density} compact />;
+    case 'board': return <BoardView />;
     case 'logbook': return <V.LogbookView />;
     case 'settings': return <V.SettingsView />;
     case 'browse': return <BrowseView onAddProject={onAddProject} onAddSection={onAddSection} />;

@@ -6,6 +6,7 @@ import { useApp, Sel } from './store.jsx';
 import { orderedProjectsForSection, hasChildren, eligibleParents } from './projects.js';
 import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
+import { BoardView } from './board.jsx';
 import { CalendarView } from './calendar.jsx';
 import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
@@ -373,6 +374,7 @@ function Sidebar({ style }) {
         <NavItem icon={<I.today size={19} />} label="Today" count={c.today} color="var(--today)" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
         <NavItem icon={<I.upcoming size={19} />} label="Upcoming" active={view.type === 'upcoming'} color="var(--accent)" onClick={() => setView({ type: 'upcoming' })} />
         <NavItem icon={<I.calendar size={19} />} label="Calendar" active={view.type === 'calendar'} color="var(--text-2)" onClick={() => setView({ type: 'calendar' })} />
+        <NavItem icon={<I.grid size={19} />} label="Board" active={view.type === 'board'} color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
         <NavItem icon={<I.filter size={19} />} label="Filters & Labels" active={view.type === 'filters' || view.type === 'label'} color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
       </nav>
 
@@ -430,13 +432,15 @@ function MainContent({ density, narrow }) {
     case 'label': content = <V.LabelView labelId={view.id} density={density} />; break;
     case 'filters': content = <V.FiltersView />; break;
     case 'calendar': content = <CalendarView density={density} />; break;
+    case 'board': content = <BoardView />; break;
     case 'logbook': content = <V.LogbookView />; break;
     case 'settings': content = <V.SettingsView />; break;
     default: content = <V.TodayView density={density} />;
   }
+  const fullWidth = view.type === 'board';
   return (
     <div className="scroll" style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: narrow ? '30px 28px 80px' : '34px 40px 80px' }}>{content}</div>
+      <div style={{ maxWidth: fullWidth ? 'none' : 760, margin: '0 auto', padding: narrow ? '30px 28px 80px' : '34px 40px 80px' }}>{content}</div>
     </div>
   );
 }
