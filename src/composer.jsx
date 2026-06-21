@@ -20,6 +20,9 @@ function weekendOffset() {
   return ((6 - d) + 7) % 7 || 6;
 }
 
+// Web Speech API feature detection — used to conditionally render the dictation mic.
+const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
 export const PRIO = [
   { p: 1, label: 'Priority 1', color: '#E44332' },
   { p: 2, label: 'Priority 2', color: '#F5A623' },
@@ -456,6 +459,29 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
   const [menu, setMenu] = useState(null); // 'due' | 'prio' | 'proj' | 'label'
   const [parsed, setParsed] = useState(null);
   const inputRef = useRef(null);
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef(null);
+
+  const startDictation = () => {
+    if (!SR) return;
+    if (listening && recogRef.current) {
+      recogRef.current.stop();
+      return;
+    }
+    const r = new SR();
+    recogRef.current = r;
+    r.lang = navigator.language || 'en-US';
+    r.interimResults = false;
+    r.maxAlternatives = 1;
+    r.onresult = (e) => {
+      const t = e.results[0][0].transcript;
+      setTitle((prev) => (prev ? prev + ' ' + t : t));
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    r.start();
+    setListening(true);
+  };
 
   useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
 
@@ -542,10 +568,30 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
       border: '1.5px solid var(--border-2)', borderRadius: 14, background: 'var(--bg-elev)',
       boxShadow: 'var(--shadow-md)', padding: '12px 14px 10px', animation: 'slideUp .16s ease',
     }}>
-      <input ref={inputRef} className="no-sel" value={title} onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
-        placeholder="Task name"
-        style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontWeight: 700, color: 'var(--text)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input ref={inputRef} className="no-sel" value={title} onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
+          placeholder="Task name"
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontWeight: 700, color: 'var(--text)' }} />
+        {SR && (
+          <button
+            type="button"
+            onClick={startDictation}
+            title={listening ? 'Stop dictation' : 'Dictate task'}
+            aria-label={listening ? 'Stop dictation' : 'Dictate task'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              border: 'none', cursor: 'pointer',
+              background: listening ? 'var(--p1)' : 'transparent',
+              color: listening ? '#fff' : 'var(--text-3)',
+              transition: 'background .15s, color .15s',
+            }}
+          >
+            <I.mic size={17} />
+          </button>
+        )}
+      </div>
       <input value={note} onChange={(e) => setNote(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
         placeholder="Description"
