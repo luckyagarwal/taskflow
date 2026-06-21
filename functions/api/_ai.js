@@ -30,3 +30,31 @@ export function parseSubtasks(text) {
     .filter(Boolean)
     .slice(0, MAX_SUBTASKS);
 }
+
+export function buildFilterPrompt(text, labels = [], projects = []) {
+  const labelNames = labels.map((l) => l && l.name).filter(Boolean).slice(0, 100).join(", ");
+  const projectNames = projects.map((p) => p && p.name).filter(Boolean).slice(0, 100).join(", ");
+  return [
+    "Translate the user request into a task-filter query using this mini-language:",
+    "- priority: p1 p2 p3 p4",
+    "- due: overdue, today, upcoming, nodate, someday",
+    "- status: planned, inprogress, blocked, waiting, done, recurring",
+    "- label: @name   project: #name (or inbox)",
+    "- combine with & (and), | (or), ! (not), and parentheses",
+    "Available label names: " + (labelNames || "(none)"),
+    "Available project names: " + (projectNames || "(none)"),
+    "For @label and #project, use the name lowercased with spaces removed.",
+    "Return only the query string, nothing else.",
+    "",
+    "Request: " + String(text || "").slice(0, 500).trim(),
+  ].join("\n");
+}
+
+export function parseFilterQuery(responseText) {
+  try {
+    const q = JSON.parse(responseText).query;
+    return typeof q === "string" ? q.trim().slice(0, 200) : "";
+  } catch {
+    return "";
+  }
+}

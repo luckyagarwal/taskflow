@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSubtaskPrompt, parseSubtasks } from "../functions/api/_ai.js";
+import { buildSubtaskPrompt, parseSubtasks, buildFilterPrompt, parseFilterQuery } from "../functions/api/_ai.js";
 
 test("buildSubtaskPrompt: includes title, omits empty note", () => {
   const p = buildSubtaskPrompt("Plan birthday party", "");
@@ -32,4 +32,18 @@ test("parseSubtasks: parses, trims, drops empties, clamps to 12", () => {
 test("parseSubtasks: invalid JSON → []", () => {
   assert.deepEqual(parseSubtasks("not json"), []);
   assert.deepEqual(parseSubtasks(JSON.stringify({ nope: 1 })), []);
+});
+
+test("buildFilterPrompt includes request, names, grammar", () => {
+  const p = buildFilterPrompt("urgent work tasks", [{ name: "email" }], [{ name: "Work" }]);
+  assert.match(p, /urgent work tasks/);
+  assert.match(p, /email/);
+  assert.match(p, /Work/);
+  assert.match(p, /p1/);
+});
+
+test("parseFilterQuery extracts query; '' on bad json", () => {
+  assert.equal(parseFilterQuery(JSON.stringify({ query: "  p1 & overdue " })), "p1 & overdue");
+  assert.equal(parseFilterQuery("nonsense"), "");
+  assert.equal(parseFilterQuery(JSON.stringify({ nope: 1 })), "");
 });
