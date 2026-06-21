@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
+import { orderedProjectsForSection, hasChildren, eligibleParents } from './projects.js';
 import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { CalendarView } from './calendar.jsx';
@@ -132,7 +133,10 @@ function TabBar({ visible }) {
 }
 
 function BrowseView({ onAddProject, onAddSection }) {
-  const { setView, tasks, projects, sections, resetDatabase, deleteSection, updateSection } = useApp();
+  const { setView, tasks, projects, sections, resetDatabase, deleteSection, updateSection, expandedIds, toggleExpand } = useApp();
+  // A parent id present in expandedIds means COLLAPSED (reuses the store's
+  // existing client-side toggle state; shared with desktop).
+  const isCollapsed = (id) => expandedIds.includes(id);
   const c = Sel.counts(tasks);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingSectionName, setEditingSectionName] = useState('');
@@ -214,7 +218,8 @@ function BrowseView({ onAddProject, onAddSection }) {
       </div>
 
       {sections.map((sec) => {
-        const secProjects = projects.filter(p => p.group === sec.name);
+        const rows = orderedProjectsForSection(projects, sec.name)
+          .filter(({ project, depth }) => !(depth === 1 && project.parent && isCollapsed(project.parent)));
         const isEditing = editingSectionId === sec.id;
         return (
           <div key={sec.id} style={{ marginBottom: 20 }}>
@@ -264,17 +269,33 @@ function BrowseView({ onAddProject, onAddSection }) {
               </div>
             </div>
 
-            {secProjects.length === 0 ? (
+            {rows.length === 0 ? (
               <div className="scandinavian-card" style={{ padding: '16px', fontSize: 13.5, color: 'var(--text-3)', fontStyle: 'italic', background: 'var(--bg-elev)', border: '1px solid var(--border)' }}>
                 No projects in this section
               </div>
             ) : (
               <div className="scandinavian-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-elev)', border: '1px solid var(--border)' }}>
-                {secProjects.map((p, idx) => (
-                  <div key={p.id} style={{ borderBottom: idx < secProjects.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                    <Item icon={<Dot color={p.color} size={10} />} label={p.name} count={Sel.byProject(tasks, p.id).length} onClick={() => setView({ type: 'project', id: p.id })} />
-                  </div>
-                ))}
+                {rows.map(({ project: p, depth }, idx) => {
+                  const parentHasKids = depth === 0 && hasChildren(projects, p.id);
+                  const collapsed = isCollapsed(p.id);
+                  return (
+                    <div key={p.id} style={{ borderBottom: idx < rows.length - 1 ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', paddingLeft: depth === 1 ? 24 : 0 }}>
+                      {parentHasKids ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleExpand(p.id); }}
+                          className="active-scale"
+                          title={collapsed ? 'Expand' : 'Collapse'}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '0 0 0 12px', display: 'grid', placeItems: 'center', color: 'var(--text-3)', transition: 'transform .15s', transform: collapsed ? 'rotate(-90deg)' : 'none', flex: 'none' }}
+                        >
+                          <I.chevD size={14} />
+                        </button>
+                      ) : null}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Item icon={<Dot color={p.color} size={10} />} label={p.name} count={Sel.byProject(tasks, p.id).length} onClick={() => setView({ type: 'project', id: p.id })} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -454,6 +475,11 @@ function AddProjectModal({ onClose }) {
   const [group, setGroup] = useState(() => (sections && sections.length > 0 ? sections[0].name : 'Personal'));
   const [customGroup, setCustomGroup] = useState('');
   const [isCustom, setIsCustom] = useState(false);
+  const [parent, setParent] = useState('');
+
+  // Eligible parents are top-level projects in the selected section. Choosing a
+  // parent forces the new project's group to the parent's group (addProject).
+  const parentOptions = isCustom ? [] : eligibleParents(projects, null).filter((p) => p.group === group);
 
   const handleAdd = () => {
     if (name.trim()) {
@@ -467,7 +493,7 @@ function AddProjectModal({ onClose }) {
           finalGroup = 'Personal';
         }
       }
-      addProject(name.trim(), finalGroup || 'Personal');
+      addProject(name.trim(), finalGroup || 'Personal', parent || null);
       onClose();
     }
   };
@@ -510,7 +536,8 @@ function AddProjectModal({ onClose }) {
               onChange={(e) => {
                 setGroup(e.target.value);
                 setIsCustom(e.target.value === '__new__');
-              }} 
+                setParent('');
+              }}
               style={{ 
                 width: '100%', 
                 border: '1.5px solid var(--border)', 
@@ -534,22 +561,51 @@ function AddProjectModal({ onClose }) {
           </div>
 
           {isCustom && (
-            <input 
-              value={customGroup} 
-              onChange={(e) => setCustomGroup(e.target.value)} 
+            <input
+              value={customGroup}
+              onChange={(e) => setCustomGroup(e.target.value)}
               placeholder="New section name..."
               onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-              style={{ 
-                width: '100%', 
-                border: '1.5px solid var(--border)', 
-                background: 'var(--bg)', 
-                color: 'var(--text)', 
-                borderRadius: 12, 
-                padding: '12px 14px', 
-                fontSize: 14.5, 
-                outline: 'none' 
-              }} 
+              style={{
+                width: '100%',
+                border: '1.5px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--text)',
+                borderRadius: 12,
+                padding: '12px 14px',
+                fontSize: 14.5,
+                outline: 'none'
+              }}
             />
+          )}
+
+          {!isCustom && parentOptions.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Nest Under (optional)</span>
+              <select
+                value={parent}
+                onChange={(e) => setParent(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--text)',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  fontSize: 14.5,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2395938E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 14px center',
+                  backgroundSize: '16px'
+                }}
+              >
+                <option value="">None (top-level)</option>
+                {parentOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
           )}
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
