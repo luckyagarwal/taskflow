@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
+import { orderedProjectsForSection, hasChildren, eligibleParents } from './projects.js';
 import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { CalendarView } from './calendar.jsx';
@@ -87,20 +88,32 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
   );
 }
 
-function ProjectGroup({ title, projects = [], view, setView }) {
+function ProjectGroup({ title, projects = [], allProjects = [], view, setView }) {
   const [open, setOpen] = useState(true);
-  const { tasks, addProject, deleteProject, updateProject, deleteSection, updateSection, sections, reorderProjects } = useApp();
+  const { tasks, addProject, deleteProject, updateProject, setProjectParent, deleteSection, updateSection, sections, reorderProjects, expandedIds, toggleExpand } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [projName, setProjName] = useState('');
+  const [newProjParent, setNewProjParent] = useState('');
   const [headerHovered, setHeaderHovered] = useState(false);
   const [draggedProjIdx, setDraggedProjIdx] = useState(null);
   const [editingSection, setEditingSection] = useState(false);
   const [sectionEditName, setSectionEditName] = useState(title);
 
+  // Flat render list: each top-level project followed by its children (depth 1).
+  const rows = orderedProjectsForSection(allProjects, title);
+  // A parent id present in expandedIds means it is COLLAPSED. Parents render
+  // expanded by default; toggleExpand reuses the store's existing client UI
+  // collapse mechanism (no new synced state — per spec decision #6).
+  const isCollapsed = (id) => expandedIds.includes(id);
+
+  // Eligible parents for the create picker (top-level projects in this section).
+  const createParentOptions = eligibleParents(allProjects, null).filter((p) => p.group === title);
+
   const handleAdd = () => {
     if (projName.trim()) {
-      addProject(projName.trim(), title);
+      addProject(projName.trim(), title, newProjParent || null);
       setProjName('');
+      setNewProjParent('');
       setAddingProj(false);
     }
   };
@@ -140,7 +153,7 @@ function ProjectGroup({ title, projects = [], view, setView }) {
   const handleProjDragOver = (e, idx) => {
     e.preventDefault();
     if (draggedProjIdx === null || draggedProjIdx === idx) return;
-    reorderProjects(projects[draggedProjIdx].id, projects[idx].id);
+    reorderProjects(rows[draggedProjIdx].project.id, rows[idx].project.id);
     setDraggedProjIdx(idx);
   };
 
@@ -201,8 +214,12 @@ function ProjectGroup({ title, projects = [], view, setView }) {
           </div>
         )}
       </div>
-      {open && projects.map((p, idx) => {
+      {open && rows.map(({ project: p, depth }, idx) => {
+        // Skip children of a collapsed parent.
+        if (depth === 1 && p.parent && isCollapsed(p.parent)) return null;
         const n = Sel.byProject(tasks, p.id).length;
+        const parentHasKids = depth === 0 && hasChildren(allProjects, p.id);
+        const collapsed = isCollapsed(p.id);
         const handleProjDelete = () => {
           if (window.confirm(`Are you sure you want to delete the project "${p.name}"? Tasks will be moved to Inbox.`)) {
             deleteProject(p.id);
@@ -213,6 +230,10 @@ function ProjectGroup({ title, projects = [], view, setView }) {
             updateProject(p.id, { name: newName });
           }
         };
+        // Parent picker for an existing project: only top-level projects in this
+        // section that are valid one-level parents (eligibleParents excludes self
+        // and any project that already has children).
+        const parentOptions = eligibleParents(allProjects, p.id).filter((op) => op.group === title);
         return (
           <div
             key={p.id}
@@ -220,26 +241,55 @@ function ProjectGroup({ title, projects = [], view, setView }) {
             onDragStart={(e) => handleProjDragStart(e, idx)}
             onDragOver={(e) => handleProjDragOver(e, idx)}
             onDragEnd={handleProjDragEnd}
-            style={{ opacity: draggedProjIdx === idx ? 0.4 : 1 }}
+            style={{ opacity: draggedProjIdx === idx ? 0.4 : 1, position: 'relative', paddingLeft: depth === 1 ? 24 : 0 }}
           >
+            {parentHasKids && (
+              <span
+                onClick={(e) => { e.stopPropagation(); toggleExpand(p.id); }}
+                title={collapsed ? 'Expand' : 'Collapse'}
+                style={{ position: 'absolute', left: -2, top: 9, zIndex: 2, display: 'grid', placeItems: 'center', width: 16, height: 16, color: 'var(--text-3)', cursor: 'pointer', transition: 'transform .15s', transform: collapsed ? 'rotate(-90deg)' : 'none' }}
+              >
+                <I.chevD size={13} />
+              </span>
+            )}
             <NavItem icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
               active={(view.type === 'project' || view.type === 'project-settings') && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })}
               onDelete={handleProjDelete} onRename={handleProjRename} />
+            {(parentOptions.length > 0 || p.parent) && (
+              <select
+                value={p.parent || ''}
+                onChange={(e) => setProjectParent(p.id, e.target.value || null)}
+                title="Nest under a project"
+                style={{ margin: '0 8px 4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-3)', borderRadius: 4, padding: '1px 4px', fontSize: 11, outline: 'none' }}
+              >
+                <option value="">None (top-level)</option>
+                {parentOptions.map((op) => (
+                  <option key={op.id} value={op.id}>{op.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         );
       })}
-      {open && projects.length === 0 && (
+      {open && rows.length === 0 && (
         <div style={{ padding: '4px 8px 4px 28px', fontSize: 12.5, color: 'var(--text-3)', fontStyle: 'italic' }}>
           No projects
         </div>
       )}
       {open && (
         addingProj ? (
-          <div style={{ padding: '4px 8px 4px 28px', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{ padding: '4px 8px 4px 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAddingProj(false); setProjName(''); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAddingProj(false); setProjName(''); setNewProjParent(''); } }}
               placeholder="Project name..."
               style={{ flex: 1, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '3px 6px', fontSize: 12, outline: 'none' }} />
+            <select value={newProjParent} onChange={(e) => setNewProjParent(e.target.value)}
+              style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '3px 6px', fontSize: 12, outline: 'none' }}>
+              <option value="">None (top-level)</option>
+              {createParentOptions.map((pp) => (
+                <option key={pp.id} value={pp.id}>{pp.name}</option>
+              ))}
+            </select>
           </div>
         ) : (
           <button onClick={() => setAddingProj(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 8px 6px 28px', fontSize: 12.5, color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
@@ -337,7 +387,7 @@ function Sidebar({ style }) {
             onDragEnd={handleSecDragEnd}
             style={{ opacity: draggedSecIdx === idx ? 0.4 : 1 }}
           >
-            <ProjectGroup title={sec.name} projects={secProjects} view={view} setView={setView} />
+            <ProjectGroup title={sec.name} projects={secProjects} allProjects={projects} view={view} setView={setView} />
           </div>
         );
       })}
