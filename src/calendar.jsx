@@ -1,10 +1,13 @@
 // calendar.jsx — month grid calendar
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
 import { TaskRow, Empty, Dot, useIsNarrow } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
+import { layoutDayTasks, fmtHM, parseHM } from './timegrid.js';
+
+const HOUR_H = 60; // matches --hour-height
 
 export function CalendarView({ density, compact }) {
   const { tasks, setSelectedId, toggleTask, selectedId } = useApp();
@@ -12,6 +15,14 @@ export function CalendarView({ density, compact }) {
   const today = H.startOfToday();
   const [monthShift, setMonthShift] = useState(0);
   const [selOff, setSelOff] = useState(0);
+  const [dayMode, setDayMode] = useState(false);
+
+  const dayGridRef = useRef(null);
+  useEffect(() => {
+    if (dayMode && dayGridRef.current) {
+      dayGridRef.current.scrollTop = 7 * HOUR_H;
+    }
+  }, [dayMode]);
 
   const base = new Date(today.getFullYear(), today.getMonth() + monthShift, 1);
   const year = base.getFullYear(), month = base.getMonth();
@@ -36,13 +47,76 @@ export function CalendarView({ density, compact }) {
       <ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.calendar size={25} /></span>}
         title="Calendar" subtitle={`${H.MONTHS_LONG[month]} ${year}`}
         right={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <button className="icon-btn" onClick={() => setMonthShift((m) => m - 1)}><I.chevL size={18} /></button>
-            <button className="btn btn-ghost" style={{ height: 32, padding: '0 12px' }} onClick={() => { setMonthShift(0); setSelOff(0); }}>Today</button>
-            <button className="icon-btn" onClick={() => setMonthShift((m) => m + 1)}><I.chevR size={18} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <button className="btn btn-ghost" style={{ height: 32, padding: '0 12px', borderRadius: 0, fontWeight: 800, background: !dayMode ? 'var(--active)' : 'transparent', color: !dayMode ? 'var(--accent-text)' : 'var(--text-2)' }} onClick={() => setDayMode(false)}>Month</button>
+              <button className="btn btn-ghost" style={{ height: 32, padding: '0 12px', borderRadius: 0, fontWeight: 800, background: dayMode ? 'var(--active)' : 'transparent', color: dayMode ? 'var(--accent-text)' : 'var(--text-2)' }} onClick={() => setDayMode(true)}>Day</button>
+            </div>
+            {!dayMode && (
+              <>
+                <button className="icon-btn" onClick={() => setMonthShift((m) => m - 1)}><I.chevL size={18} /></button>
+                <button className="btn btn-ghost" style={{ height: 32, padding: '0 12px' }} onClick={() => { setMonthShift(0); setSelOff(0); }}>Today</button>
+                <button className="icon-btn" onClick={() => setMonthShift((m) => m + 1)}><I.chevR size={18} /></button>
+              </>
+            )}
           </div>
         } />
 
+      {dayMode && (() => {
+        const dayTasks = tasks.filter(t => !t.done && t.dueOffset === selOff);
+        const unscheduled = dayTasks.filter(t => parseHM(t.time) == null);
+        const layout = layoutDayTasks(dayTasks);
+        return (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px 10px' }}>
+              <button className="icon-btn" onClick={() => setSelOff(o => o - 1)}><I.chevL size={18} /></button>
+              <span style={{ fontSize: 16, fontWeight: 800 }}>{H.DOW_LONG[selDate.getDay()]}</span>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-3)' }}>{H.MONTHS_LONG[selDate.getMonth()]} {selDate.getDate()}</span>
+              <button className="icon-btn" onClick={() => setSelOff(o => o + 1)}><I.chevR size={18} /></button>
+              <button className="btn btn-ghost" style={{ height: 30, padding: '0 12px', marginLeft: 'auto' }} onClick={() => setSelOff(0)}>Today</button>
+            </div>
+            {unscheduled.length > 0 && (
+              <div className="day-unscheduled">
+                {unscheduled.map(t => {
+                  const proj = t.projectId !== 'inbox' ? H.projectById(t.projectId) : null;
+                  const c = H.priorityColor(t.priority) || (proj ? proj.color : 'var(--text-3)');
+                  return (
+                    <button key={t.id} onClick={() => setSelectedId(t.id)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 12px', border: '1px solid var(--border)', fontWeight: 700, fontSize: 12.5 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 99, background: c, flex: 'none' }} />
+                      {t.title}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="day-grid" ref={dayGridRef}>
+              <div className="day-grid-track" style={{ height: 24 * HOUR_H }}>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <div key={h} className="day-hour">{fmtHM(h * 60)}</div>
+                ))}
+                {layout.map(({ task, startMin, endMin, lane, lanes }) => {
+                  const proj = task.projectId !== 'inbox' ? H.projectById(task.projectId) : null;
+                  const bg = H.priorityColor(task.priority) || (proj ? proj.color : 'var(--accent-soft)');
+                  return (
+                    <div key={task.id} className="time-block" onClick={() => setSelectedId(task.id)} style={{
+                      top: (startMin / 60) * HOUR_H,
+                      height: Math.max(22, (endMin - startMin) / 60 * HOUR_H),
+                      left: `calc(48px + (${lane} / ${lanes}) * (100% - 52px))`,
+                      width: `calc((1 / ${lanes}) * (100% - 52px) - 4px)`,
+                      background: bg,
+                    }}>
+                      <div style={{ fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
+                      <div style={{ fontSize: 11, opacity: 0.9 }}>{fmtHM(startMin)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {!dayMode && (<>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-elev)' }}>
         {H.DOW.map((d) => (
           <div key={d} style={{ textAlign: 'center', padding: '9px 0', fontSize: 11.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--text-3)', textTransform: 'uppercase', borderBottom: '1px solid var(--border)' }}>{d}</div>
@@ -110,6 +184,7 @@ export function CalendarView({ density, compact }) {
             <TaskRow key={t.id} task={t} density={density} showProject onToggle={() => toggleTask(t.id)} onOpen={(x) => setSelectedId(x.id)} selected={selectedId === t.id} />
           ))}
       </div>
+      </>)}
     </div>
   );
 }
