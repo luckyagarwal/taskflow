@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSubtaskPrompt, parseSubtasks, buildFilterPrompt, parseFilterQuery } from "../functions/api/_ai.js";
+import { buildSubtaskPrompt, parseSubtasks, buildFilterPrompt, parseFilterQuery, aiResponseToText } from "../functions/api/_ai.js";
 
 test("buildSubtaskPrompt: includes title, omits empty note", () => {
   const p = buildSubtaskPrompt("Plan birthday party", "");
@@ -46,4 +46,12 @@ test("parseFilterQuery extracts query; '' on bad json", () => {
   assert.equal(parseFilterQuery(JSON.stringify({ query: "  p1 & overdue " })), "p1 & overdue");
   assert.equal(parseFilterQuery("nonsense"), "");
   assert.equal(parseFilterQuery(JSON.stringify({ nope: 1 })), "");
+});
+
+test("aiResponseToText: string passthrough, object stringified, nullish empty", () => {
+  assert.equal(aiResponseToText({ response: '{"subtasks":["a"]}' }), '{"subtasks":["a"]}');
+  assert.equal(aiResponseToText({ response: { subtasks: ["a"] } }), JSON.stringify({ subtasks: ["a"] }));
+  assert.equal(aiResponseToText({ response: null }), "");
+  assert.equal(aiResponseToText({}), "");
+  assert.equal(aiResponseToText(null), "");
 });

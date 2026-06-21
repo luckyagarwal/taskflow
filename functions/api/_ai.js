@@ -58,3 +58,11 @@ export function parseFilterQuery(responseText) {
     return "";
   }
 }
+
+// Normalize a Workers AI result ({ response: object | string }) to a JSON text string.
+export function aiResponseToText(out) {
+  const raw = out && out.response;
+  if (typeof raw === "string") return raw;
+  if (raw == null) return "";
+  return JSON.stringify(raw);
+}
