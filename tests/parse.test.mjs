@@ -54,3 +54,35 @@ test("absolute date + trailing time both parse (ordering bug)", () => {
   if (target < todayZero) target = new Date(now.getFullYear() + 1, 11, 3);
   assert.equal(r.dueOffset, offsetFromDate(target));
 });
+
+test("day-first absolute date: 15 Jan", () => {
+  const r = P("Submit report 15 Jan");
+  assert.equal(r.content, "Submit report");
+  const now = new Date();
+  const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let target = new Date(now.getFullYear(), 0, 15);
+  if (target < todayZero) target = new Date(now.getFullYear() + 1, 0, 15);
+  assert.equal(r.dueOffset, offsetFromDate(target));
+});
+
+test("day-first full month name: 1 March", () => {
+  const r = P("Pay rent 1 March");
+  assert.equal(r.content, "Pay rent");
+  const now = new Date();
+  const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let target = new Date(now.getFullYear(), 2, 1);
+  if (target < todayZero) target = new Date(now.getFullYear() + 1, 2, 1);
+  assert.equal(r.dueOffset, offsetFromDate(target));
+});
+
+test("explicit year is honoured: Jan 15 2030", () => {
+  const r = P("Launch Jan 15 2030");
+  assert.equal(r.content, "Launch");
+  assert.equal(r.dueOffset, offsetFromDate(new Date(2030, 0, 15)));
+});
+
+test("day-first with explicit year: 15 Jan 2030", () => {
+  const r = P("Launch 15 Jan 2030");
+  assert.equal(r.content, "Launch");
+  assert.equal(r.dueOffset, offsetFromDate(new Date(2030, 0, 15)));
+});

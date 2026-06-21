@@ -205,6 +205,19 @@ export function parseTask(raw, projects = [], existingLabels = []) {
   // 5. Parse Dates (Relative/Calendar) — BEFORE time so a date's day number
   //    can't be mis-grabbed by the time matcher.
   const today = new Date();
+  const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const MONTH_STEMS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  // Offset (in days from today) for an absolute month/day, honouring an
+  // explicit year; with no year, assume this year and roll forward if it passed.
+  const absDateOffset = (monthIdx, day, yearStr) => {
+    const year = yearStr ? parseInt(yearStr) : today.getFullYear();
+    const target = new Date(year, monthIdx, day);
+    if (!yearStr && target.getTime() < todayZero.getTime()) {
+      target.setFullYear(year + 1);
+    }
+    return Math.round((target.getTime() - todayZero.getTime()) / MS_DAY);
+  };
+
   const datePatterns = [
     { regex: /\btoday\b/i, off: 0 },
     { regex: /\btomorrow\b/i, off: 1 },
@@ -224,18 +237,13 @@ export function parseTask(raw, projects = [], existingLabels = []) {
         return diff;
       }
     },
-    { regex: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})\b/i, parser: (m) => {
-        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-        const month = monthNames.indexOf(m[1].toLowerCase().substring(0, 3));
-        const day = parseInt(m[2]);
-        let year = today.getFullYear();
-        let targetDate = new Date(year, month, day);
-        if (targetDate.getTime() < today.getTime() - 86400000) {
-          targetDate.setFullYear(year + 1);
-        }
-        const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        return Math.round((targetDate.getTime() - todayZero.getTime()) / MS_DAY);
-      }
+    // month-then-day: "Jan 15", "January 15", optional ", 2026" / " 2026"
+    { regex: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i,
+      parser: (m) => absDateOffset(MONTH_STEMS.indexOf(m[1].toLowerCase().substring(0, 3)), parseInt(m[2]), m[3])
+    },
+    // day-then-month: "15 Jan", "15 January", optional " 2026"
+    { regex: /\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:\s+(\d{4}))?\b/i,
+      parser: (m) => absDateOffset(MONTH_STEMS.indexOf(m[2].toLowerCase().substring(0, 3)), parseInt(m[1]), m[3])
     }
   ];
 
