@@ -202,29 +202,8 @@ export function parseTask(raw, projects = [], existingLabels = []) {
     }
   }
 
-  // 5. Parse Time: "at 5pm", "5:30pm", "at 17:00", "9am"
-  const timeRegex = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
-  const timeMatch = text.match(timeRegex);
-  if (timeMatch) {
-    let h = parseInt(timeMatch[1]);
-    const m = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-    const ampm = timeMatch[3];
-    const hasAt = /\bat\s+\d/i.test(timeMatch[0]);
-    const hasAmpm = !!ampm;
-    const hasColon = !!timeMatch[2];
-    if (hasAt || hasAmpm || hasColon) {
-      if (ampm) {
-        if (ampm.toLowerCase() === 'pm' && h < 12) h += 12;
-        if (ampm.toLowerCase() === 'am' && h === 12) h = 0;
-      }
-      if (h >= 0 && h < 24 && m >= 0 && m < 60) {
-        time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-        text = text.replace(timeRegex, '');
-      }
-    }
-  }
-
-  // 6. Parse Dates (Relative/Calendar)
+  // 5. Parse Dates (Relative/Calendar) — BEFORE time so a date's day number
+  //    can't be mis-grabbed by the time matcher.
   const today = new Date();
   const datePatterns = [
     { regex: /\btoday\b/i, off: 0 },
@@ -266,6 +245,28 @@ export function parseTask(raw, projects = [], existingLabels = []) {
       dueOffset = dp.off !== undefined ? dp.off : dp.parser(m);
       text = text.replace(dp.regex, '');
       break;
+    }
+  }
+
+  // 6. Parse Time: "at 5pm", "5:30pm", "at 17:00", "9am" — AFTER dates.
+  const timeRegex = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
+  const timeMatch = text.match(timeRegex);
+  if (timeMatch) {
+    let h = parseInt(timeMatch[1]);
+    const mm = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    const ampm = timeMatch[3];
+    const hasAt = /\bat\s+\d/i.test(timeMatch[0]);
+    const hasAmpm = !!ampm;
+    const hasColon = !!timeMatch[2];
+    if (hasAt || hasAmpm || hasColon) {
+      if (ampm) {
+        if (ampm.toLowerCase() === 'pm' && h < 12) h += 12;
+        if (ampm.toLowerCase() === 'am' && h === 12) h = 0;
+      }
+      if (h >= 0 && h < 24 && mm >= 0 && mm < 60) {
+        time = `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        text = text.replace(timeRegex, '');
+      }
     }
   }
 

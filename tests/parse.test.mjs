@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseTask } from "../src/data.js";
+import { parseTask, offsetFromDate } from "../src/data.js";
 
 const projects = [{ id: "p_launch", name: "Work" }, { id: "p_home", name: "Home" }];
 const labels = [{ id: "l_email", name: "email" }, { id: "l_deep", name: "deep" }];
@@ -42,4 +42,15 @@ test("recurrence every month", () => {
 test("in N days", () => {
   const r = P("Read book in 3 days");
   assert.equal(r.dueOffset, 3);
+});
+
+test("absolute date + trailing time both parse (ordering bug)", () => {
+  const r = P("Meeting Dec 3 at 2pm");
+  assert.equal(r.content, "Meeting");
+  assert.equal(r.time, "14:00");
+  const now = new Date();
+  const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let target = new Date(now.getFullYear(), 11, 3);
+  if (target < todayZero) target = new Date(now.getFullYear() + 1, 11, 3);
+  assert.equal(r.dueOffset, offsetFromDate(target));
 });
