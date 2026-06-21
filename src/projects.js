@@ -12,6 +12,11 @@ export function childrenOf(projects, parentId) {
 }
 
 export function hasChildren(projects, projectId) {
+  // A null/undefined id is not a real project, so it has no children. Without
+  // this guard `hasChildren(projects, null)` would be true whenever any
+  // top-level project exists (those store parent === null), which breaks the
+  // create-project parent picker that calls eligibleParents(projects, null).
+  if (projectId == null) return false;
   return projects.some((p) => p.parent === projectId);
 }
 

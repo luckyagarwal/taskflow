@@ -22,6 +22,15 @@ test("hasChildren", () => {
   const ps = [mk("p"), mk("c", { parent: "p" }), mk("lonely")];
   assert.equal(hasChildren(ps, "p"), true);
   assert.equal(hasChildren(ps, "lonely"), false);
+  // A null/undefined id is not a real project and has no children.
+  assert.equal(hasChildren(ps, null), false);
+  assert.equal(hasChildren(ps, undefined), false);
+});
+
+test("eligibleParents(null): create picker offers every top-level project", () => {
+  const ps = [mk("a"), mk("b"), mk("c", { parent: "b" })];
+  // For a not-yet-created project (id null), all top-level projects are valid.
+  assert.deepEqual(eligibleParents(ps, null).map((p) => p.id).sort(), ["a", "b"]);
 });
 
 test("eligibleParents: top-level, excludes self, [] when self has children", () => {
