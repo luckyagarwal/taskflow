@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
+import { compileQuery } from './query.js';
 import { TaskRow, Empty, Dot, Ring, useIsNarrow } from './ui.jsx';
 import { InlineComposer, Popover } from './composer.jsx';
 import { CalendarView } from './calendar.jsx';
@@ -698,13 +699,54 @@ export function LabelView({ labelId, density }) {
 }
 
 // ── LABELS INDEX (filters) ──────────────────────────────────
-export function FiltersView() {
-  const { tasks, setView, labels, updateLabel, deleteLabel } = useApp();
+export function FiltersView({ density }) {
+  const { tasks, setView, labels, projects, updateLabel, deleteLabel, addSavedFilter } = useApp();
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
+  const [query, setQuery] = useState('');
+  const [nlState, setNlState] = useState('idle'); // 'idle' | 'loading' | error message string
 
   const colors = ['#7C5CFC', '#1F9D55', '#F5A623', '#9AA0A6', '#2D7FF9', '#E8588A'];
+
+  const compiled = compileQuery(query, { labels, projects });
+  let results = null;
+  if (compiled.ok && !compiled.empty) {
+    const base = compiled.usesDone ? tasks : tasks.filter((t) => !t.done);
+    results = base.filter(compiled.predicate);
+  }
+  const canSave = compiled.ok && !compiled.empty && query.trim();
+
+  const askInWords = async () => {
+    if (nlState === 'loading') return;
+    const text = window.prompt('Describe the tasks you want');
+    if (!text) return;
+    setNlState('loading');
+    try {
+      const res = await fetch('/api/nl-filter', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          labels: labels.map((l) => ({ name: l.name })),
+          projects: projects.map((p) => ({ name: p.name })),
+        }),
+      });
+      if (res.status === 503) {
+        setNlState("AI isn't set up yet");
+        return;
+      }
+      if (!res.ok) {
+        setNlState("Couldn't translate");
+        return;
+      }
+      const { query: q } = await res.json();
+      setQuery(q || '');
+      setNlState('idle');
+    } catch {
+      setNlState("Couldn't translate");
+    }
+  };
 
   const startEdit = (l) => {
     setEditingId(l.id);
@@ -722,6 +764,59 @@ export function FiltersView() {
   return (
     <div>
       <ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.filter size={24} /></span>} title="Filters & Labels" subtitle="Slice your tasks any way you like" />
+
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="p1 & overdue"
+            style={{ flex: 1, minWidth: 200, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none' }}
+          />
+          <button
+            type="button"
+            onClick={() => { const name = window.prompt('Filter name'); if (name) addSavedFilter(name, query); }}
+            disabled={!canSave}
+            style={{
+              height: 36, padding: '0 12px', borderRadius: 8, fontSize: 13, fontWeight: 800,
+              border: '1.5px solid var(--border-2)', background: 'transparent',
+              color: canSave ? 'var(--accent)' : 'var(--text-3)', cursor: canSave ? 'pointer' : 'default', whiteSpace: 'nowrap',
+            }}
+          >
+            Save filter
+          </button>
+          <button
+            type="button"
+            onClick={askInWords}
+            disabled={nlState === 'loading'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 12px',
+              borderRadius: 8, fontSize: 13, fontWeight: 800,
+              border: '1.5px solid var(--border-2)', background: 'transparent',
+              color: nlState === 'loading' ? 'var(--text-3)' : 'var(--accent)',
+              cursor: nlState === 'loading' ? 'default' : 'pointer', whiteSpace: 'nowrap',
+            }}
+            title="Translate plain English into a filter"
+          >
+            <I.sparkle size={14} />
+            {nlState === 'loading' ? 'Translating…' : 'Ask in words'}
+          </button>
+        </div>
+        {nlState !== 'idle' && nlState !== 'loading' && (
+          <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)' }}>{nlState}</div>
+        )}
+        {!compiled.ok && (
+          <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--p1)' }}>{compiled.error}</div>
+        )}
+      </div>
+
+      {results && (
+        <div style={{ marginBottom: 8 }}>
+          <SectionHeader title="Results" count={results.length} />
+          <TaskGroup tasks={results} density={density} showProject />
+        </div>
+      )}
+
       <div className="section-title" style={{ padding: '8px 8px' }}>Labels</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 12 }}>
         {labels.map((l) => {
@@ -787,6 +882,52 @@ export function FiltersView() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── SAVED FILTER ────────────────────────────────────────────
+export function SavedFilterView({ filterId, density }) {
+  const { savedFilters, tasks, labels, projects, deleteSavedFilter, setView } = useApp();
+  const f = savedFilters.find((s) => s.id === filterId);
+
+  if (!f) {
+    return (
+      <div>
+        <ViewHeader icon={<span style={{ color: 'var(--accent)' }}><I.filter size={24} /></span>} title="Filter not found" />
+        <Empty icon={<I.filter size={30} />} title="Filter not found" sub="This saved filter no longer exists." />
+      </div>
+    );
+  }
+
+  const compiled = compileQuery(f.query, { labels, projects });
+  let results = null;
+  if (compiled.ok && !compiled.empty) {
+    const base = compiled.usesDone ? tasks : tasks.filter((t) => !t.done);
+    results = base.filter(compiled.predicate);
+  }
+
+  const onDelete = () => {
+    deleteSavedFilter(f.id);
+    setView({ type: 'filters' });
+  };
+
+  return (
+    <div>
+      <ViewHeader
+        icon={<span style={{ color: 'var(--accent)' }}><I.filter size={24} /></span>}
+        title={f.name}
+        subtitle={f.query}
+        right={
+          <button className="icon-btn" title="Delete filter" onClick={onDelete} style={{ width: 32, height: 32 }}>
+            <I.trash size={16} style={{ color: 'var(--p1)' }} />
+          </button>
+        }
+      />
+      {!compiled.ok && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--p1)' }}>{compiled.error}</div>
+      )}
+      {results && <TaskGroup tasks={results} density={density} showProject />}
     </div>
   );
 }

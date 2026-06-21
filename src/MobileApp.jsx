@@ -16,7 +16,7 @@ const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers t
 
 function MobileHeader({ visible }) {
   const { view } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
 
   if (showBack) return null;
 
@@ -109,7 +109,7 @@ function Tab({ icon, label, active, onClick }) {
 
 function TabBar({ visible }) {
   const { view, setView, setSearch } = useApp();
-  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
+  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
   return (
     <div className="frosted-glass" style={{
       position: 'absolute',
@@ -134,7 +134,7 @@ function TabBar({ visible }) {
 }
 
 function BrowseView({ onAddProject, onAddSection }) {
-  const { setView, tasks, projects, sections, resetDatabase, deleteSection, updateSection, expandedIds, toggleExpand } = useApp();
+  const { setView, tasks, projects, sections, resetDatabase, deleteSection, updateSection, expandedIds, toggleExpand, savedFilters } = useApp();
   // A parent id present in expandedIds means COLLAPSED (reuses the store's
   // existing client-side toggle state; shared with desktop).
   const isCollapsed = (id) => expandedIds.includes(id);
@@ -218,6 +218,19 @@ function BrowseView({ onAddProject, onAddSection }) {
         <GridCard icon={<I.filter size={20} />} label="Filters & Labels" color="#8B5CF6" onClick={() => setView({ type: 'filters' })} />
         <GridCard icon={<I.logbook size={20} />} label="Completed" count={tasks.filter(t => t.done).length} color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
       </div>
+
+      {savedFilters.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div className="section-title" style={{ padding: '0 6px 8px', fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>Saved Filters</div>
+          <div className="scandinavian-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-elev)', border: '1px solid var(--border)' }}>
+            {savedFilters.map((f, idx) => (
+              <div key={f.id} style={{ borderBottom: idx < savedFilters.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <Item icon={<I.search size={16} />} label={f.name} onClick={() => setView({ type: 'saved-filter', id: f.id })} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {sections.map((sec) => {
         const rows = orderedProjectsForSection(projects, sec.name)
@@ -338,7 +351,8 @@ function MobileContent({ density, onAddProject, onAddSection }) {
     case 'project': return <V.ProjectView projectId={view.id} density={density} />;
     case 'project-settings': return <V.ProjectSettingsView projectId={view.id} />;
     case 'label': return <V.LabelView labelId={view.id} density={density} />;
-    case 'filters': return <V.FiltersView />;
+    case 'filters': return <V.FiltersView density={density} />;
+    case 'saved-filter': return <V.SavedFilterView filterId={view.id} density={density} />;
     case 'calendar': return <CalendarView density={density} compact />;
     case 'board': return <BoardView />;
     case 'logbook': return <V.LogbookView />;
@@ -350,7 +364,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
 
 function BackBar({ visible }) {
   const { view, setView } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
   if (!showBack) return null;
   return (
     <div className="frosted-glass" style={{

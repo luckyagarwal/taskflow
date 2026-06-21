@@ -303,7 +303,7 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
 }
 
 function Sidebar({ style }) {
-  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, theme, setTheme, reorderSections } = useApp();
+  const { view, setView, setSearch, setQuickAdd, tasks, projects, sections, addSection, setSidebarCollapsed, theme, setTheme, reorderSections, savedFilters } = useApp();
   const c = Sel.counts(tasks);
   const [addingSec, setAddingSec] = useState(false);
   const [newSecName, setNewSecName] = useState('');
@@ -376,6 +376,17 @@ function Sidebar({ style }) {
         <NavItem icon={<I.calendar size={19} />} label="Calendar" active={view.type === 'calendar'} color="var(--text-2)" onClick={() => setView({ type: 'calendar' })} />
         <NavItem icon={<I.grid size={19} />} label="Board" active={view.type === 'board'} color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
         <NavItem icon={<I.filter size={19} />} label="Filters & Labels" active={view.type === 'filters' || view.type === 'label'} color="var(--text-2)" onClick={() => setView({ type: 'filters' })} />
+        {savedFilters.map((f) => (
+          <div key={f.id} style={{ paddingLeft: 22 }}>
+            <NavItem
+              icon={<I.search size={17} />}
+              label={f.name}
+              color="var(--text-2)"
+              active={view.type === 'saved-filter' && view.id === f.id}
+              onClick={() => setView({ type: 'saved-filter', id: f.id })}
+            />
+          </div>
+        ))}
       </nav>
 
       {sections.map((sec, idx) => {
@@ -430,7 +441,8 @@ function MainContent({ density, narrow }) {
     case 'project': content = <V.ProjectView projectId={view.id} density={density} />; break;
     case 'project-settings': content = <V.ProjectSettingsView projectId={view.id} />; break;
     case 'label': content = <V.LabelView labelId={view.id} density={density} />; break;
-    case 'filters': content = <V.FiltersView />; break;
+    case 'filters': content = <V.FiltersView density={density} />; break;
+    case 'saved-filter': content = <V.SavedFilterView filterId={view.id} density={density} />; break;
     case 'calendar': content = <CalendarView density={density} />; break;
     case 'board': content = <BoardView />; break;
     case 'logbook': content = <V.LogbookView />; break;
