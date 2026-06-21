@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, createContext, useCont
 import { DATA, advanceRecurring } from './data.js';
 import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange } from './sync.js';
 import * as repo from './repo.js';
+import { childrenOf, canSetParent, promoteChildrenOnDelete } from './projects.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -439,14 +440,19 @@ export function useStore() {
     }));
   }, [queueSave]);
 
-  const addProject = useCallback((name, group = 'Personal') => {
+  const addProject = useCallback((name, group = 'Personal', parent = null) => {
     if (!name || !name.trim()) return;
+    let resolvedGroup = (group && group.trim()) || 'Personal';
+    if (parent) {
+      const parentProj = projects.find((p) => p.id === parent);
+      if (parentProj) resolvedGroup = parentProj.group;
+    }
     const np = {
       id: uid('p_'),
       name: name.trim(),
       color: ['#2D7FF9', '#7C5CFC', '#14B8C4', '#1F9D55', '#E8588A', '#F5A623'][projects.length % 6],
-      group: (group && group.trim()) || 'Personal',
-      parent: null,
+      group: resolvedGroup,
+      parent: parent || null,
       position: projects.length
     };
     setProjects((prev) => [...prev, np]);
@@ -455,7 +461,17 @@ export function useStore() {
   }, [projects, queueSave]);
 
   const deleteProject = useCallback((id) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+    const promotedChildren = promoteChildrenOnDelete(projects, id);
+    setProjects((prev) => {
+      const patched = prev.map((p) => {
+        const promo = promotedChildren.find((c) => c.id === p.id);
+        return promo ? promo : p;
+      });
+      return patched.filter((p) => p.id !== id);
+    });
+    if (promotedChildren.length) {
+      queueSave({ projects: promotedChildren });
+    }
     const tasksToUpdate = [];
     setTasks((prev) => {
       const next = prev.map((t) => {
@@ -470,6 +486,21 @@ export function useStore() {
     });
     queueSave({ tasks: tasksToUpdate }, { projects: [id] });
     setView((v) => v.type === 'project' && v.id === id ? { type: 'inbox' } : v);
+  }, [projects, queueSave]);
+
+  // Propagate a top-level project's new group to all of its children, so a
+  // child's section always follows its parent (decision #2 in the spec).
+  const cascadeGroupToChildren = useCallback((projectId, newGroup) => {
+    setProjects((prev) => {
+      const kids = childrenOf(prev, projectId);
+      if (!kids.length) return prev;
+      const patched = kids.map((c) => ({ ...c, group: newGroup }));
+      queueSave({ projects: patched });
+      return prev.map((p) => {
+        const patch = patched.find((c) => c.id === p.id);
+        return patch ? patch : p;
+      });
+    });
   }, [queueSave]);
 
   const updateProject = useCallback((id, patch) => {
@@ -477,9 +508,12 @@ export function useStore() {
       if (p.id !== id) return p;
       const updated = { ...p, ...patch };
       queueSave({ projects: [updated] });
+      if (patch.group !== undefined && patch.group !== p.group) {
+        cascadeGroupToChildren(id, patch.group);
+      }
       return updated;
     }));
-  }, [queueSave]);
+  }, [queueSave, cascadeGroupToChildren]);
 
   const reorderProjects = useCallback((draggedId, targetId) => {
     setProjects((prev) => {
@@ -491,9 +525,20 @@ export function useStore() {
         next.splice(targetIdx, 0, removed);
 
         // If target project has a different group/section, update the dragged project's group!
+        let groupChanged = false;
         if (removed.group !== next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group) {
           const newGroup = next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group || removed.group;
-          removed.group = newGroup;
+          if (newGroup !== removed.group) {
+            removed.group = newGroup;
+            groupChanged = true;
+          }
+        }
+
+        // A moved parent drags its children's section with it (decision #2).
+        if (groupChanged) {
+          for (const item of next) {
+            if (item.parent === removed.id) item.group = removed.group;
+          }
         }
 
         const updated = next.map((p, idx) => ({ ...p, position: idx }));
@@ -503,6 +548,25 @@ export function useStore() {
       return prev;
     });
   }, [queueSave]);
+
+  // Nest a child project under a parent (or detach when parentId is null).
+  // No-ops on an invalid request (cycle, self, grandchild) per canSetParent.
+  const setProjectParent = useCallback((childId, parentId) => {
+    if (!canSetParent(projects, childId, parentId)) {
+      addToast("Can't nest that project there");
+      return;
+    }
+    setProjects((prev) => prev.map((p) => {
+      if (p.id !== childId) return p;
+      const updated = { ...p, parent: parentId || null };
+      if (parentId) {
+        const parentProj = prev.find((pp) => pp.id === parentId);
+        if (parentProj) updated.group = parentProj.group;
+      }
+      queueSave({ projects: [updated] });
+      return updated;
+    }));
+  }, [projects, queueSave, addToast]);
 
   const [sorts, setSorts] = useState(() => {
     try {
@@ -840,7 +904,7 @@ export function useStore() {
     setView: (v) => { setView(v); setSelectedId(null); setMultiSelectedIds([]); },
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
-    addProject, deleteProject, updateProject, reorderProjects, toggleExpand, resetDatabase,
+    addProject, deleteProject, updateProject, setProjectParent, reorderProjects, toggleExpand, resetDatabase,
     addLabel, updateLabel, deleteLabel,
     addSection, deleteSection, updateSection, reorderSections,
     toasts,
