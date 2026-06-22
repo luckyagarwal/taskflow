@@ -153,6 +153,7 @@ export function DayView({ compact }) {
                     left: `calc(72px + (${lane} / ${lanes}) * (100% - 80px))`,
                     width: `calc((1 / ${lanes}) * (100% - 80px) - 6px)`,
                     background: bg,
+                    ...(!hasDur && { opacity: 0.72, borderBottom: '2.5px dashed rgba(255,255,255,0.6)' }),
                   }}>
                     <div className="tl-block-title">{task.title}</div>
                     {height >= 36 && <div className="tl-block-time">{timeLbl}</div>}
