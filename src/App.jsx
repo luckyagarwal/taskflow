@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
-import { orderedProjectsForSection, hasChildren, eligibleParents } from './projects.js';
+import { orderedProjectsForSection, hasChildren, eligibleParents, canSetParent } from './projects.js';
 import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { BoardView } from './board.jsx';
@@ -97,6 +97,8 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
   const [newProjParent, setNewProjParent] = useState('');
   const [headerHovered, setHeaderHovered] = useState(false);
   const [draggedProjIdx, setDraggedProjIdx] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null); // { id, mode: 'nest' } while hovering a nest zone
+  const [headerDropActive, setHeaderDropActive] = useState(false); // unnest zone on the section header
   const [editingSection, setEditingSection] = useState(false);
   const [sectionEditName, setSectionEditName] = useState(title);
 
@@ -151,23 +153,69 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  // One drag, two intents. The center band of a valid top-level target nests the
+  // dragged project under it; the top/bottom edges reorder (live, as before).
   const handleProjDragOver = (e, idx) => {
     e.preventDefault();
-    if (draggedProjIdx === null || draggedProjIdx === idx) return;
-    reorderProjects(rows[draggedProjIdx].project.id, rows[idx].project.id);
+    if (draggedProjIdx === null) return;
+    const dragged = rows[draggedProjIdx]?.project;
+    const target = rows[idx]?.project;
+    if (!dragged || !target) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const rel = (e.clientY - rect.top) / rect.height;
+    const canNest = dragged.parent !== target.id && canSetParent(allProjects, dragged.id, target.id);
+
+    if (canNest && rel > 0.3 && rel < 0.7) {
+      setDropTarget({ id: target.id, mode: 'nest' }); // center band → nest; don't reorder
+      return;
+    }
+    setDropTarget(null);
+    if (draggedProjIdx === idx) return;
+    reorderProjects(dragged.id, target.id);
     setDraggedProjIdx(idx);
+  };
+
+  const handleProjDrop = (e, idx) => {
+    e.preventDefault();
+    if (dropTarget?.mode === 'nest' && draggedProjIdx !== null) {
+      const dragged = rows[draggedProjIdx]?.project;
+      if (dragged) setProjectParent(dragged.id, dropTarget.id);
+    }
+    setDropTarget(null);
+    setDraggedProjIdx(null);
   };
 
   const handleProjDragEnd = () => {
     setDraggedProjIdx(null);
+    setDropTarget(null);
+    setHeaderDropActive(false);
+  };
+
+  // Dropping a child onto the section header promotes it back to top-level.
+  const handleHeaderDragOver = (e) => {
+    if (draggedProjIdx === null) return;
+    if (rows[draggedProjIdx]?.project?.parent) { e.preventDefault(); setHeaderDropActive(true); }
+  };
+
+  const handleHeaderDrop = (e) => {
+    const dragged = draggedProjIdx !== null ? rows[draggedProjIdx]?.project : null;
+    if (dragged?.parent) { e.preventDefault(); setProjectParent(dragged.id, null); }
+    setHeaderDropActive(false);
+    setDraggedProjIdx(null);
+    setDropTarget(null);
   };
 
   return (
     <div style={{ marginTop: 14 }}>
-      <div 
-        onMouseEnter={() => setHeaderHovered(true)} 
-        onMouseLeave={() => setHeaderHovered(false)} 
-        style={{ display: 'flex', alignItems: 'center', width: '100%', paddingRight: 10 }}
+      <div
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => setHeaderHovered(false)}
+        onDragOver={handleHeaderDragOver}
+        onDragLeave={() => setHeaderDropActive(false)}
+        onDrop={handleHeaderDrop}
+        style={{ display: 'flex', alignItems: 'center', width: '100%', paddingRight: 10, borderRadius: 6, transition: 'background .12s, box-shadow .12s', background: headerDropActive ? 'var(--hover)' : 'transparent', boxShadow: headerDropActive ? 'inset 0 0 0 1.5px var(--accent)' : 'none' }}
+        title={headerDropActive ? 'Drop to move to top level' : undefined}
       >
         {editingSection ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, padding: '4px 10px' }}>
@@ -231,18 +279,24 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
             updateProject(p.id, { name: newName });
           }
         };
-        // Parent picker for an existing project: only top-level projects in this
-        // section that are valid one-level parents (eligibleParents excludes self
-        // and any project that already has children).
-        const parentOptions = eligibleParents(allProjects, p.id).filter((op) => op.group === title);
+        const isNestTarget = dropTarget?.mode === 'nest' && dropTarget.id === p.id;
         return (
           <div
             key={p.id}
             draggable
             onDragStart={(e) => handleProjDragStart(e, idx)}
             onDragOver={(e) => handleProjDragOver(e, idx)}
+            onDrop={(e) => handleProjDrop(e, idx)}
             onDragEnd={handleProjDragEnd}
-            style={{ opacity: draggedProjIdx === idx ? 0.4 : 1, position: 'relative', paddingLeft: depth === 1 ? 24 : 0 }}
+            style={{
+              opacity: draggedProjIdx === idx ? 0.4 : 1,
+              position: 'relative',
+              paddingLeft: depth === 1 ? 24 : 0,
+              borderRadius: 8,
+              background: isNestTarget ? 'var(--hover)' : 'transparent',
+              boxShadow: isNestTarget ? 'inset 0 0 0 2px var(--accent)' : 'none',
+              transition: 'background .12s, box-shadow .12s',
+            }}
           >
             {parentHasKids && (
               <span
@@ -256,19 +310,6 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
             <NavItem icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
               active={(view.type === 'project' || view.type === 'project-settings') && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })}
               onDelete={handleProjDelete} onRename={handleProjRename} />
-            {(parentOptions.length > 0 || p.parent) && (
-              <select
-                value={p.parent || ''}
-                onChange={(e) => setProjectParent(p.id, e.target.value || null)}
-                title="Nest under a project"
-                style={{ margin: '0 8px 4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-3)', borderRadius: 4, padding: '1px 4px', fontSize: 11, outline: 'none' }}
-              >
-                <option value="">None (top-level)</option>
-                {parentOptions.map((op) => (
-                  <option key={op.id} value={op.id}>{op.name}</option>
-                ))}
-              </select>
-            )}
           </div>
         );
       })}
