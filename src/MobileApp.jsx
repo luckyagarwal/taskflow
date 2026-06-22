@@ -8,18 +8,23 @@ import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { BoardView } from './board.jsx';
 import { CalendarView } from './calendar.jsx';
-import { DayView } from './timeline.jsx';
 import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { InlineComposer } from './composer.jsx';
 
 const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers the notch/island in standalone mode
 
+// Pages reached *from* Browse — these show the "‹ Browse" back bar. The landing tabs
+// (today/home, Browse, Calendar) are not here: they get no back button. today/home shows
+// the logo MobileHeader; Browse and Calendar use their own in-page ViewHeader.
+const BACK_VIEWS = ['project', 'project-settings', 'inbox', 'upcoming', 'board', 'logbook', 'filters', 'label', 'settings', 'saved-filter'];
+
 function MobileHeader({ visible }) {
   const { view } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter', 'browse', 'board'].includes(view.type);
-
-  if (showBack) return null;
+  // Logo bar only on the home view (today / fallback). Browse and Calendar are landing
+  // tabs with their own in-page headers; Browse sub-pages get the BackBar instead.
+  const isLandingTab = view.type === 'browse' || view.type === 'calendar';
+  if (BACK_VIEWS.includes(view.type) || isLandingTab) return null;
 
   return (
     <div className="frosted-glass" style={{
@@ -110,7 +115,7 @@ function Tab({ icon, label, active, onClick }) {
 
 function TabBar({ visible }) {
   const { view, setView, setSearch } = useApp();
-  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'upcoming', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const browseActive = view.type === 'browse' || BACK_VIEWS.includes(view.type);
   return (
     <div className="frosted-glass" style={{
       position: 'absolute',
@@ -127,7 +132,7 @@ function TabBar({ visible }) {
       transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
     }}>
       <Tab icon={<I.grid size={20} />} label="Browse" active={browseActive} onClick={() => setView({ type: 'browse' })} />
-      <Tab icon={<I.clock size={20} />} label="Day" active={view.type === 'day'} onClick={() => setView({ type: 'day' })} />
+      <Tab icon={<I.calendar size={20} />} label="Calendar" active={view.type === 'calendar'} onClick={() => setView({ type: 'calendar' })} />
       <Tab icon={<I.search size={20} />} label="Search" active={false} onClick={() => setSearch(true)} />
     </div>
   );
@@ -213,7 +218,6 @@ function BrowseView({ onAddProject, onAddSection }) {
       {/* 2x2 Grid of primary lists */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, marginTop: 8 }}>
         <GridCard icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} color="var(--text-2)" onClick={() => setView({ type: 'inbox' })} />
-        <GridCard icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
         <GridCard icon={<I.upcoming size={20} />} label="Upcoming" count={c.upcoming} color="var(--accent)" onClick={() => setView({ type: 'upcoming' })} />
         <GridCard icon={<I.grid size={20} />} label="Board" color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
         <GridCard icon={<I.filter size={20} />} label="Filters & Labels" color="#8B5CF6" onClick={() => setView({ type: 'filters' })} />
@@ -355,7 +359,6 @@ function MobileContent({ density, onAddProject, onAddSection }) {
     case 'filters': return <V.FiltersView density={density} />;
     case 'saved-filter': return <V.SavedFilterView filterId={view.id} density={density} />;
     case 'calendar': return <CalendarView density={density} compact />;
-    case 'day': return <DayView compact />;
     case 'board': return <BoardView />;
     case 'logbook': return <V.LogbookView />;
     case 'settings': return <V.SettingsView />;
@@ -366,8 +369,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
 
 function BackBar({ visible }) {
   const { view, setView } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter', 'browse', 'board'].includes(view.type);
-  if (!showBack) return null;
+  if (!BACK_VIEWS.includes(view.type)) return null;
   return (
     <div className="frosted-glass" style={{
       position: 'absolute',

@@ -1,8 +1,8 @@
 // daygrid.jsx — shared hour-by-hour day timeline grid.
-// Single source of truth for the Day view (timeline.jsx) and the Calendar's Day mode
-// (calendar.jsx): 24 hour rows, time-positioned task blocks, lane layout for overlaps,
-// a live "now" marker, and create-on-grid (drag-to-create on desktop, tap-to-create on
-// mobile). Callers own their own header; this renders only the unscheduled chips + grid.
+// Renders the Calendar's Day mode (calendar.jsx): 24 hour rows, time-positioned task
+// blocks, lane layout for overlaps, a live "now" marker, and create-on-grid
+// (drag-to-create on desktop, tap-to-create on mobile). Callers own their own header;
+// this renders only the unscheduled chips + grid.
 // See docs/adr/0003-shared-day-timeline-component.md.
 import React, { useState, useRef, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';

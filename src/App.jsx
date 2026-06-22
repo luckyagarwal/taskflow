@@ -8,7 +8,6 @@ import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { BoardView } from './board.jsx';
 import { CalendarView } from './calendar.jsx';
-import { DayView } from './timeline.jsx';
 import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { QuickAddModal } from './composer.jsx';
@@ -504,7 +503,6 @@ function Sidebar({ style }) {
       <nav style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <NavItem icon={<I.inbox size={19} />} label="Inbox" count={c.inbox} active={view.type === 'inbox'} onClick={() => setView({ type: 'inbox' })} />
         <NavItem icon={<I.today size={19} />} label="Today" count={c.today} color="var(--today)" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
-        <NavItem icon={<I.clock size={19} />} label="Day" active={view.type === 'day'} color="var(--accent)" onClick={() => setView({ type: 'day' })} />
         <NavItem icon={<I.upcoming size={19} />} label="Upcoming" active={view.type === 'upcoming'} color="var(--accent)" onClick={() => setView({ type: 'upcoming' })} />
         <NavItem icon={<I.calendar size={19} />} label="Calendar" active={view.type === 'calendar'} color="var(--text-2)" onClick={() => setView({ type: 'calendar' })} />
         <NavItem icon={<I.grid size={19} />} label="Board" active={view.type === 'board'} color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
@@ -577,7 +575,6 @@ function MainContent({ density, narrow }) {
     case 'filters': content = <V.FiltersView density={density} />; break;
     case 'saved-filter': content = <V.SavedFilterView filterId={view.id} density={density} />; break;
     case 'calendar': content = <CalendarView density={density} />; break;
-    case 'day': content = <DayView />; break;
     case 'board': content = <BoardView />; break;
     case 'logbook': content = <V.LogbookView />; break;
     case 'settings': content = <V.SettingsView />; break;
@@ -763,7 +760,6 @@ export function DesktopApp({ frameW = 1320 }) {
         const routes = {
           i: 'inbox',
           t: 'today',
-          d: 'day',
           u: 'upcoming',
           c: 'calendar',
           f: 'filters',
