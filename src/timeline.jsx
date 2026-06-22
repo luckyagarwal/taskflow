@@ -10,7 +10,7 @@ import { layoutDayTasks, fmtHM, parseHM, yToMin, makeRange } from './timegrid.js
 const HOUR_H = 60; // matches --hour-height
 
 export function DayView({ compact }) {
-  const { tasks, setSelectedId, setQuickAdd } = useApp();
+  const { tasks, setSelectedId, setQuickAdd, noTimeOpacity = 0.5, noDurOpacity = 0.7 } = useApp();
   const today = H.startOfToday();
   const [selOff, setSelOff] = useState(0);
   const [drag, setDrag] = useState(null); // { startMin, curMin } while dragging (desktop)
@@ -109,9 +109,10 @@ export function DayView({ compact }) {
             const c = H.priorityColor(t.priority) || (proj ? proj.color : 'var(--text-3)');
             return (
               <button key={t.id} onClick={() => setSelectedId(t.id)} className="btn btn-ghost"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 12px', border: '1px solid var(--border)', fontWeight: 500, fontSize: 12.5 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px', border: `1px dashed var(--border-2)`, fontWeight: 500, fontSize: 12.5, opacity: noTimeOpacity, color: 'var(--text-2)' }}>
                 <span style={{ width: 7, height: 7, borderRadius: 99, background: c, flex: 'none' }} />
                 {t.title}
+                <I.clock size={11} style={{ marginLeft: 2, color: 'var(--text-3)', flex: 'none' }} />
               </button>
             );
           })}
@@ -152,8 +153,16 @@ export function DayView({ compact }) {
                     height,
                     left: `calc(72px + (${lane} / ${lanes}) * (100% - 80px))`,
                     width: `calc((1 / ${lanes}) * (100% - 80px) - 6px)`,
-                    background: bg,
-                    ...(!hasDur && { opacity: 0.72, borderBottom: '2.5px dashed rgba(255,255,255,0.6)' }),
+                    ...(hasDur
+                      ? { background: bg }
+                      : {
+                          background: 'transparent',
+                          border: `2px solid ${bg}`,
+                          borderBottom: `2px dashed ${bg}`,
+                          color: bg,
+                          opacity: noDurOpacity,
+                        }
+                    ),
                   }}>
                     <div className="tl-block-title">{task.title}</div>
                     {height >= 36 && <div className="tl-block-time">{timeLbl}</div>}

@@ -965,7 +965,7 @@ export function LogbookView() {
 
 // ── SETTINGS ────────────────────────────────────────────────
 export function SettingsView() {
-  const { theme, setTheme, density, setDensity, weekStartDay, setWeekStartDay, resetDatabase, exportDatabase, importDatabase, forceSync } = useApp();
+  const { theme, setTheme, density, setDensity, weekStartDay, setWeekStartDay, noTimeOpacity, setNoTimeOpacity, noDurOpacity, setNoDurOpacity, resetDatabase, exportDatabase, importDatabase, forceSync } = useApp();
   const narrow = useIsNarrow();
   const fileInputRef = React.useRef(null);
 
@@ -1053,6 +1053,38 @@ export function SettingsView() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Day View — task opacity controls */}
+        <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5, color: 'var(--text)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <I.clock size={16} /> Day View Task Visibility
+          </div>
+          {[
+            { label: 'No-time tasks', sub: 'Tasks with a date but no time (unscheduled strip)', val: noTimeOpacity, set: setNoTimeOpacity },
+            { label: 'Open-ended blocks', sub: 'Tasks on the timeline with no duration set', val: noDurOpacity, set: setNoDurOpacity },
+          ].map(({ label, sub, val, set }) => (
+            <div key={label} style={{ marginBottom: 18 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{sub}</div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', minWidth: 36, textAlign: 'right' }}>
+                  {Math.round(val * 100)}%
+                </span>
+              </div>
+              <input
+                type="range" min="0.2" max="1" step="0.05"
+                value={val}
+                onChange={(e) => set(parseFloat(e.target.value))}
+                style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)', marginTop: 3 }}>
+                <span>Faint</span><span>Dim</span><span>Full</span>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Layout Density Section — desktop only (mobile uses a fixed native list density) */}

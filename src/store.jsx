@@ -62,6 +62,22 @@ export function useStore() {
     try { localStorage.setItem('todo-proto-week-start', weekStartDay); } catch (e) { console.error(e); }
   }, [weekStartDay]);
 
+  // Opacity for tasks with no scheduled time (orphans in unscheduled strip)
+  const [noTimeOpacity, setNoTimeOpacity] = useState(() => {
+    try { const s = localStorage.getItem('todo-proto-no-time-opacity'); return s !== null ? parseFloat(s) : 0.5; } catch { return 0.5; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('todo-proto-no-time-opacity', noTimeOpacity); } catch (e) { console.error(e); }
+  }, [noTimeOpacity]);
+
+  // Opacity for blocks with no end time / duration (open-ended on timeline)
+  const [noDurOpacity, setNoDurOpacity] = useState(() => {
+    try { const s = localStorage.getItem('todo-proto-no-dur-opacity'); return s !== null ? parseFloat(s) : 0.7; } catch { return 0.7; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('todo-proto-no-dur-opacity', noDurOpacity); } catch (e) { console.error(e); }
+  }, [noDurOpacity]);
+
   useEffect(() => {
     try {
       localStorage.setItem('todo-proto-theme', theme);
@@ -1005,6 +1021,10 @@ export function useStore() {
     setDensity,
     weekStartDay,
     setWeekStartDay,
+    noTimeOpacity,
+    setNoTimeOpacity,
+    noDurOpacity,
+    setNoDurOpacity,
     exportDatabase,
     importDatabase,
     barsVisible,
