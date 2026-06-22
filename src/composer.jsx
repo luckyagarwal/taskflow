@@ -1,6 +1,7 @@
 // composer.jsx — inline quick-add composer + popovers
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'motion/react';
 import { Icons as I } from './icons.jsx';
 import { H, parseTask } from './data.js';
 import { useApp } from './store.jsx';
@@ -46,32 +47,53 @@ function usePopoverNarrow() {
 export function Popover({ children, onClose, style }) {
   const ref = useRef(null);
   const narrow = usePopoverNarrow();
+  const shouldReduceMotion = useReducedMotion();
+
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener('mousedown', h, true);
     return () => document.removeEventListener('mousedown', h, true);
   }, [onClose]);
 
-  // On mobile, present every picker as a bottom sheet instead of a desktop-anchored
-  // popover — native app feel for editing due date, priority, labels, project, etc.
-  // Portal up to .app-root so the fixed sheet escapes any ancestor overflow/
-  // transform/stacking context (the scroll container or a swiped row) and always
-  // sits above the tab bar — while staying inside the [data-theme] variable scope
-  // (portaling to <body> would drop --bg-elev/--scrim and render unstyled).
   if (narrow) {
     const host = (typeof document !== 'undefined' && document.querySelector('.app-root')) || document.body;
     return createPortal(
       <>
-        <div className="sheet-scrim" onMouseDown={onClose} />
-        <div className="pop-sheet" ref={ref} onMouseDown={(e) => e.stopPropagation()}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.15 }}
+          className="sheet-scrim"
+          onMouseDown={onClose}
+          style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', zIndex: 4000 }}
+        />
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 32 }}
+          className="pop-sheet"
+          ref={ref}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <div className="sheet-handle" />
           {children}
-        </div>
+        </motion.div>
       </>,
       host
     );
   }
-  return <div className="pop" ref={ref} style={style}>{children}</div>;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 450, damping: 30 }}
+      className="pop"
+      ref={ref}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
@@ -686,14 +708,33 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
 }
 
 export function QuickAddModal({ onClose, defaultProject = 'inbox', defaultDue = null, prefill = null }) {
+  const shouldReduceMotion = useReducedMotion();
+
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [onClose]);
+
   return (
-    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10%', zIndex: 200 }} onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(580px,92vw)', animation: 'slideUp .16s ease' }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10%', zIndex: 200, overflow: 'hidden' }}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="scrim"
+        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }}
+        onMouseDown={onClose}
+      />
+      <motion.div
+        initial={{ y: -20, opacity: 0, scale: 0.96 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: -20, opacity: 0, scale: 0.96 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 32 }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ width: 'min(580px,92vw)', zIndex: 2 }}
+      >
         <InlineComposer
           variant="modal"
           autoOpen
@@ -703,7 +744,7 @@ export function QuickAddModal({ onClose, defaultProject = 'inbox', defaultDue = 
           defaultDuration={prefill ? prefill.duration : null}
           onDone={onClose}
         />
-      </div>
+      </motion.div>
     </div>
   );
 }

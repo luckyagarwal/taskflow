@@ -15,9 +15,9 @@ import { InlineComposer } from './composer.jsx';
 const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers the notch/island in standalone mode
 
 // Pages reached *from* Browse — these show the "‹ Browse" back bar. The landing tabs
-// (today/home, Browse, Calendar) are not here: they get no back button. today/home shows
-// the logo MobileHeader; Browse and Calendar use their own in-page ViewHeader.
-const BACK_VIEWS = ['project', 'project-settings', 'inbox', 'upcoming', 'board', 'logbook', 'filters', 'label', 'settings', 'saved-filter'];
+// (Browse, Calendar) are not here: they get no back button. Browse and Calendar use their
+// own in-page ViewHeader.
+const BACK_VIEWS = ['today', 'project', 'project-settings', 'inbox', 'upcoming', 'board', 'logbook', 'filters', 'label', 'settings', 'saved-filter'];
 
 function MobileHeader({ visible }) {
   const { view } = useApp();

@@ -191,4 +191,27 @@ test.describe("Mobile App — Core Functionality", () => {
     await expect(taskByTitle(page, "Buy groceries")).toBeVisible();
     await expect(taskByTitle(page, "Plan weekend trip")).toBeVisible();
   });
+
+  test("today navigation from Browse shows back button and returns to Browse", async ({
+    page,
+  }) => {
+    await page.goto("/mobile");
+    await waitForAppLoad(page);
+
+    // Tap on Today card
+    await page.getByText("Today", { exact: true }).first().click();
+    await page.waitForTimeout(500);
+
+    // Should show Today view header
+    await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+
+    // Tap the Browse back button to return to Browse view
+    await page.getByText("Browse", { exact: true }).first().click();
+    await page.waitForTimeout(500);
+
+    // Browse view shows grid cards (Inbox, Upcoming, etc.)
+    await expect(
+      page.getByText("Inbox", { exact: true }).first()
+    ).toBeVisible();
+  });
 });

@@ -1,5 +1,6 @@
 // App.jsx — desktop app shell. Exposes DesktopApp
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
@@ -562,8 +563,39 @@ function Sidebar({ style }) {
   );
 }
 
+const getViewIndex = (view, projects = []) => {
+  if (!view) return 0;
+  switch (view.type) {
+    case 'inbox': return 0;
+    case 'today': return 1;
+    case 'upcoming': return 2;
+    case 'calendar': return 3;
+    case 'filters': return 4;
+    case 'saved-filter': return 5;
+    case 'logbook': return 6;
+    case 'project': {
+      const idx = projects.findIndex(p => p.id === view.id);
+      return 10 + (idx >= 0 ? idx : 0);
+    }
+    case 'project-settings': return 100;
+    case 'settings': return 200;
+    default: return 0;
+  }
+};
+
 function MainContent({ density, narrow }) {
-  const { view } = useApp();
+  const { view, projects } = useApp();
+  const [prevView, setPrevView] = useState(view);
+  const [direction, setDirection] = useState('forward');
+  const shouldReduceMotion = useReducedMotion();
+
+  if (view.type !== prevView.type || view.id !== prevView.id) {
+    const prevIdx = getViewIndex(prevView, projects);
+    const currIdx = getViewIndex(view, projects);
+    setDirection(currIdx >= prevIdx ? 'forward' : 'backward');
+    setPrevView(view);
+  }
+
   let content;
   switch (view.type) {
     case 'today': content = <V.TodayView density={density} />; break;
@@ -583,7 +615,19 @@ function MainContent({ density, narrow }) {
   const fullWidth = view.type === 'board';
   return (
     <div className="scroll" style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-      <div style={{ maxWidth: fullWidth ? 'none' : 760, margin: '0 auto', padding: narrow ? '30px 28px 80px' : '34px 40px 80px' }}>{content}</div>
+      <div style={{ maxWidth: fullWidth ? 'none' : 760, margin: '0 auto', padding: narrow ? '30px 28px 80px' : '34px 40px 80px', position: 'relative' }}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`${view.type}-${view.id || ''}`}
+            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: direction === 'forward' ? 24 : -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: direction === 'forward' ? -24 : 24 }}
+            transition={{ type: 'tween', ease: 'easeInOut', duration: 0.18 }}
+          >
+            {content}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -619,6 +663,9 @@ export function DesktopApp({ frameW = 1320 }) {
   const [detailWidth, setDetailWidth] = useState(372);
   const isResizingRef = useRef(false);
   const isSidebarResizingRef = useRef(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isDetailResizing, setIsDetailResizing] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
     let lastKeyG = false;
@@ -834,6 +881,7 @@ export function DesktopApp({ frameW = 1320 }) {
   const startResize = (e) => {
     e.preventDefault();
     isResizingRef.current = true;
+    setIsDetailResizing(true);
     document.addEventListener('mousemove', handleResize);
     document.addEventListener('mouseup', endResize);
   };
@@ -848,6 +896,7 @@ export function DesktopApp({ frameW = 1320 }) {
 
   const endResize = () => {
     isResizingRef.current = false;
+    setIsDetailResizing(false);
     document.removeEventListener('mousemove', handleResize);
     document.removeEventListener('mouseup', endResize);
   };
@@ -855,6 +904,7 @@ export function DesktopApp({ frameW = 1320 }) {
   const startSidebarResize = (e) => {
     e.preventDefault();
     isSidebarResizingRef.current = true;
+    setIsResizing(true);
     document.addEventListener('mousemove', handleSidebarResize);
     document.addEventListener('mouseup', endSidebarResize);
   };
@@ -867,67 +917,103 @@ export function DesktopApp({ frameW = 1320 }) {
 
   const endSidebarResize = () => {
     isSidebarResizingRef.current = false;
+    setIsResizing(false);
     document.removeEventListener('mousemove', handleSidebarResize);
     document.removeEventListener('mouseup', endSidebarResize);
   };
 
   return (
     <div style={{ display: 'flex', height: '100%', background: 'var(--bg)', position: 'relative' }}>
-      {!sidebarCollapsed && (
-        <>
-          <Sidebar style={{ width: sidebarWidth }} />
-          {/* Sidebar Resize Handle */}
-          <div
-            onMouseDown={startSidebarResize}
-            style={{
-              position: 'relative',
-              width: 5,
-              cursor: 'col-resize',
-              zIndex: 100,
-              background: 'transparent',
-              transition: 'background .15s',
-              flexShrink: 0,
-              marginLeft: -2.5,
-              marginRight: -2.5
-            }}
-            onMouseEnter={(e) => { e.target.style.background = 'rgba(45, 127, 249, 0.3)'; }}
-            onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
-          />
-        </>
-      )}
+      <AnimatePresence initial={false}>
+        {!sidebarCollapsed && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: sidebarWidth, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={isResizing || shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 35 }}
+            style={{ height: '100%', overflow: 'hidden', display: 'flex', flexShrink: 0 }}
+          >
+            <Sidebar style={{ width: sidebarWidth }} />
+            {/* Sidebar Resize Handle */}
+            <div
+              onMouseDown={startSidebarResize}
+              style={{
+                width: 5,
+                cursor: 'col-resize',
+                zIndex: 100,
+                background: 'transparent',
+                transition: 'background .15s',
+                flexShrink: 0,
+                marginLeft: -2.5,
+                marginRight: -2.5
+              }}
+              onMouseEnter={(e) => { e.target.style.background = 'rgba(45, 127, 249, 0.3)'; }}
+              onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <MainContent density={density} narrow={narrow} />
-      {selectedId && !narrow && (
-        <div style={{ width: detailWidth, flex: 'none', position: 'relative', borderLeft: '1px solid var(--border)', background: 'var(--bg)' }}>
-          {/* Resize Handle */}
-          <div
-            onMouseDown={startResize}
-            style={{
-              position: 'absolute',
-              left: -3,
-              top: 0,
-              bottom: 0,
-              width: 6,
-              cursor: 'col-resize',
-              zIndex: 100,
-            }}
-            onMouseEnter={(e) => { e.target.style.background = 'rgba(45, 127, 249, 0.3)'; }}
-            onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
-          />
-          <div style={{ height: '100%', animation: 'panelIn .2s ease' }}>
-            <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} />
+      <AnimatePresence initial={false}>
+        {selectedId && !narrow && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: detailWidth, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={isDetailResizing || shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 35 }}
+            style={{ flex: 'none', position: 'relative', borderLeft: '1px solid var(--border)', background: 'var(--bg)', overflow: 'hidden' }}
+          >
+            {/* Resize Handle */}
+            <div
+              onMouseDown={startResize}
+              style={{
+                position: 'absolute',
+                left: -3,
+                top: 0,
+                bottom: 0,
+                width: 6,
+                cursor: 'col-resize',
+                zIndex: 100,
+              }}
+              onMouseEnter={(e) => { e.target.style.background = 'rgba(45, 127, 249, 0.3)'; }}
+              onMouseLeave={(e) => { e.target.style.background = 'transparent'; }}
+            />
+            <div style={{ height: '100%' }}>
+              <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedId && narrow && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', justifyContent: 'flex-end', overflow: 'hidden' }}>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="scrim"
+              onMouseDown={() => setSelectedId(null)}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 35 }}
+              style={{ position: 'relative', width: 'min(440px, 92%)', height: '100%', background: 'var(--bg)', borderLeft: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', zIndex: 2 }}
+            >
+              <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} />
+            </motion.div>
           </div>
-        </div>
-      )}
-      {selectedId && narrow && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 120, display: 'flex', justifyContent: 'flex-end' }}>
-          <div className="scrim" onMouseDown={() => setSelectedId(null)} />
-          <div style={{ position: 'relative', width: 'min(440px, 92%)', background: 'var(--bg)', borderLeft: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', animation: 'panelIn .2s ease' }}>
-            <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} />
-          </div>
-        </div>
-      )}
-      {search && <SearchOverlay onClose={() => setSearch(false)} />}
-      {quickAdd && <QuickAddModal prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {search && <SearchOverlay onClose={() => setSearch(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {quickAdd && <QuickAddModal prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
+      </AnimatePresence>
       <BulkActionBar />
       {toasts && toasts.length > 0 && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>

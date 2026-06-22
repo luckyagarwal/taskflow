@@ -1,5 +1,6 @@
 // views.jsx — list views + grouping
 import React, { useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
@@ -13,7 +14,7 @@ import { eligibleParents, canSetParent } from './projects.js';
 export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }) {
   const { toggleTask, setSelectedId, selectedId, reorderTasks } = useApp();
   const narrow = useIsNarrow();
-  const [exiting, setExiting] = useState({});
+  const shouldReduceMotion = useReducedMotion();
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [draggableId, setDraggableId] = useState(null);
 
@@ -24,30 +25,14 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
       const nextDone = !task.done;
       if (nextDone) {
         const toToggle = tasks.filter(t => !t.done);
-        if (toToggle.length === 0) return;
-        const newExiting = {};
-        toToggle.forEach(t => { newExiting[t.id] = true; });
-        setExiting(prev => ({ ...prev, ...newExiting }));
-        setTimeout(() => {
-          toToggle.forEach(t => toggleTask(t.id));
-          setExiting(prev => {
-            const next = { ...prev };
-            toToggle.forEach(t => { delete next[t.id]; });
-            return next;
-          });
-        }, 400);
+        toToggle.forEach(t => toggleTask(t.id));
       } else {
         const toToggle = tasks.filter(t => t.done);
         toToggle.forEach(t => toggleTask(t.id));
       }
       return;
     }
-    if (task.done) { toggleTask(task.id); return; }
-    setExiting((e) => ({ ...e, [task.id]: true }));
-    setTimeout(() => {
-      toggleTask(task.id);
-      setExiting((e) => { const n = { ...e }; delete n[task.id]; return n; });
-    }, 400);
+    toggleTask(task.id);
   };
 
   const handleDragStart = (e, idx) => {
@@ -68,58 +53,74 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
     setDraggableId(null);
   };
 
+  const animationVariants = shouldReduceMotion ? {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 },
+    exit: { opacity: 1 }
+  } : {
+    initial: { opacity: 0, height: 0, scale: 0.98, y: -4 },
+    animate: { opacity: 1, height: 'auto', scale: 1, y: 0 },
+    exit: { opacity: 0, height: 0, scale: 0.98, y: 4 }
+  };
+
   return (
-    <div>
-      {tasks.map((task, idx) => (
-        <div
-          className="exit-wrap"
-          key={task.id}
-          data-exit={exiting[task.id] ? '1' : undefined}
-          draggable={reorderable && draggableId === task.id}
-          onDragStart={reorderable ? (e) => handleDragStart(e, idx) : undefined}
-          onDragOver={reorderable ? (e) => handleDragOver(e, idx) : undefined}
-          onDragEnd={reorderable ? handleDragEnd : undefined}
-          style={{
-            opacity: draggedIndex === idx ? 0.4 : 1,
-            cursor: (reorderable && draggableId === task.id) ? 'grabbing' : 'default',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            position: 'relative'
-          }}
-        >
-          {reorderable && !narrow && (
-            <span
-              onMouseDown={() => setDraggableId(task.id)}
-              onMouseUp={() => setDraggableId(null)}
-              style={{
-                cursor: 'grab',
-                color: 'var(--text-3)',
-                opacity: (selectedId === task.id || draggableId === task.id) ? 0.6 : 0,
-                transition: 'opacity .15s',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 4px',
-                flexShrink: 0,
-                position: 'absolute',
-                left: -20,
-                height: '100%',
-                zIndex: 10
-              }}
-              title="Drag to reorder"
-            >
-              <I.grip size={15} />
-            </span>
-          )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <TaskRow task={task} density={density}
-              showProject={dateMode ? 'inDate' : showProject}
-              selected={selectedId === task.id}
-              onToggle={(e) => handleToggle(task, e)}
-              onOpen={(t) => setSelectedId(t.id)} />
-          </div>
-        </div>
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <AnimatePresence initial={false}>
+        {tasks.map((task, idx) => (
+          <motion.div
+            key={task.id}
+            variants={animationVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ type: 'spring', stiffness: 500, damping: 45 }}
+            style={{
+              overflow: 'hidden',
+              opacity: draggedIndex === idx ? 0.4 : 1,
+              cursor: (reorderable && draggableId === task.id) ? 'grabbing' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              position: 'relative'
+            }}
+            draggable={reorderable && draggableId === task.id}
+            onDragStart={reorderable ? (e) => handleDragStart(e, idx) : undefined}
+            onDragOver={reorderable ? (e) => handleDragOver(e, idx) : undefined}
+            onDragEnd={reorderable ? handleDragEnd : undefined}
+          >
+            {reorderable && !narrow && (
+              <span
+                onMouseDown={() => setDraggableId(task.id)}
+                onMouseUp={() => setDraggableId(null)}
+                style={{
+                  cursor: 'grab',
+                  color: 'var(--text-3)',
+                  opacity: (selectedId === task.id || draggableId === task.id) ? 0.6 : 0,
+                  transition: 'opacity .15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 4px',
+                  flexShrink: 0,
+                  position: 'absolute',
+                  left: -20,
+                  height: '100%',
+                  zIndex: 10
+                }}
+                title="Drag to reorder"
+              >
+                <I.grip size={15} />
+              </span>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <TaskRow task={task} density={density}
+                showProject={dateMode ? 'inDate' : showProject}
+                selected={selectedId === task.id}
+                onToggle={(e) => handleToggle(task, e)}
+                onOpen={(t) => setSelectedId(t.id)} />
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

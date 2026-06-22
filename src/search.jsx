@@ -1,5 +1,6 @@
 // search.jsx — search / quick-jump overlay
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
@@ -40,16 +41,38 @@ export function SearchOverlay({ onClose }) {
     <button onClick={onClick} className="pop-item" style={{ width: '100%', height: 42, border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>{children}</button>
   );
 
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: narrow ? 'stretch' : 'flex-start', justifyContent: 'center', paddingTop: narrow ? 0 : '8%', zIndex: 200 }} onMouseDown={onClose}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={narrow ? {
-        position: 'absolute', inset: 0, background: 'var(--bg)', display: 'flex', flexDirection: 'column',
-        animation: 'fadeIn .14s ease',
-      } : {
-        width: 'min(620px, 92vw)', maxHeight: '74vh', background: 'var(--bg-elev)', borderRadius: 16,
-        boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column',
-        animation: 'slideUp .16s ease',
-      }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: narrow ? 'stretch' : 'flex-start', justifyContent: 'center', paddingTop: narrow ? 0 : '8%', zIndex: 200, overflow: 'hidden' }}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="scrim"
+        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1 }}
+        onMouseDown={onClose}
+      />
+      <motion.div
+        initial={narrow ? { y: '100%' } : { y: -20, opacity: 0, scale: 0.96 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={narrow ? { y: '100%' } : { y: -20, opacity: 0, scale: 0.96 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 32 }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          ...(narrow ? {
+            position: 'absolute', inset: 0, background: 'var(--bg)'
+          } : {
+            width: 'min(620px, 92vw)', maxHeight: '74vh', background: 'var(--bg-elev)', borderRadius: 16,
+            boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)', overflow: 'hidden'
+          })
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: narrow ? 'max(env(safe-area-inset-top), 12px) 14px 12px' : '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <I.search size={20} style={{ color: 'var(--text-3)' }} />
           <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={narrow ? 'Search or jump to…' : 'Search tasks, projects, or jump to a view…'}
@@ -103,7 +126,7 @@ export function SearchOverlay({ onClose }) {
             <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-3)', fontWeight: 500 }}>No results for “{q}”</div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
