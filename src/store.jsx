@@ -1,7 +1,7 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
 import React, { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
 import { DATA, advanceRecurring } from './data.js';
-import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange } from './sync.js';
+import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange, fetchAllData, isLocalHostname } from './sync.js';
 import * as repo from './repo.js';
 import { childrenOf, canSetParent, promoteChildrenOnDelete } from './projects.js';
 
@@ -169,6 +169,49 @@ export function useStore() {
     return true;
   }, []);
 
+  // First-run seeding of the sample dataset (DATA). Runs once per device for a
+  // brand-new profile so the app isn't empty on first open. We persist a
+  // 'taskflow-seeded' flag so a user who intentionally clears everything (or
+  // whose data later syncs in) is never re-seeded.
+  const seedFirstRun = useCallback(async (local) => {
+    if (localStorage.getItem('taskflow-seeded')) return false;
+
+    const empty = (local.tasks || []).length === 0 && (local.projects || []).length === 0 &&
+                  (local.labels || []).length === 0 && (local.sections || []).length === 0;
+    if (!empty) {
+      // Already have local data (migrated legacy, or this profile has run
+      // before). Remember that, and never seed on top of real data.
+      localStorage.setItem('taskflow-seeded', 'true');
+      return false;
+    }
+
+    // Don't seed onto an account that already has server data — e.g. a returning
+    // user opening the app in a fresh browser profile. That would duplicate
+    // everything and push sample rows back to their real account. Check the
+    // server snapshot first; if it has any records, let background sync pull
+    // them instead of seeding. Only seed when the server is reachably empty, or
+    // when there's no backend at all (local dev with no Cloudflare Functions) —
+    // a transient fetch failure on a real backend returns null and must NOT seed.
+    const snapshot = await fetchAllData();
+    const serverHasData = snapshot && (
+      (snapshot.tasks || []).length || (snapshot.projects || []).length ||
+      (snapshot.labels || []).length || (snapshot.sections || []).length
+    );
+    const serverEmpty = snapshot && !serverHasData;
+    if (!serverEmpty && !isLocalHostname()) {
+      // Server has data, or it's unreachable on a non-local host — don't risk it.
+      if (serverHasData) localStorage.setItem('taskflow-seeded', 'true');
+      return false;
+    }
+
+    // Fresh everywhere (or local dev with no backend): seed the sample dataset
+    // through the same durable path the legacy migration uses. It writes to the
+    // local store + outbox, so background sync flushes it to the server once.
+    await repo.enqueue({ tasks: DATA.tasks, projects: DATA.projects, labels: DATA.labels, sections: [] }, {});
+    localStorage.setItem('taskflow-seeded', 'true');
+    return true;
+  }, []);
+
   const addToast = useCallback((msg) => {
     const id = 'toast_' + Date.now();
     setToasts((prev) => [...prev, { id, msg }]);
@@ -201,13 +244,20 @@ export function useStore() {
       applyToState(local);
       setLoaded(true);
 
-      const migrated = await migrateLegacyLocalStorage(local);
-      if (migrated && !cancelled) applyToState(await repo.loadAll());
+      let current = local;
+      const migrated = await migrateLegacyLocalStorage(current);
+      if (migrated) {
+        current = await repo.loadAll();
+        if (!cancelled) applyToState(current);
+      }
+
+      const seeded = await seedFirstRun(current);
+      if (seeded && !cancelled) applyToState(await repo.loadAll());
 
       startOnlineSync((data) => { if (!cancelled) applyToState(data); });
     })();
     return () => { cancelled = true; };
-  }, [applyToState, migrateLegacyLocalStorage]);
+  }, [applyToState, migrateLegacyLocalStorage, seedFirstRun]);
 
   useEffect(() => {
     localStorage.setItem(KEY_SIDEBAR_COLLAPSED, JSON.stringify(sidebarCollapsed));

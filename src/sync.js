@@ -47,7 +47,7 @@ function setAuthorized(value) {
   }
 }
 
-function isLocalHostname() {
+export function isLocalHostname() {
   if (typeof window === 'undefined') return false;
   const hn = window.location.hostname;
   return hn === 'localhost' ||
