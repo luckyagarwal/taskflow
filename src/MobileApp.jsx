@@ -1,5 +1,6 @@
 // MobileApp.jsx — mobile app shell (inside iOS frame). Exposes MobileApp
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
@@ -348,24 +349,71 @@ function BrowseView({ onAddProject, onAddSection }) {
   );
 }
 
-function MobileContent({ density, onAddProject, onAddSection }) {
-  const { view } = useApp();
+const getMobileViewIndex = (view, projects = []) => {
+  if (!view) return 0;
+  if (view.type === 'browse') return 0;
   switch (view.type) {
-    case 'today': return <V.TodayView density={density} />;
-    case 'upcoming': return <V.UpcomingView density={density} />;
-    case 'inbox': return <V.InboxView density={density} />;
-    case 'project': return <V.ProjectView projectId={view.id} density={density} />;
-    case 'project-settings': return <V.ProjectSettingsView projectId={view.id} />;
-    case 'label': return <V.LabelView labelId={view.id} density={density} />;
-    case 'filters': return <V.FiltersView density={density} />;
-    case 'saved-filter': return <V.SavedFilterView filterId={view.id} density={density} />;
-    case 'calendar': return <CalendarView density={density} compact />;
-    case 'board': return <BoardView />;
-    case 'logbook': return <V.LogbookView />;
-    case 'settings': return <V.SettingsView />;
-    case 'browse': return <BrowseView onAddProject={onAddProject} onAddSection={onAddSection} />;
-    default: return <V.TodayView density={density} />;
+    case 'inbox': return 1;
+    case 'today': return 2;
+    case 'upcoming': return 3;
+    case 'calendar': return 4;
+    case 'filters': return 5;
+    case 'saved-filter': return 6;
+    case 'logbook': return 7;
+    case 'project': {
+      const idx = projects.findIndex(p => p.id === view.id);
+      return 10 + (idx >= 0 ? idx : 0);
+    }
+    case 'project-settings': return 100;
+    case 'settings': return 200;
+    default: return 1;
   }
+};
+
+function MobileContent({ density, onAddProject, onAddSection }) {
+  const { view, projects } = useApp();
+  const [prevView, setPrevView] = useState(view);
+  const [direction, setDirection] = useState('forward');
+  const shouldReduceMotion = useReducedMotion();
+
+  if (view.type !== prevView.type || view.id !== prevView.id) {
+    const prevIdx = getMobileViewIndex(prevView, projects);
+    const currIdx = getMobileViewIndex(view, projects);
+    setDirection(currIdx >= prevIdx ? 'forward' : 'backward');
+    setPrevView(view);
+  }
+
+  let content;
+  switch (view.type) {
+    case 'today': content = <V.TodayView density={density} />; break;
+    case 'upcoming': content = <V.UpcomingView density={density} />; break;
+    case 'inbox': content = <V.InboxView density={density} />; break;
+    case 'project': content = <V.ProjectView projectId={view.id} density={density} />; break;
+    case 'project-settings': content = <V.ProjectSettingsView projectId={view.id} />; break;
+    case 'label': content = <V.LabelView labelId={view.id} density={density} />; break;
+    case 'filters': content = <V.FiltersView density={density} />; break;
+    case 'saved-filter': content = <V.SavedFilterView filterId={view.id} density={density} />; break;
+    case 'calendar': content = <CalendarView density={density} compact />; break;
+    case 'board': content = <BoardView />; break;
+    case 'logbook': content = <V.LogbookView />; break;
+    case 'settings': content = <V.SettingsView />; break;
+    case 'browse': content = <BrowseView onAddProject={onAddProject} onAddSection={onAddSection} />; break;
+    default: content = <V.TodayView density={density} />;
+  }
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={`${view.type}-${view.id || ''}`}
+        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: direction === 'forward' ? 24 : -24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: direction === 'forward' ? -24 : 24 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.18 }}
+      >
+        {content}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 
 function BackBar({ visible }) {
@@ -409,15 +457,12 @@ function BackBar({ visible }) {
 }
 
 function QuickAddSheet({ onClose, prefill = null }) {
-  // The iOS keyboard covers the lower part of the screen without shrinking the
-  // layout viewport, so a vertically-centered sheet hides behind it. Track the
-  // visualViewport and pin the composer just above the keyboard's top edge.
+  const shouldReduceMotion = useReducedMotion();
   const [bottomGap, setBottomGap] = useState(0);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      // How much of the layout viewport the keyboard (and bottom inset) occludes.
       const occluded = window.innerHeight - vv.height - vv.offsetTop;
       setBottomGap(Math.max(0, occluded));
     };
@@ -427,11 +472,24 @@ function QuickAddSheet({ onClose, prefill = null }) {
     return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
   }, []);
   return (
-    <div className="sheet-scrim" onMouseDown={onClose} style={{ display: 'flex', alignItems: 'flex-end' }}>
-      <div 
-        className="bottom-sheet" 
-        onMouseDown={(e) => e.stopPropagation()} 
-        style={{ width: '100%', padding: `20px 16px ${28 + bottomGap}px` }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="sheet-scrim"
+        onMouseDown={onClose}
+        style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+      />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
+        className="bottom-sheet"
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ width: '100%', padding: `20px 16px ${28 + bottomGap}px`, position: 'relative', zIndex: 2 }}
       >
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-10px auto 16px' }} />
         <InlineComposer
@@ -442,7 +500,7 @@ function QuickAddSheet({ onClose, prefill = null }) {
           defaultDuration={prefill ? prefill.duration : null}
           onDone={onClose}
         />
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -450,6 +508,7 @@ function QuickAddSheet({ onClose, prefill = null }) {
 function AddSectionModal({ onClose }) {
   const { addSection } = useApp();
   const [name, setName] = useState('');
+  const shouldReduceMotion = useReducedMotion();
 
   const handleAdd = () => {
     if (name.trim()) {
@@ -459,11 +518,24 @@ function AddSectionModal({ onClose }) {
   };
 
   return (
-    <div className="sheet-scrim" onMouseDown={onClose} style={{ display: 'flex', alignItems: 'flex-end' }}>
-      <div 
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="sheet-scrim"
+        onMouseDown={onClose}
+        style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+      />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
         className="bottom-sheet"
-        onMouseDown={(e) => e.stopPropagation()} 
-        style={{ width: '100%' }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ width: '100%', position: 'relative', zIndex: 2 }}
       >
         {/* Grab Handle for Bottom Sheet */}
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
@@ -493,7 +565,7 @@ function AddSectionModal({ onClose }) {
             <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 600, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Section</button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -505,6 +577,7 @@ function AddProjectModal({ onClose }) {
   const [customGroup, setCustomGroup] = useState('');
   const [isCustom, setIsCustom] = useState(false);
   const [parent, setParent] = useState('');
+  const shouldReduceMotion = useReducedMotion();
 
   // Eligible parents are top-level projects in the selected section. Choosing a
   // parent forces the new project's group to the parent's group (addProject).
@@ -528,11 +601,24 @@ function AddProjectModal({ onClose }) {
   };
 
   return (
-    <div className="sheet-scrim" onMouseDown={onClose} style={{ display: 'flex', alignItems: 'flex-end' }}>
-      <div 
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="sheet-scrim"
+        onMouseDown={onClose}
+        style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+      />
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
         className="bottom-sheet"
-        onMouseDown={(e) => e.stopPropagation()} 
-        style={{ width: '100%' }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{ width: '100%', position: 'relative', zIndex: 2 }}
       >
         {/* Grab Handle for Bottom Sheet */}
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
@@ -642,7 +728,7 @@ function AddProjectModal({ onClose }) {
             <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 600, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Project</button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -651,6 +737,7 @@ export function MobileApp() {
   const { selectedId, setSelectedId, quickAdd, setQuickAdd, search, setSearch, toasts, density, multiSelectedIds, barsVisible, setBarsVisible } = useApp();
   const [addingProj, setAddingProj] = useState(false);
   const [addingSec, setAddingSec] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
   const lastScrollTopRef = React.useRef(0);
 
   const handleScroll = (e) => {
@@ -717,28 +804,52 @@ export function MobileApp() {
 
       <TabBar visible={barsVisible} />
 
-      {selectedId && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'var(--bg)', animation: 'panelIn .2s ease' }}>
-          <div style={{ height: `max(env(safe-area-inset-top), ${STATUS_PAD - 8}px)` }} />
-          <div style={{ height: `calc(100% - max(env(safe-area-inset-top), ${STATUS_PAD - 8}px))` }}>
-            <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} mobile />
-          </div>
-        </div>
-      )}
-      {quickAdd && <QuickAddSheet prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
-      <BulkActionBar />
-      {addingProj && <AddProjectModal onClose={() => setAddingProj(false)} />}
-      {addingSec && <AddSectionModal onClose={() => setAddingSec(false)} />}
-      {search && <SearchOverlay onClose={() => setSearch(false)} />}
-      {toasts && toasts.length > 0 && (
-        <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {toasts.map(t => (
-            <div key={t.id} style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '10px 14px', borderRadius: 8, fontWeight: 500, fontSize: 13, color: 'var(--text)', animation: 'slideUp .2s ease-out' }}>
-              {t.msg}
+      <AnimatePresence>
+        {selectedId && (
+          <motion.div
+            key="mobile-task-detail"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 35 }}
+            style={{ position: 'absolute', inset: 0, zIndex: 150, background: 'var(--bg)' }}
+          >
+            <div style={{ height: `max(env(safe-area-inset-top), ${STATUS_PAD - 8}px)` }} />
+            <div style={{ height: `calc(100% - max(env(safe-area-inset-top), ${STATUS_PAD - 8}px))` }}>
+              <TaskDetail taskId={selectedId} onClose={() => setSelectedId(null)} mobile />
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {quickAdd && <QuickAddSheet prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
+      </AnimatePresence>
+      <BulkActionBar />
+      <AnimatePresence>
+        {addingProj && <AddProjectModal onClose={() => setAddingProj(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {addingSec && <AddSectionModal onClose={() => setAddingSec(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {search && <SearchOverlay onClose={() => setSearch(false)} />}
+      </AnimatePresence>
+      <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
+        <AnimatePresence>
+          {toasts && toasts.map(t => (
+            <motion.div
+              key={t.id}
+              initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '10px 14px', borderRadius: 8, fontWeight: 500, fontSize: 13, color: 'var(--text)', pointerEvents: 'auto' }}
+            >
+              {t.msg}
+            </motion.div>
           ))}
-        </div>
-      )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
