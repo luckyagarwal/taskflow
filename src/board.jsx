@@ -1,4 +1,7 @@
-// board.jsx — Kanban board (status columns) + Week board (day columns)
+// board.jsx — Kanban board (status columns) + Week board (day columns).
+// Cards are moved/reordered with the unified pointer-drag system (touch + mouse):
+// drag within a column reorders; drag to another column changes the day (Week)
+// or the status (Status).
 import React, { useState } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
@@ -6,6 +9,7 @@ import { useApp } from './store.jsx';
 import { TaskRow } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
 import { InlineComposer } from './composer.jsx';
+import { useDragSort, DragGhost } from './drag.jsx';
 import { STATUS_ORDER, STATUS_LABELS, statusPatch, columnOf, groupTasksByStatus } from './status.js';
 
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,7 +26,24 @@ function weekRangeLabel(days) {
   return `${sMonth} ${s.getDate()} – ${eMonth} ${e.getDate()}, ${year}`;
 }
 
-function WeekBoard({ tasks, setSelectedId, weekStartDay }) {
+// A card wrapped with pointer-drag handlers; dims while it is the one being dragged.
+function DragCard({ task, itemProps, dragging, isDragged, setSelectedId, onToggle, selected }) {
+  return (
+    <div
+      {...itemProps(task.id, task.title)}
+      style={{
+        opacity: isDragged ? 0.4 : 1,
+        cursor: 'grab',
+        touchAction: dragging ? 'none' : 'pan-y',
+      }}
+    >
+      <TaskRow task={task} density="card" showProject selected={selected}
+        onToggle={onToggle} onOpen={(t) => setSelectedId(t.id)} />
+    </div>
+  );
+}
+
+function WeekBoard({ tasks, setSelectedId, weekStartDay, itemProps, drag, dragging }) {
   const [weekOff, setWeekOff] = useState(0);
 
   const todayDow = new Date().getDay(); // 0=Sun
@@ -73,12 +94,18 @@ function WeekBoard({ tasks, setSelectedId, weekStartDay }) {
         </button>
       </div>
 
-      <div className="board-scroll">
+      <div className="board-scroll" data-drag-scroll-x>
         {days.map(({ off, date }) => {
           const isToday = off === 0;
           const dayTasks = tasks.filter((t) => !t.done && t.dueOffset === off);
+          const isOver = dragging && drag.zone === `day:${off}`;
           return (
-            <div key={off} className="board-column">
+            <div
+              key={off}
+              className="board-column"
+              data-drop-zone={`day:${off}`}
+              style={isOver ? { outline: '2px solid var(--accent)', outlineOffset: -1 } : undefined}
+            >
               <div className="board-column-head" style={isToday ? { color: 'var(--accent)' } : undefined}>
                 <span style={{ fontWeight: 700 }}>{DOW_SHORT[date.getDay()]}</span>
                 <span style={{
@@ -93,12 +120,13 @@ function WeekBoard({ tasks, setSelectedId, weekStartDay }) {
                 </span>
               </div>
               {dayTasks.map((t) => (
-                <TaskRow
+                <DragCard
                   key={t.id}
                   task={t}
-                  density="card"
-                  showProject
-                  onOpen={(task) => setSelectedId(task.id)}
+                  itemProps={itemProps}
+                  dragging={dragging}
+                  isDragged={dragging && drag.id === t.id}
+                  setSelectedId={setSelectedId}
                 />
               ))}
               <InlineComposer key={`add-${off}`} defaultDue={off} />
@@ -111,12 +139,23 @@ function WeekBoard({ tasks, setSelectedId, weekStartDay }) {
 }
 
 export function BoardView() {
-  const { tasks, projects, updateTask, toggleTask, setSelectedId, selectedId, weekStartDay = 1 } = useApp();
+  const { tasks, projects, setSelectedId, selectedId, toggleTask, weekStartDay = 1, moveTask } = useApp();
   const [projectFilter, setProjectFilter] = useState(null);
-  const [draggedId, setDraggedId] = useState(null);
   const [mode, setMode] = useState('status'); // 'status' | 'week'
 
   const cols = groupTasksByStatus(tasks, { projectId: projectFilter });
+
+  const onDrop = (draggedId, zone, beforeId) => {
+    if (zone.startsWith('day:')) {
+      moveTask(draggedId, { dueOffset: Number(zone.slice(4)) }, beforeId);
+    } else if (zone.startsWith('status:')) {
+      const target = zone.slice(7);
+      const task = tasks.find((t) => t.id === draggedId);
+      const patch = task && columnOf(task) === target ? {} : statusPatch(target);
+      moveTask(draggedId, patch, beforeId);
+    }
+  };
+  const { drag, itemProps, dragging } = useDragSort({ onDrop });
 
   const ModeTab = ({ id, label }) => (
     <button
@@ -137,7 +176,7 @@ export function BoardView() {
       <ViewHeader
         icon={<span style={{ color: 'var(--accent)' }}><I.grid size={24} /></span>}
         title="Board"
-        subtitle={mode === 'status' ? 'Drag cards between columns to change status' : 'Tasks by day of the week'}
+        subtitle={mode === 'status' ? 'Drag cards between columns to change status' : 'Drag cards between days to reschedule'}
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ display: 'flex', background: 'var(--hover)', borderRadius: 10, padding: 3 }}>
@@ -165,50 +204,42 @@ export function BoardView() {
       />
 
       {mode === 'week' ? (
-        <WeekBoard tasks={tasks} setSelectedId={setSelectedId} weekStartDay={weekStartDay} />
+        <WeekBoard tasks={tasks} setSelectedId={setSelectedId} weekStartDay={weekStartDay}
+          itemProps={itemProps} drag={drag} dragging={dragging} />
       ) : (
-        <div className="board-scroll">
-          {STATUS_ORDER.map((status) => (
-            <div
-              key={status}
-              className="board-column"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (draggedId) {
-                  const task = tasks.find((t) => t.id === draggedId);
-                  if (task && columnOf(task) !== status) {
-                    updateTask(draggedId, statusPatch(status));
-                  }
-                  setDraggedId(null);
-                }
-              }}
-            >
-              <div className="board-column-head">
-                <span>{STATUS_LABELS[status]}</span>
-                <span>{cols[status].length}</span>
-              </div>
-              {cols[status].map((t) => (
-                <div
-                  key={t.id}
-                  draggable
-                  onDragStart={(e) => { setDraggedId(t.id); e.dataTransfer.effectAllowed = 'move'; }}
-                  onDragEnd={() => setDraggedId(null)}
-                  style={{ opacity: draggedId === t.id ? 0.4 : 1, cursor: 'grab' }}
-                >
-                  <TaskRow
+        <div className="board-scroll" data-drag-scroll-x>
+          {STATUS_ORDER.map((status) => {
+            const isOver = dragging && drag.zone === `status:${status}`;
+            return (
+              <div
+                key={status}
+                className="board-column"
+                data-drop-zone={`status:${status}`}
+                style={isOver ? { outline: '2px solid var(--accent)', outlineOffset: -1 } : undefined}
+              >
+                <div className="board-column-head">
+                  <span>{STATUS_LABELS[status]}</span>
+                  <span>{cols[status].length}</span>
+                </div>
+                {cols[status].map((t) => (
+                  <DragCard
+                    key={t.id}
                     task={t}
-                    density="card"
-                    showProject={true}
+                    itemProps={itemProps}
+                    dragging={dragging}
+                    isDragged={dragging && drag.id === t.id}
+                    setSelectedId={setSelectedId}
                     selected={selectedId === t.id}
                     onToggle={() => toggleTask(t.id)}
-                    onOpen={(task) => setSelectedId(task.id)}
                   />
-                </div>
-              ))}
-            </div>
-          ))}
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
+
+      <DragGhost drag={drag} />
     </div>
   );
 }

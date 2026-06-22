@@ -4,6 +4,7 @@ import { DATA, advanceRecurring } from './data.js';
 import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange, fetchAllData, isLocalHostname } from './sync.js';
 import * as repo from './repo.js';
 import { childrenOf, canSetParent, promoteChildrenOnDelete } from './projects.js';
+import { moveTask as applyMove } from './move.js';
 
 export const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -716,12 +717,23 @@ export function useStore() {
       if (dragIdx !== -1 && targetIdx !== -1) {
         const [removed] = next.splice(dragIdx, 1);
         next.splice(targetIdx, 0, removed);
-        
+
         const updated = next.map((t, idx) => ({ ...t, position: idx }));
         queueSave({ tasks: updated });
         return updated;
       }
       return prev;
+    });
+  }, [queueSave]);
+
+  // Pointer-drag move: reorder + optional field patch (new day or status),
+  // inserting the dragged task before `beforeId` (or at the end when null).
+  const moveTask = useCallback((draggedId, patch = {}, beforeId = null) => {
+    setTasks((prev) => {
+      const updated = applyMove(prev, draggedId, patch, beforeId);
+      if (updated === prev) return prev;
+      queueSave({ tasks: updated });
+      return updated;
     });
   }, [queueSave]);
 
@@ -1006,7 +1018,7 @@ export function useStore() {
     collapsedSections, setCollapsedSections, toggleSection,
     multiSelectedIds, toggleMultiSelect, clearMultiSelect, bulkDelete, bulkComplete,
     sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, loaded, wipingDb,
-    sorts, setViewSort, reorderTasks,
+    sorts, setViewSort, reorderTasks, moveTask,
     setView: (v) => { setView(v); setSelectedId(null); setMultiSelectedIds([]); },
     setSelectedId, setQuickAdd, setSearch,
     toggleTask, updateTask, addTask, deleteTask, toggleSubtask, addSubtask, updateSubtask, deleteSubtask,
