@@ -406,7 +406,7 @@ function BackBar({ visible }) {
   );
 }
 
-function QuickAddSheet({ onClose }) {
+function QuickAddSheet({ onClose, prefill = null }) {
   // The iOS keyboard covers the lower part of the screen without shrinking the
   // layout viewport, so a vertically-centered sheet hides behind it. Track the
   // visualViewport and pin the composer just above the keyboard's top edge.
@@ -432,7 +432,14 @@ function QuickAddSheet({ onClose }) {
         style={{ width: '100%', padding: `20px 16px ${28 + bottomGap}px` }}
       >
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-10px auto 16px' }} />
-        <InlineComposer variant="modal" autoOpen defaultDue={0} onDone={onClose} />
+        <InlineComposer
+          variant="modal"
+          autoOpen
+          defaultDue={prefill && prefill.dueOffset != null ? prefill.dueOffset : 0}
+          defaultTime={prefill ? prefill.time : null}
+          defaultDuration={prefill ? prefill.duration : null}
+          onDone={onClose}
+        />
       </div>
     </div>
   );
@@ -716,7 +723,7 @@ export function MobileApp() {
           </div>
         </div>
       )}
-      {quickAdd && <QuickAddSheet onClose={() => setQuickAdd(false)} />}
+      {quickAdd && <QuickAddSheet prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
       <BulkActionBar />
       {addingProj && <AddProjectModal onClose={() => setAddingProj(false)} />}
       {addingSec && <AddSectionModal onClose={() => setAddingSec(false)} />}
