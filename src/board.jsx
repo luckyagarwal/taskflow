@@ -5,6 +5,7 @@ import { H } from './data.js';
 import { useApp } from './store.jsx';
 import { TaskRow } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
+import { InlineComposer } from './composer.jsx';
 import { STATUS_ORDER, STATUS_LABELS, statusPatch, columnOf, groupTasksByStatus } from './status.js';
 
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -91,19 +92,16 @@ function WeekBoard({ tasks, setSelectedId, weekStartDay }) {
                   {date.getDate()}
                 </span>
               </div>
-              {dayTasks.length === 0 ? (
-                <div style={{ padding: '10px 12px', fontSize: 12.5, color: 'var(--text-3)', fontStyle: 'italic' }}>—</div>
-              ) : (
-                dayTasks.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    density="card"
-                    showProject
-                    onOpen={(task) => setSelectedId(task.id)}
-                  />
-                ))
-              )}
+              {dayTasks.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  density="card"
+                  showProject
+                  onOpen={(task) => setSelectedId(task.id)}
+                />
+              ))}
+              <InlineComposer key={`add-${off}`} defaultDue={off} />
             </div>
           );
         })}
