@@ -21,12 +21,13 @@ function weekRangeLabel(days) {
   return `${sMonth} ${s.getDate()} – ${eMonth} ${e.getDate()}, ${year}`;
 }
 
-function WeekBoard({ tasks, setSelectedId }) {
+function WeekBoard({ tasks, setSelectedId, weekStartDay }) {
   const [weekOff, setWeekOff] = useState(0);
 
   const todayDow = new Date().getDay(); // 0=Sun
-  const daysToMonday = -((todayDow + 6) % 7); // offset from today to this week's Monday
-  const weekStart = daysToMonday + weekOff * 7;
+  // days to go back from today to reach the week-start day
+  const daysToStart = -((todayDow - weekStartDay + 7) % 7);
+  const weekStart = daysToStart + weekOff * 7;
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const off = weekStart + i;
@@ -112,7 +113,7 @@ function WeekBoard({ tasks, setSelectedId }) {
 }
 
 export function BoardView() {
-  const { tasks, projects, updateTask, toggleTask, setSelectedId, selectedId } = useApp();
+  const { tasks, projects, updateTask, toggleTask, setSelectedId, selectedId, weekStartDay = 1 } = useApp();
   const [projectFilter, setProjectFilter] = useState(null);
   const [draggedId, setDraggedId] = useState(null);
   const [mode, setMode] = useState('status'); // 'status' | 'week'
@@ -166,7 +167,7 @@ export function BoardView() {
       />
 
       {mode === 'week' ? (
-        <WeekBoard tasks={tasks} setSelectedId={setSelectedId} />
+        <WeekBoard tasks={tasks} setSelectedId={setSelectedId} weekStartDay={weekStartDay} />
       ) : (
         <div className="board-scroll">
           {STATUS_ORDER.map((status) => (

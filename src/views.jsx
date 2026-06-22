@@ -965,7 +965,7 @@ export function LogbookView() {
 
 // ── SETTINGS ────────────────────────────────────────────────
 export function SettingsView() {
-  const { theme, setTheme, density, setDensity, resetDatabase, exportDatabase, importDatabase, forceSync } = useApp();
+  const { theme, setTheme, density, setDensity, weekStartDay, setWeekStartDay, resetDatabase, exportDatabase, importDatabase, forceSync } = useApp();
   const narrow = useIsNarrow();
   const fileInputRef = React.useRef(null);
 
@@ -1026,6 +1026,30 @@ export function SettingsView() {
                 }}
               >
                 {t} Mode
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Week Start */}
+        <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <I.calendar size={16} /> Week Start
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[{ id: 1, label: 'Monday' }, { id: 0, label: 'Sunday' }].map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setWeekStartDay(opt.id)}
+                style={{
+                  flex: 1, padding: '10px 14px', borderRadius: 8, fontSize: 13.5, fontWeight: 500,
+                  border: `2px solid ${weekStartDay === opt.id ? 'var(--accent)' : 'var(--border-2)'}`,
+                  background: weekStartDay === opt.id ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-elev))' : 'transparent',
+                  color: weekStartDay === opt.id ? 'var(--accent)' : 'var(--text-2)',
+                  cursor: 'pointer', transition: 'all .15s'
+                }}
+              >
+                {opt.label}
               </button>
             ))}
           </div>

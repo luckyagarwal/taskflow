@@ -49,6 +49,19 @@ export function useStore() {
     }
   });
 
+  const [weekStartDay, setWeekStartDay] = useState(() => {
+    try {
+      const saved = localStorage.getItem('todo-proto-week-start');
+      return saved !== null ? parseInt(saved) : 1; // 0=Sun, 1=Mon (default)
+    } catch {
+      return 1;
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('todo-proto-week-start', weekStartDay); } catch (e) { console.error(e); }
+  }, [weekStartDay]);
+
   useEffect(() => {
     try {
       localStorage.setItem('todo-proto-theme', theme);
@@ -990,6 +1003,8 @@ export function useStore() {
     setTheme,
     density,
     setDensity,
+    weekStartDay,
+    setWeekStartDay,
     exportDatabase,
     importDatabase,
     barsVisible,
