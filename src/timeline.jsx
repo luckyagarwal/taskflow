@@ -6,14 +6,16 @@ import { H } from './data.js';
 import { useApp } from './store.jsx';
 import { Empty } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
-import { layoutDayTasks, fmtHM, parseHM } from './timegrid.js';
+import { layoutDayTasks, fmtHM, parseHM, yToMin, makeRange } from './timegrid.js';
 
 const HOUR_H = 60; // matches --hour-height
 
 export function DayView({ compact }) {
-  const { tasks, setSelectedId } = useApp();
+  const { tasks, setSelectedId, setQuickAdd } = useApp();
   const today = H.startOfToday();
   const [selOff, setSelOff] = useState(0);
+  const [drag, setDrag] = useState(null); // { startMin, curMin } while dragging (desktop)
+  const trackRef = useRef(null);
 
   // tick every 60s so the "now" marker stays live
   const [nowMin, setNowMin] = useState(() => {
@@ -44,6 +46,47 @@ export function DayView({ compact }) {
     // only re-focus when the day changes, not on every minute tick
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selOff]);
+
+  // Convert a pointer/click event's clientY to a minute within the track.
+  const eventToMin = (clientY) => {
+    const el = trackRef.current;
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    return yToMin(clientY - rect.top, HOUR_H);
+  };
+
+  // True when the event landed on an existing task block (do not start create).
+  const onBlock = (target) => !!(target.closest && target.closest('.tl-block'));
+
+  // Mobile: a tap on empty space creates a default 1-hour block.
+  const handleTap = (e) => {
+    if (onBlock(e.target)) return;
+    const m = eventToMin(e.clientY);
+    const { startMin, durationMin } = makeRange(m, m + 60, { step: 5, minDur: 60 });
+    setQuickAdd({ dueOffset: selOff, time: fmtHM(startMin), duration: durationMin });
+  };
+
+  // Desktop drag.
+  const handleDown = (e) => {
+    if (onBlock(e.target)) return;
+    if (e.button !== undefined && e.button !== 0) return; // left button only
+    const m = eventToMin(e.clientY);
+    setDrag({ startMin: m, curMin: m });
+    if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const handleMove = (e) => {
+    if (!drag) return;
+    setDrag((d) => (d ? { ...d, curMin: eventToMin(e.clientY) } : d));
+  };
+  const handleUp = () => {
+    if (!drag) return;
+    const moved = Math.abs(drag.curMin - drag.startMin);
+    const d = drag;
+    setDrag(null);
+    if (moved < 6) return; // plain click, not a drag — ignore
+    const { startMin, durationMin } = makeRange(d.startMin, d.curMin, { step: 5, minDur: 5 });
+    setQuickAdd({ dueOffset: selOff, time: fmtHM(startMin), duration: durationMin });
+  };
 
   return (
     <div>
@@ -80,7 +123,14 @@ export function DayView({ compact }) {
         <Empty icon={<I.clock size={28} />} title="Nothing scheduled" sub="Add a task with a time to see it on the timeline." />
       ) : (
         <div className="tl-grid" ref={gridRef} style={compact ? { maxHeight: 'calc(100vh - 240px)' } : undefined}>
-          <div className="tl-track" style={{ height: 24 * HOUR_H }}>
+          <div
+            className="tl-track"
+            ref={trackRef}
+            style={{ height: 24 * HOUR_H }}
+            {...(compact
+              ? { onClick: handleTap }
+              : { onPointerDown: handleDown, onPointerMove: handleMove, onPointerUp: handleUp })}
+          >
             {Array.from({ length: 24 }, (_, h) => (
               <div key={h} className="tl-hour"><span className="tl-hour-label">{fmtHM(h * 60)}</span></div>
             ))}
@@ -119,6 +169,22 @@ export function DayView({ compact }) {
                 <span className="tl-now-dot" />
               </div>
             )}
+
+            {drag && (() => {
+              const { startMin, durationMin } = makeRange(drag.startMin, drag.curMin, { step: 5, minDur: 5 });
+              const moved = Math.abs(drag.curMin - drag.startMin) >= 6;
+              if (!moved) return null;
+              return (
+                <div className="tl-ghost" style={{
+                  top: (startMin / 60) * HOUR_H,
+                  height: Math.max(20, (durationMin / 60) * HOUR_H - 3),
+                  left: 72,
+                  width: 'calc(100% - 80px)',
+                }}>
+                  {fmtHM(startMin)} – {fmtHM(startMin + durationMin)} · {H.fmtDuration(durationMin)}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
