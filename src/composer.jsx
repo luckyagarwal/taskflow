@@ -606,7 +606,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         <div style={{ position: 'relative' }}>
           <PillBtn
             icon={<I.calendar size={15} sw={2} />}
-            label={(start !== null || finalDue !== null) ? H.dateRangeLabel(start, finalDue, finalTime) : 'Date'}
+            label={(start !== null || finalDue !== null) ? H.dateRangeLabel(start, finalDue, finalTime, null, duration) : 'Date'}
             color={(finalDueOpt || (start !== null ? { color: 'var(--today)' } : null))?.color || 'var(--text-2)'}
             active={start !== null || finalDue !== null}
             onClick={() => setMenu(menu === 'due' ? null : 'due')}
