@@ -1,6 +1,6 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
 import React, { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
-import { DATA, advanceRecurring } from './data.js';
+import { DATA, advanceRecurring, withRemindAt } from './data.js';
 import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange, fetchAllData, isLocalHostname } from './sync.js';
 import * as repo from './repo.js';
 import { childrenOf, canSetParent, promoteChildrenOnDelete } from './projects.js';
@@ -212,6 +212,26 @@ export function useStore() {
     return true;
   }, []);
 
+  // One-time backfill: give every pre-existing dated Task an absolute `remindAt`
+  // (ADR 0001). Any reminder whose time is already in the past is marked
+  // `reminderSent` so the first cron run does not flood with stale reminders.
+  // Runs once per device; writes through the same outbox path so it syncs to D1.
+  const backfillRemindAt = useCallback(async (local) => {
+    if (localStorage.getItem('taskflow-remindat-backfill')) return false;
+    const now = Date.now();
+    const toUpdate = [];
+    for (const t of (local.tasks || [])) {
+      if (t.remindAt !== undefined) continue; // already has the field
+      const next = withRemindAt(t, now);
+      // Don't retroactively fire reminders for already-past tasks.
+      if (next.remindAt !== null && next.remindAt < now) next.reminderSent = true;
+      toUpdate.push(next);
+    }
+    if (toUpdate.length) await repo.enqueue({ tasks: toUpdate }, {});
+    localStorage.setItem('taskflow-remindat-backfill', 'true');
+    return toUpdate.length > 0;
+  }, []);
+
   const addToast = useCallback((msg) => {
     const id = 'toast_' + Date.now();
     setToasts((prev) => [...prev, { id, msg }]);
@@ -223,8 +243,15 @@ export function useStore() {
   // Durable, non-blocking save: writes to the local store + outbox immediately
   // and lets the sync engine flush to the server with retry. No await, no
   // reload-on-failure — failed network writes stay queued, never lost.
+  //
+  // Every task write funnels through here, so this is where the derived absolute
+  // `remindAt` is kept in sync with `dueOffset`/`time` (ADR 0001). Doing it at the
+  // one choke point means no individual edit site can forget to maintain it.
   const queueSave = useCallback((upserts = {}, deletes = {}) => {
-    repo.enqueue(upserts, deletes);
+    const normalized = upserts.tasks
+      ? { ...upserts, tasks: upserts.tasks.map((t) => withRemindAt(t)) }
+      : upserts;
+    repo.enqueue(normalized, deletes);
   }, []);
 
   useEffect(() => {
@@ -252,12 +279,18 @@ export function useStore() {
       }
 
       const seeded = await seedFirstRun(current);
-      if (seeded && !cancelled) applyToState(await repo.loadAll());
+      if (seeded && !cancelled) {
+        current = await repo.loadAll();
+        applyToState(current);
+      }
+
+      const backfilled = await backfillRemindAt(current);
+      if (backfilled && !cancelled) applyToState(await repo.loadAll());
 
       startOnlineSync((data) => { if (!cancelled) applyToState(data); });
     })();
     return () => { cancelled = true; };
-  }, [applyToState, migrateLegacyLocalStorage, seedFirstRun]);
+  }, [applyToState, migrateLegacyLocalStorage, seedFirstRun, backfillRemindAt]);
 
   useEffect(() => {
     localStorage.setItem(KEY_SIDEBAR_COLLAPSED, JSON.stringify(sidebarCollapsed));
