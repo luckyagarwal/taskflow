@@ -22,46 +22,47 @@ test.describe("Mobile App — Core Functionality", () => {
     await page.goto("/mobile");
     await waitForAppLoad(page);
 
-    // Should show TaskFlow header
-    await expect(page.getByText("TaskFlow").first()).toBeVisible();
+    // Should show Browse header
+    await expect(page.getByText("Browse").first()).toBeVisible();
 
     // Should show bottom tab bar labels
     await expect(
-      page.getByText("Today", { exact: true }).first()
-    ).toBeVisible();
-    await expect(
-      page.getByText("Upcoming", { exact: true }).first()
-    ).toBeVisible();
-    await expect(
       page.getByText("Browse", { exact: true }).first()
+    ).toBeVisible();
+    await expect(
+      page.getByText("Calendar", { exact: true }).first()
     ).toBeVisible();
     await expect(
       page.getByText("Search", { exact: true }).first()
     ).toBeVisible();
   });
 
-  test("mobile shows today tasks on initial load", async ({ page }) => {
+  test("mobile shows browse view on initial load", async ({ page }) => {
     await page.goto("/mobile");
     await waitForAppLoad(page);
 
-    // Today view: tasks with dueOffset 0 and overdue (dueOffset < 0)
-    await expect(taskByTitle(page, "Buy groceries")).toBeVisible();
-    await expect(taskByTitle(page, "Fix login bug")).toBeVisible();
+    // Initial load: Browse view shows grid cards
+    await expect(
+      page.getByText("Inbox", { exact: true }).first()
+    ).toBeVisible();
+    await expect(
+      page.getByText("Upcoming", { exact: true }).first()
+    ).toBeVisible();
   });
 
   test("bottom tab navigation works", async ({ page }) => {
     await page.goto("/mobile");
     await waitForAppLoad(page);
 
-    // Tap Upcoming tab — last matching text (tab bar is at bottom)
-    await page.getByText("Upcoming", { exact: true }).last().click();
+    // Tap Upcoming card on the Browse view
+    await page.getByText("Upcoming", { exact: true }).first().click();
     await page.waitForTimeout(500);
 
     // Should show upcoming task
     await expect(taskByTitle(page, "Review PR")).toBeVisible();
 
-    // Tap Browse tab
-    await page.getByText("Browse", { exact: true }).last().click();
+    // Tap the Browse back button to return to Browse view
+    await page.getByText("Browse", { exact: true }).first().click();
     await page.waitForTimeout(500);
 
     // Browse view shows grid cards
@@ -69,7 +70,7 @@ test.describe("Mobile App — Core Functionality", () => {
       page.getByText("Inbox", { exact: true }).first()
     ).toBeVisible();
     await expect(
-      page.getByText("Calendar", { exact: true }).first()
+      page.getByText("Upcoming", { exact: true }).first()
     ).toBeVisible();
   });
 
@@ -119,6 +120,10 @@ test.describe("Mobile App — Core Functionality", () => {
     await page.goto("/mobile");
     await waitForAppLoad(page);
 
+    // Tap on Today card to see today's tasks
+    await page.getByText("Today", { exact: true }).first().click();
+    await page.waitForTimeout(500);
+
     // Tap on a task row
     const row = taskRowByTitle(page, "Buy groceries");
     await row.click();
@@ -134,6 +139,10 @@ test.describe("Mobile App — Core Functionality", () => {
   test("complete task on mobile", async ({ page }) => {
     await page.goto("/mobile");
     await waitForAppLoad(page);
+
+    // Tap on Today card to see today's tasks
+    await page.getByText("Today", { exact: true }).first().click();
+    await page.waitForTimeout(500);
 
     const row = taskRowByTitle(page, "Buy groceries");
     const checkbox = row.locator('button[aria-label="Complete task"]');

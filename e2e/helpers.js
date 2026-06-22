@@ -214,6 +214,10 @@ export function seedMockDb(db) {
 export async function setupApiMocks(page, mockDb, opts = {}) {
   const TABLES = ["tasks", "projects", "labels", "sections"];
 
+  await page.addInitScript(() => {
+    window.localStorage.setItem('taskflow-seeded', 'true');
+  });
+
   // GET /api/data[?since=] — mirrors functions/api/data.js: incremental delta
   // (changed rows incl. tombstones) when `since` is present, else a full
   // snapshot of live rows. Always returns a `serverMax` watermark.
@@ -363,6 +367,11 @@ export async function triggerSyncOnPage(page) {
  * after Enter (Todoist-style "add another"), so repeated adds just refill it.
  */
 export async function addTaskViaComposer(page, title) {
+  const todayNavItem = page.locator("button.nav-item").filter({ hasText: "Today" });
+  if (await todayNavItem.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await todayNavItem.click();
+    await page.waitForTimeout(300);
+  }
   const input = page.getByPlaceholder("Task name");
   if (!(await input.isVisible().catch(() => false))) {
     await page.getByRole("button", { name: "Add task" }).last().click();
@@ -395,7 +404,7 @@ export async function openMobileQuickAdd(page) {
  * for task titles inside `.task-row` divs with `data-task-id`.
  */
 export function taskByTitle(page, title) {
-  return page.locator(`.task-row textarea`).filter({ hasText: title });
+  return page.locator(`.task-row textarea`).filter({ hasText: title, exact: true });
 }
 
 /**
@@ -403,6 +412,6 @@ export function taskByTitle(page, title) {
  */
 export function taskRowByTitle(page, title) {
   return page.locator(`[data-task-id]`).filter({
-    has: page.locator(`textarea`).filter({ hasText: title }),
+    has: page.locator(`textarea`).filter({ hasText: title, exact: true }),
   });
 }

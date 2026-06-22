@@ -122,7 +122,15 @@ export function useStore() {
     }
   });
 
-  const [view, setView] = useState({ type: 'today' });
+  const [view, setView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.startsWith('/mobile')) {
+        return { type: 'browse' };
+      }
+      return { type: 'board' };
+    }
+    return { type: 'today' };
+  });
   const [selectedId, setSelectedId] = useState(null);
   const [multiSelectedIds, setMultiSelectedIds] = useState([]);
   const [quickAdd, setQuickAdd] = useState(false);

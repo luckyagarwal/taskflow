@@ -54,6 +54,10 @@ test.describe("Cross-Instance Sync — Desktop ↔ Mobile", () => {
     // === Trigger sync on mobile ===
     await triggerSyncOnPage(mobilePage);
 
+    // Tap on Today card to see today's tasks
+    await mobilePage.getByText("Today", { exact: true }).first().click();
+    await mobilePage.waitForTimeout(500);
+
     // === Verify task appears on mobile ===
     await expect(taskByTitle(mobilePage, "Desktop sync test task")).toBeVisible({
       timeout: 5000,
@@ -125,6 +129,10 @@ test.describe("Cross-Instance Sync — Desktop ↔ Mobile", () => {
     // === Sync to mobile ===
     await triggerSyncOnPage(mobilePage);
 
+    // Tap on Today card to see today's tasks
+    await mobilePage.getByText("Today", { exact: true }).first().click();
+    await mobilePage.waitForTimeout(500);
+
     // On mobile, completed task should no longer show in active Today view
     // (it may show in "Completed" group or be gone from the active list)
     const activeRow = taskRowByTitle(mobilePage, "Buy groceries");
@@ -166,6 +174,10 @@ test.describe("Cross-Instance Sync — Desktop ↔ Mobile", () => {
 
     // === Trigger sync on mobile ===
     await triggerSyncOnPage(mobilePage);
+
+    // Tap on Today card to see today's tasks
+    await mobilePage.getByText("Today", { exact: true }).first().click();
+    await mobilePage.waitForTimeout(500);
 
     // Gone from mobile too
     await expect(taskByTitle(mobilePage, "Buy groceries")).toHaveCount(0, {
@@ -292,6 +304,10 @@ test.describe("Cross-Tab Sync — BroadcastChannel", () => {
     await triggerSyncOnPage(tab2);
     await triggerSyncOnPage(tab3);
     await tab2.waitForTimeout(1000);
+
+    // Tap on Today card to see today's tasks on mobile (tab3)
+    await tab3.getByText("Today", { exact: true }).first().click();
+    await tab3.waitForTimeout(500);
 
     // All tasks should appear in tab2 and tab3
     for (let i = 1; i <= 3; i++) {

@@ -129,17 +129,28 @@ export function CalendarView({ density, compact }) {
           <span style={{ fontSize: 16, fontWeight: 600 }}>{H.DOW_LONG[selDate.getDay()]}</span>
           <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-3)' }}>{H.MONTHS_LONG[selDate.getMonth()]} {selDate.getDate()}</span>
         </div>
-        {selTasks.length === 0
-          ? <Empty icon={<I.calendar size={28} />} title="Nothing scheduled" sub="Pick another day or add a task for this date." />
-          : selTasks.map((t) => (
-            <TaskRow key={t.id} task={t} density={density} showProject onToggle={() => toggleTask(t.id)} onOpen={(x) => setSelectedId(x.id)} selected={selectedId === t.id} />
-          ))}
         {/* Add a task with this date pre-filled — same inline composer as the Upcoming view.
             key={selOff} remounts it per selected day so its internal due-state always
-            matches the picked date (InlineComposer seeds state from defaultDue only at mount). */}
-        <div style={{ marginTop: 8 }}>
-          <InlineComposer key={selOff} defaultDue={selOff} />
-        </div>
+            matches the picked date (InlineComposer seeds state from defaultDue only at mount).
+            When the day is empty, the composer sits ABOVE the placeholder so "Add task" is the
+            first thing in reach; with tasks present it stays at the bottom of the list. */}
+        {selTasks.length === 0 ? (
+          <>
+            <div style={{ marginTop: 8 }}>
+              <InlineComposer key={selOff} defaultDue={selOff} />
+            </div>
+            <Empty icon={<I.calendar size={28} />} title="Nothing scheduled" sub="Pick another day or add a task for this date." />
+          </>
+        ) : (
+          <>
+            {selTasks.map((t) => (
+              <TaskRow key={t.id} task={t} density={density} showProject onToggle={() => toggleTask(t.id)} onOpen={(x) => setSelectedId(x.id)} selected={selectedId === t.id} />
+            ))}
+            <div style={{ marginTop: 8 }}>
+              <InlineComposer key={selOff} defaultDue={selOff} />
+            </div>
+          </>
+        )}
       </div>
       </>)}
     </div>

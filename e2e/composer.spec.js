@@ -27,6 +27,8 @@ test("composer preview pills reflect parsed tokens", async ({ page }) => {
   });
 
   await page.goto("/");
+  await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+  await page.waitForTimeout(500);
 
   // Open the first inline "Add task" composer.
   await page.getByRole("button", { name: "Add task" }).first().click();
@@ -35,9 +37,9 @@ test("composer preview pills reflect parsed tokens", async ({ page }) => {
   await expect(input).toBeVisible();
   await input.fill("Launch plan p1 tomorrow #Work @deep");
 
-  // The composer root is the input's parent div; scope assertions to it so we
+  // The composer root is the input's grandparent div; scope assertions to it so we
   // don't match task-list text elsewhere on the page.
-  const composer = input.locator("..");
+  const composer = input.locator("../..");
   await expect(composer.getByText("Tomorrow", { exact: false })).toBeVisible();
   await expect(composer.getByText("P1", { exact: true })).toBeVisible();
   await expect(composer.getByText("1 label", { exact: false })).toBeVisible();

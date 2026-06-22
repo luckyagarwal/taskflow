@@ -17,9 +17,20 @@ test.describe("Desktop App — Core Functionality", () => {
     await setupApiMocks(page, mockDb);
   });
 
+  test("app lands on Board view by default", async ({ page }) => {
+    await page.goto("/");
+    await waitForAppLoad(page);
+
+    // Should show Board heading
+    await expect(page.locator("h1", { hasText: "Board" })).toBeVisible();
+    await expect(page.getByText("Drag cards between columns to change status")).toBeVisible();
+  });
+
   test("app loads and displays tasks from API", async ({ page }) => {
     await page.goto("/");
     await waitForAppLoad(page);
+    await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+    await page.waitForTimeout(500);
 
     // Should show Today heading
     await expect(page.locator("h1", { hasText: "Today" })).toBeVisible();
@@ -58,6 +69,8 @@ test.describe("Desktop App — Core Functionality", () => {
   test("add task via inline composer", async ({ page }) => {
     await page.goto("/");
     await waitForAppLoad(page);
+    await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+    await page.waitForTimeout(500);
 
     // Click the "Add task" button (main content area one, not sidebar)
     await page.getByRole("button", { name: "Add task" }).first().click();
@@ -82,6 +95,8 @@ test.describe("Desktop App — Core Functionality", () => {
   test("complete a task via checkbox click", async ({ page }) => {
     await page.goto("/");
     await waitForAppLoad(page);
+    await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+    await page.waitForTimeout(500);
 
     // Find the checkbox for "Buy groceries" — aria-label "Complete task"
     const row = taskRowByTitle(page, "Buy groceries");
@@ -101,6 +116,8 @@ test.describe("Desktop App — Core Functionality", () => {
   }) => {
     await page.goto("/");
     await waitForAppLoad(page);
+    await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+    await page.waitForTimeout(500);
 
     // Click on the task row for "Fix login bug"
     const row = taskRowByTitle(page, "Fix login bug");
@@ -119,6 +136,8 @@ test.describe("Desktop App — Core Functionality", () => {
   test("delete a task via action bar", async ({ page }) => {
     await page.goto("/");
     await waitForAppLoad(page);
+    await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+    await page.waitForTimeout(500);
 
     // Deletion is confirmed via window.confirm — auto-accept it.
     page.on("dialog", (dialog) => dialog.accept());
@@ -147,13 +166,15 @@ test.describe("Desktop App — Core Functionality", () => {
   test("composer preview pills reflect parsed tokens", async ({ page }) => {
     await page.goto("/");
     await waitForAppLoad(page);
+    await page.locator("button.nav-item").filter({ hasText: "Today" }).click();
+    await page.waitForTimeout(500);
 
     await page.getByRole("button", { name: "Add task" }).first().click();
     const input = page.getByPlaceholder("Task name");
     await expect(input).toBeVisible();
     await input.fill("Launch plan p1 tomorrow");
 
-    const composer = input.locator("..");
+    const composer = input.locator("../..");
     await expect(
       composer.getByText("Tomorrow", { exact: false })
     ).toBeVisible();

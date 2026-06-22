@@ -217,6 +217,7 @@ function BrowseView({ onAddProject, onAddSection }) {
       
       {/* 2x2 Grid of primary lists */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, marginTop: 8 }}>
+        <GridCard icon={<I.today size={20} />} label="Today" count={c.today} color="var(--today)" onClick={() => setView({ type: 'today' })} />
         <GridCard icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} color="var(--text-2)" onClick={() => setView({ type: 'inbox' })} />
         <GridCard icon={<I.upcoming size={20} />} label="Upcoming" count={c.upcoming} color="var(--accent)" onClick={() => setView({ type: 'upcoming' })} />
         <GridCard icon={<I.grid size={20} />} label="Board" color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
