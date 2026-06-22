@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "css-animation-creator": {
+      "source": "onewave-ai/claude-skills",
+      "sourceType": "github",
+      "skillPath": "css-animation-creator/SKILL.md",
+      "computedHash": "850ce01a5e263c7065d40fb34fb4dcee3075c89f45fa620a2364c9ca3ca901c2"
+    },
+    "framer-motion": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "framer-motion/SKILL.md",
+      "computedHash": "39a33b58952788812d305f7b676b86ee800d3d5be9752e10392435d7fae73d8a"
+    }
+  }
+}
