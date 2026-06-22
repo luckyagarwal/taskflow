@@ -134,7 +134,9 @@ export function parseTask(raw, projects = [], existingLabels = []) {
   let text = raw;
   let priority = 4;
   let dueOffset = null;
+  let startOffset = null;
   let time = null;
+  let startTime = null;
   let projectId = null;
   let taskLabels = [];
   let recurring = null;
@@ -205,6 +207,58 @@ export function parseTask(raw, projects = [], existingLabels = []) {
   // 5. Parse Dates (Relative/Calendar) — BEFORE time so a date's day number
   //    can't be mis-grabbed by the time matcher.
   const today = new Date();
+
+  // 5a. Parse date-time ranges before individual date/time parsers.
+  //     Handles: "thursday 5pm to thursday 6pm", "today 9am to 11am", "5pm to 6pm", etc.
+  {
+    const parseHMStr = (h, min, ampm) => {
+      let hh = parseInt(h);
+      const mm = min ? parseInt(min) : 0;
+      if (ampm) {
+        if (ampm.toLowerCase() === 'pm' && hh < 12) hh += 12;
+        if (ampm.toLowerCase() === 'am' && hh === 12) hh = 0;
+      }
+      if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+      return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    };
+    const dowList = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dateKw = `(?:today|tomorrow|next\\s+week|${dowList.join('|')})`;
+    const timePart = `(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?`;
+    const rangeRe = new RegExp(
+      `(?:(${dateKw})\\s+)?${timePart}\\s+to\\s+(?:(${dateKw})\\s+)?${timePart}`,
+      'i'
+    );
+    const rm = text.match(rangeRe);
+    // Require at least one explicit am/pm or :MM to avoid matching bare "5 to 6"
+    if (rm && (rm[4] || rm[8] || rm[3] || rm[7])) {
+      const st = parseHMStr(rm[2], rm[3], rm[4]);
+      const et = parseHMStr(rm[6], rm[7], rm[8]);
+      if (st && et) {
+        startTime = st;
+        time = et;
+        const resolveDate = (kw) => {
+          if (!kw) return null;
+          const k = kw.toLowerCase().replace(/\s+/, ' ');
+          if (k === 'today') return 0;
+          if (k === 'tomorrow') return 1;
+          if (k === 'next week') return 7;
+          const di = dowList.indexOf(k);
+          if (di !== -1) {
+            let diff = di - today.getDay();
+            if (diff < 0) diff += 7;
+            return diff;
+          }
+          return null;
+        };
+        const sd = resolveDate(rm[1]);
+        const ed = resolveDate(rm[5]);
+        if (sd !== null) { startOffset = sd; dueOffset = sd; }
+        if (ed !== null) dueOffset = ed;
+        if (ed !== null && sd === null) startOffset = ed;
+        text = text.replace(rangeRe, '');
+      }
+    }
+  }
   const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const MONTH_STEMS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
   // Offset (in days from today) for an absolute month/day, honouring an
@@ -292,7 +346,9 @@ export function parseTask(raw, projects = [], existingLabels = []) {
   return {
     content: content || 'Untitled',
     dueOffset,
+    startOffset,
     time,
+    startTime,
     priority,
     projectId,
     labels: taskLabels,
