@@ -91,8 +91,12 @@ input, textarea { font-family: inherit; }
 /* utility */
 .no-sel { user-select: none; -webkit-user-select: none; }
 .text-sel { user-select: text; -webkit-user-select: text; }
-/* inputs and contenteditable always allow selection */
-.app-root input, .app-root textarea, .app-root [contenteditable] { user-select: text; -webkit-user-select: text; }
+/* editable inputs and contenteditable allow selection; read-only/disabled ones do not
+   (a read-only title textarea on a card must stay unselectable so it can't fight gestures) */
+.app-root input:not([readonly]):not([disabled]),
+.app-root textarea:not([readonly]):not([disabled]),
+.app-root [contenteditable="true"] { user-select: text; -webkit-user-select: text; }
+.app-root input[readonly], .app-root textarea[readonly] { user-select: none; -webkit-user-select: none; }
 
 @keyframes pop { 0% { transform: scale(.5); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes slideUp { from { transform: translateY(6px); } to { transform: translateY(0); } }
