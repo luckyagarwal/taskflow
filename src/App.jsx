@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp, Sel } from './store.jsx';
-import { orderedProjectsForSection, hasChildren, eligibleParents, canSetParent } from './projects.js';
+import { orderedProjectsForSection, hasChildren, canSetParent } from './projects.js';
 import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { BoardView } from './board.jsx';
@@ -12,7 +12,7 @@ import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { QuickAddModal } from './composer.jsx';
 
-function NavItem({ icon, label, count, active, color, onClick, onDelete, onRename }) {
+function NavItem({ icon, label, count, active, color, onClick, onDelete, onRename, onAddChild }) {
   const [hovered, setHovered] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(label);
@@ -61,8 +61,20 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
     >
       <span className="nav-ico" style={{ color: active ? undefined : (color || 'var(--text-3)'), display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      {onAddChild && hovered && (
+        <span
+          onClick={(e) => { e.stopPropagation(); onAddChild(); }}
+          style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s' }}
+          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
+          title="Add sub-project"
+          aria-label="Add sub-project"
+        >
+          <I.plusSm size={15} />
+        </span>
+      )}
       {onRename && hovered && (
-        <span 
+        <span
           onClick={startEdit}
           style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', marginRight: 4 }}
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
@@ -89,12 +101,47 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
   );
 }
 
+// Inline create form with explicit Save (✓) and Cancel (✕), plus Enter/Escape.
+// Commits on blur only when there is text; an empty blur quietly cancels.
+function InlineAddForm({ placeholder, indentLeft = 28, onSubmit, onCancel }) {
+  const [val, setVal] = useState('');
+  const submit = () => {
+    const t = val.trim();
+    if (t) onSubmit(t);
+    else onCancel();
+  };
+  const btn = { display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', flex: 'none', transition: 'background .12s, color .12s' };
+  return (
+    <div style={{ padding: `4px 8px 6px ${indentLeft}px`, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <input
+        autoFocus
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel(); }}
+        onBlur={() => { if (val.trim()) submit(); else onCancel(); }}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        style={{ flex: 1, minWidth: 0, border: '1px solid var(--accent)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '4px 8px', fontSize: 12.5, outline: 'none' }}
+      />
+      <button onMouseDown={(e) => e.preventDefault()} onClick={submit} title="Add" aria-label="Add"
+        style={{ ...btn, border: 'none', background: 'var(--accent)', color: '#fff' }}>
+        <I.check size={15} />
+      </button>
+      <button onMouseDown={(e) => e.preventDefault()} onClick={onCancel} title="Cancel" aria-label="Cancel"
+        style={{ ...btn, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-3)' }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; e.currentTarget.style.color = 'var(--text)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-3)'; }}>
+        <I.x size={15} />
+      </button>
+    </div>
+  );
+}
+
 function ProjectGroup({ title, projects = [], allProjects = [], view, setView }) {
   const [open, setOpen] = useState(true);
   const { tasks, addProject, deleteProject, updateProject, setProjectParent, deleteSection, updateSection, sections, reorderProjects, expandedIds, toggleExpand } = useApp();
   const [addingProj, setAddingProj] = useState(false);
-  const [projName, setProjName] = useState('');
-  const [newProjParent, setNewProjParent] = useState('');
+  const [addingChildOf, setAddingChildOf] = useState(null); // parent id when adding a sub-project inline
   const [headerHovered, setHeaderHovered] = useState(false);
   const [draggedProjIdx, setDraggedProjIdx] = useState(null);
   const [dropTarget, setDropTarget] = useState(null); // { id, mode: 'before'|'after'|'nest' } while dragging
@@ -110,16 +157,12 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
   // collapse mechanism (no new synced state — per spec decision #6).
   const isCollapsed = (id) => expandedIds.includes(id);
 
-  // Eligible parents for the create picker (top-level projects in this section).
-  const createParentOptions = eligibleParents(allProjects, null).filter((p) => p.group === title);
-
-  const handleAdd = () => {
-    if (projName.trim()) {
-      addProject(projName.trim(), title, newProjParent || null);
-      setProjName('');
-      setNewProjParent('');
-      setAddingProj(false);
-    }
+  // Start adding a sub-project under a parent: open the inline form and make
+  // sure the parent is expanded so the new row is visible.
+  const startAddChild = (parentId) => {
+    setAddingProj(false);
+    if (isCollapsed(parentId)) toggleExpand(parentId);
+    setAddingChildOf(parentId);
   };
 
   const handleSectionDelete = () => {
@@ -304,8 +347,8 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
         // Reorder lands at sibling depth; a child slot is indented to match.
         const lineLeft = depth === 1 ? 24 : 6;
         return (
+          <React.Fragment key={p.id}>
           <div
-            key={p.id}
             draggable
             onDragStart={(e) => handleProjDragStart(e, idx)}
             onDragOver={(e) => handleProjDragOver(e, idx)}
@@ -353,8 +396,18 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
             )}
             <NavItem icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
               active={(view.type === 'project' || view.type === 'project-settings') && view.id === p.id} onClick={() => setView({ type: 'project', id: p.id })}
-              onDelete={handleProjDelete} onRename={handleProjRename} />
+              onDelete={handleProjDelete} onRename={handleProjRename}
+              onAddChild={depth === 0 ? () => startAddChild(p.id) : undefined} />
           </div>
+          {addingChildOf === p.id && (
+            <InlineAddForm
+              placeholder="Sub-project name..."
+              indentLeft={44}
+              onSubmit={(name) => addProject(name, title, p.id)}
+              onCancel={() => setAddingChildOf(null)}
+            />
+          )}
+          </React.Fragment>
         );
       })}
       {open && rows.length === 0 && (
@@ -364,21 +417,14 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
       )}
       {open && (
         addingProj ? (
-          <div style={{ padding: '4px 8px 4px 28px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAddingProj(false); setProjName(''); setNewProjParent(''); } }}
-              placeholder="Project name..."
-              style={{ flex: 1, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '3px 6px', fontSize: 12, outline: 'none' }} />
-            <select value={newProjParent} onChange={(e) => setNewProjParent(e.target.value)}
-              style={{ border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '3px 6px', fontSize: 12, outline: 'none' }}>
-              <option value="">None (top-level)</option>
-              {createParentOptions.map((pp) => (
-                <option key={pp.id} value={pp.id}>{pp.name}</option>
-              ))}
-            </select>
-          </div>
+          <InlineAddForm
+            placeholder="Project name..."
+            indentLeft={28}
+            onSubmit={(name) => addProject(name, title, null)}
+            onCancel={() => setAddingProj(false)}
+          />
         ) : (
-          <button onClick={() => setAddingProj(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 8px 6px 28px', fontSize: 12.5, color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+          <button onClick={() => { setAddingChildOf(null); setAddingProj(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '6px 8px 6px 28px', fontSize: 12.5, color: 'var(--text-3)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
             <I.plusSm size={14} /> Add project
           </button>
         )
