@@ -26,7 +26,7 @@ export function BoardView() {
             style={{
               border: '1px solid var(--border)', background: 'var(--bg-elev)',
               color: 'var(--text)', borderRadius: 8, padding: '8px 12px',
-              fontSize: 13.5, fontWeight: 700, outline: 'none', cursor: 'pointer'
+              fontSize: 13.5, fontWeight: 500, outline: 'none', cursor: 'pointer'
             }}
           >
             <option value="">All projects</option>

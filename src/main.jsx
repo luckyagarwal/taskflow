@@ -33,7 +33,7 @@ function Root() {
         display: 'grid', placeItems: 'center', height: '100dvh', width: '100vw',
         background: savedTheme === 'dark' ? '#141416' : '#FAF9F6', 
         color: savedTheme === 'dark' ? '#ECECED' : '#1E1E1C',
-        fontFamily: "'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif"
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
       }}>
         <div className="pulse-loader">
           <div className="spinner" />

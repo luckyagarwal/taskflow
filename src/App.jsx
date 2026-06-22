@@ -43,7 +43,7 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
           style={{
             flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
             color: 'var(--text)', borderRadius: 4, padding: '2px 6px',
-            fontSize: 13, fontWeight: 700, outline: 'none', minWidth: 0
+            fontSize: 13, fontWeight: 500, outline: 'none', minWidth: 0
           }}
         />
       </div>
@@ -291,7 +291,7 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
               style={{
                 flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
                 color: 'var(--text)', borderRadius: 4, padding: '2px 6px',
-                fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase',
+                fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase',
                 letterSpacing: '.06em', outline: 'none', minWidth: 0
               }}
             />
@@ -480,23 +480,23 @@ function Sidebar({ style }) {
     }}>
       {/* workspace header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 12px' }}>
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: 15, flex: 'none' }}>C</span>
+        <span style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 600, fontSize: 15, flex: 'none' }}>C</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Casex Tasks</div>
+          <div style={{ fontWeight: 600, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Casex Tasks</div>
         </div>
         <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme"><I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
         <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setSidebarCollapsed(true)} title="Collapse sidebar"><I.menu size={18} /></button>
       </div>
 
       {/* add + search */}
-      <button onClick={() => setQuickAdd(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--accent)', fontWeight: 800, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}
+      <button onClick={() => setQuickAdd(true)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--accent)', fontWeight: 600, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
         <span style={{ display: 'grid', placeItems: 'center', width: 22, height: 22, borderRadius: 999, background: 'var(--accent)', color: '#fff' }}><I.plusSm size={17} /></span>
         Add task
       </button>
       <button onClick={() => setSearch(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 12px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 600, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-        <I.search size={19} /> Search <kbd style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 800, border: '1px solid var(--border-2)', borderRadius: 5, padding: '1px 6px' }}>⌘K</kbd>
+        <I.search size={19} /> Search <kbd style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, border: '1px solid var(--border-2)', borderRadius: 5, padding: '1px 6px' }}>⌘K</kbd>
       </button>
 
       {/* primary nav */}
@@ -543,12 +543,12 @@ function Sidebar({ style }) {
             placeholder="Section name..."
             style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={() => { setAddingSec(false); setNewSecName(''); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 700, padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleAddSection} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12.5, fontWeight: 800, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Add</button>
+            <button onClick={() => { setAddingSec(false); setNewSecName(''); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 500, padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAddSection} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12.5, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Add</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setAddingSec(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 700, fontSize: 14, marginTop: 8, border: 'none', background: 'transparent', cursor: 'pointer' }}
+        <button onClick={() => setAddingSec(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 10px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 500, fontSize: 14, marginTop: 8, border: 'none', background: 'transparent', cursor: 'pointer' }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
           <I.plusSm size={18} /> Add section
         </button>
@@ -932,7 +932,7 @@ export function DesktopApp({ frameW = 1320 }) {
       {toasts && toasts.length > 0 && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {toasts.map(t => (
-            <div key={t.id} style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '12px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13.5, color: 'var(--text)', animation: 'slideUp .2s ease-out' }}>
+            <div key={t.id} style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '12px 16px', borderRadius: 8, fontWeight: 500, fontSize: 13.5, color: 'var(--text)', animation: 'slideUp .2s ease-out' }}>
               {t.msg}
             </div>
           ))}

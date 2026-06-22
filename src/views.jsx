@@ -138,8 +138,8 @@ export function SectionHeader({ title, count, color, icon, right, collapsible, c
         }}><I.chevD size={15} /></span>
       )}
       {icon}
-      <span style={{ fontSize: 14.5, fontWeight: 800, color: color || 'var(--text)' }}>{title}</span>
-      {count !== undefined && <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-3)' }}>{count}</span>}
+      <span style={{ fontSize: 14.5, fontWeight: 600, color: color || 'var(--text)' }}>{title}</span>
+      {count !== undefined && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)' }}>{count}</span>}
       {right && <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>{right}</div>}
     </div>
   );
@@ -164,9 +164,9 @@ export function ViewHeader({ icon, title, color, subtitle, right }) {
               </button>
             )}
             {icon}
-            <h1 style={{ margin: 0, fontSize: 27, fontWeight: 800, letterSpacing: '-.02em', color: color || 'var(--text)' }}>{title}</h1>
+            <h1 style={{ margin: 0, fontSize: 27, fontWeight: 600, letterSpacing: '-.02em', color: color || 'var(--text)' }}>{title}</h1>
           </div>
-          {subtitle && <div style={{ marginTop: 4, marginLeft: (icon ? 34 : 0) + (sidebarCollapsed ? 38 : 0), fontSize: 13.5, fontWeight: 700, color: 'var(--text-3)' }}>{subtitle}</div>}
+          {subtitle && <div style={{ marginTop: 4, marginLeft: (icon ? 34 : 0) + (sidebarCollapsed ? 38 : 0), fontSize: 13.5, fontWeight: 500, color: 'var(--text-3)' }}>{subtitle}</div>}
         </div>
         {right}
       </div>
@@ -183,7 +183,7 @@ export function ViewHeader({ icon, title, color, subtitle, right }) {
           border: '1px solid var(--p1)',
           color: 'var(--p1)',
           fontSize: 13,
-          fontWeight: 700,
+          fontWeight: 500,
           marginBottom: 16
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -199,7 +199,7 @@ export function ViewHeader({ icon, title, color, subtitle, right }) {
               padding: '4px 10px',
               borderRadius: 6,
               fontSize: 12,
-              fontWeight: 800
+              fontWeight: 600
             }}
           >
             Log In
@@ -281,10 +281,10 @@ export function HeaderActions({
       )}
       {filterMenu && setFilterBy && (
         <Popover onClose={() => setFilterMenu(false)} style={{ top: 34, right: 80, zIndex: 100, minWidth: 180 }}>
-          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Filter Tasks</div>
+          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Filter Tasks</div>
           {filterOptions.map((opt) => (
             <div key={opt.value} className="pop-item" style={{
-              fontWeight: filterBy === opt.value ? 800 : 600,
+              fontWeight: filterBy === opt.value ? 600 : 500,
               color: filterBy === opt.value ? 'var(--accent)' : 'var(--text)',
               justifyContent: 'space-between'
             }} onClick={() => { setFilterBy(opt.value); setFilterMenu(false); }}>
@@ -303,10 +303,10 @@ export function HeaderActions({
       )}
       {sortMenu && setSortBy && (
         <Popover onClose={() => setSortMenu(false)} style={{ top: 34, right: 40, zIndex: 100, minWidth: 160 }}>
-          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Tasks</div>
+          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Tasks</div>
           {sortOptions.map((opt) => (
             <div key={opt.value} className="pop-item" style={{
-              fontWeight: sortBy === opt.value ? 800 : 600,
+              fontWeight: sortBy === opt.value ? 600 : 500,
               color: sortBy === opt.value ? 'var(--accent)' : 'var(--text)',
               justifyContent: 'space-between'
             }} onClick={() => { setSortBy(opt.value); setSortMenu(false); }}>
@@ -332,7 +332,7 @@ export function HeaderActions({
 
       {selectMenu && (
         <Popover onClose={() => setSelectMenu(false)} style={{ top: 34, right: 0, zIndex: 100, minWidth: 180 }}>
-          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Select & Edit</div>
+          <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Select & Edit</div>
 
           {!hasSelection && targetItems.length > 0 && (
             <div className="pop-item" onClick={() => { toggleMultiSelect(targetItems[0].id); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
@@ -465,7 +465,7 @@ export function TodayView({ density }) {
         <>
           <SectionHeader title="Overdue" count={overdue.length} color="var(--p1)"
             collapsible collapsed={collapsedSections.includes('today-overdue')} onToggle={(e) => handleToggle('today-overdue', e)}
-            right={<button style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-text)' }}>Reschedule</button>} />
+            right={<button style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-text)' }}>Reschedule</button>} />
           {!collapsedSections.includes('today-overdue') && <TaskGroup tasks={sortedOverdue} density={density} showProject reorderable={reorderable} />}
         </>
       )}
@@ -538,7 +538,7 @@ export function UpcomingView({ density }) {
             <SectionHeader
               title={`${off === 0 ? 'Today' : off === 1 ? 'Tomorrow' : H.DOW_LONG[d.getDay()]}`}
               collapsible collapsed={isCollapsed} onToggle={(e) => handleToggle(off, e)}
-              right={<span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-3)' }}>{H.MONTHS[d.getMonth()]} {d.getDate()}</span>} />
+              right={<span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)' }}>{H.MONTHS[d.getMonth()]} {d.getDate()}</span>} />
             {!isCollapsed && (
               <>
                 <InlineComposer defaultDue={off} />
@@ -778,7 +778,7 @@ export function FiltersView({ density }) {
             onClick={() => { const name = window.prompt('Filter name'); if (name) addSavedFilter(name, query); }}
             disabled={!canSave}
             style={{
-              height: 36, padding: '0 12px', borderRadius: 8, fontSize: 13, fontWeight: 800,
+              height: 36, padding: '0 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
               border: '1.5px solid var(--border-2)', background: 'transparent',
               color: canSave ? 'var(--accent)' : 'var(--text-3)', cursor: canSave ? 'pointer' : 'default', whiteSpace: 'nowrap',
             }}
@@ -791,7 +791,7 @@ export function FiltersView({ density }) {
             disabled={nlState === 'loading'}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 12px',
-              borderRadius: 8, fontSize: 13, fontWeight: 800,
+              borderRadius: 8, fontSize: 13, fontWeight: 600,
               border: '1.5px solid var(--border-2)', background: 'transparent',
               color: nlState === 'loading' ? 'var(--text-3)' : 'var(--accent)',
               cursor: nlState === 'loading' ? 'default' : 'pointer', whiteSpace: 'nowrap',
@@ -846,8 +846,8 @@ export function FiltersView({ density }) {
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
-                  <button onClick={() => setEditingId(null)} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-                  <button onClick={() => handleSave(l.id)} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 800, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Save</button>
+                  <button onClick={() => setEditingId(null)} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+                  <button onClick={() => handleSave(l.id)} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>Save</button>
                 </div>
               </div>
             );
@@ -862,8 +862,8 @@ export function FiltersView({ density }) {
                 flex: 1, display: 'flex', alignItems: 'center', gap: 11, border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', padding: 0, overflow: 'hidden'
               }}>
                 <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 9, color: l.color, background: `color-mix(in srgb, ${l.color} 14%, transparent)`, flexShrink: 0 }}><I.tag size={17} /></span>
-                <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{l.name}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-3)', paddingRight: 4 }}>{n}</span>
+                <span style={{ fontWeight: 500, fontSize: 14.5, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{l.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', paddingRight: 4 }}>{n}</span>
               </button>
               
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -1002,7 +1002,7 @@ export function SettingsView() {
         
         {/* Appearance Section */}
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <I.sun size={16} /> Appearance
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -1015,7 +1015,7 @@ export function SettingsView() {
                   padding: '10px 14px',
                   borderRadius: 8,
                   fontSize: 13.5,
-                  fontWeight: 700,
+                  fontWeight: 500,
                   border: `2px solid ${currentTheme === t ? 'var(--accent)' : 'var(--border-2)'}`,
                   background: currentTheme === t ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-elev))' : 'transparent',
                   color: currentTheme === t ? 'var(--accent)' : 'var(--text-2)',
@@ -1033,7 +1033,7 @@ export function SettingsView() {
         {/* Layout Density Section — desktop only (mobile uses a fixed native list density) */}
         {!narrow && (
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <I.grid size={16} /> Layout Density
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -1050,7 +1050,7 @@ export function SettingsView() {
                   padding: '10px 14px',
                   borderRadius: 8,
                   fontSize: 13.5,
-                  fontWeight: 700,
+                  fontWeight: 500,
                   border: `2px solid ${currentDensity === d.id ? 'var(--accent)' : 'var(--border-2)'}`,
                   background: currentDensity === d.id ? 'color-mix(in srgb, var(--accent) 8%, var(--bg-elev))' : 'transparent',
                   color: currentDensity === d.id ? 'var(--accent)' : 'var(--text-2)',
@@ -1067,7 +1067,7 @@ export function SettingsView() {
 
         {/* Backup & Recovery Section */}
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <I.logbook size={16} /> Backup & Data Management
           </div>
           
@@ -1083,7 +1083,7 @@ export function SettingsView() {
                 padding: '10px 16px',
                 borderRadius: 8,
                 fontSize: 13.5,
-                fontWeight: 700,
+                fontWeight: 500,
                 border: '1px solid var(--border-2)',
                 background: 'var(--bg)',
                 color: 'var(--text)',
@@ -1107,7 +1107,7 @@ export function SettingsView() {
                 padding: '10px 16px',
                 borderRadius: 8,
                 fontSize: 13.5,
-                fontWeight: 700,
+                fontWeight: 500,
                 border: '1px solid var(--border-2)',
                 background: 'var(--bg)',
                 color: 'var(--text)',
@@ -1138,7 +1138,7 @@ export function SettingsView() {
                 padding: '10px 16px',
                 borderRadius: 8,
                 fontSize: 13.5,
-                fontWeight: 750,
+                fontWeight: 600,
                 border: '1px solid var(--border-2)',
                 background: 'var(--bg)',
                 color: 'var(--text)',
@@ -1167,7 +1167,7 @@ export function SettingsView() {
                 padding: '10px 16px',
                 borderRadius: 8,
                 fontSize: 13.5,
-                fontWeight: 750,
+                fontWeight: 600,
                 border: '1px solid var(--p1)',
                 background: 'color-mix(in srgb, var(--p1) 8%, transparent)',
                 color: 'var(--p1)',
@@ -1186,7 +1186,7 @@ export function SettingsView() {
         {/* Keyboard Shortcuts Reference — desktop only (no physical keyboard on mobile) */}
         {!narrow && (
         <div style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-          <div style={{ fontWeight: 800, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5, color: 'var(--text)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             <I.keyboard size={16} /> Keyboard Shortcuts Reference
           </div>
           
@@ -1216,7 +1216,7 @@ export function SettingsView() {
                         borderRadius: 4,
                         padding: '1px 5px',
                         fontSize: 11,
-                        fontWeight: 800,
+                        fontWeight: 600,
                         color: 'var(--text-3)',
                         whiteSpace: 'nowrap'
                       }}
@@ -1291,7 +1291,7 @@ export function ProjectSettingsView({ projectId }) {
 
   const labelStyle = {
     fontSize: 12.5,
-    fontWeight: 800,
+    fontWeight: 600,
     color: 'var(--text-3)',
     textTransform: 'uppercase',
     letterSpacing: '.04em',
@@ -1310,7 +1310,7 @@ export function ProjectSettingsView({ projectId }) {
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
               borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--bg-elev)',
-              color: 'var(--text)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+              color: 'var(--text)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
               transition: 'background .12s'
             }}
           >
@@ -1332,7 +1332,7 @@ export function ProjectSettingsView({ projectId }) {
             style={{
               flex: 1, border: '1px solid var(--border)', background: 'var(--bg)',
               color: 'var(--text)', borderRadius: 8, padding: '10px 12px',
-              fontSize: 15, fontWeight: 700, outline: 'none',
+              fontSize: 15, fontWeight: 500, outline: 'none',
               transition: 'border-color .15s'
             }}
             onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
@@ -1380,7 +1380,7 @@ export function ProjectSettingsView({ projectId }) {
           style={{
             width: '100%', border: '1px solid var(--border)', background: 'var(--bg)',
             color: 'var(--text)', borderRadius: 8, padding: '10px 12px',
-            fontSize: 14.5, fontWeight: 700, outline: 'none', cursor: 'pointer'
+            fontSize: 14.5, fontWeight: 500, outline: 'none', cursor: 'pointer'
           }}
         >
           {sections.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
@@ -1399,7 +1399,7 @@ export function ProjectSettingsView({ projectId }) {
             flex: 1, padding: '12px 20px', borderRadius: 10,
             background: hasChanges ? 'var(--accent)' : 'var(--hover)',
             color: hasChanges ? '#fff' : 'var(--text-3)',
-            fontSize: 14.5, fontWeight: 800, border: 'none', cursor: hasChanges ? 'pointer' : 'default',
+            fontSize: 14.5, fontWeight: 600, border: 'none', cursor: hasChanges ? 'pointer' : 'default',
             transition: 'all .15s',
             boxShadow: hasChanges ? '0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent)' : 'none'
           }}
@@ -1416,7 +1416,7 @@ export function ProjectSettingsView({ projectId }) {
           style={{
             width: '100%', padding: '10px 16px', borderRadius: 8,
             background: 'color-mix(in srgb, var(--p1) 8%, transparent)',
-            color: 'var(--p1)', fontSize: 14, fontWeight: 750,
+            color: 'var(--p1)', fontSize: 14, fontWeight: 600,
             border: '1px solid var(--p1)', cursor: 'pointer',
             transition: 'background .15s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8

@@ -43,7 +43,7 @@ function MobileHeader({ visible }) {
         display: 'grid',
         placeItems: 'center',
         color: '#fff',
-        fontWeight: 800,
+        fontWeight: 600,
         fontSize: 14,
         flex: 'none',
         boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
@@ -51,7 +51,7 @@ function MobileHeader({ visible }) {
         T
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-        <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: '-0.02em', color: 'var(--text)' }}>TaskFlow</span>
+        <span style={{ fontWeight: 600, fontSize: 17, letterSpacing: '-0.02em', color: 'var(--text)' }}>TaskFlow</span>
       </div>
     </div>
   );
@@ -86,7 +86,7 @@ function Tab({ icon, label, active, onClick }) {
       </div>
       <span style={{
         fontSize: 10,
-        fontWeight: active ? 800 : 600,
+        fontWeight: active ? 600 : 500,
         letterSpacing: '0.01em',
         opacity: active ? 1 : 0.8
       }}>
@@ -145,8 +145,8 @@ function BrowseView({ onAddProject, onAddSection }) {
   const Item = ({ icon, label, count, onClick }) => (
     <button onClick={onClick} className="active-scale" style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
       <span style={{ display: 'grid', placeItems: 'center', width: 22, height: 22, color: 'var(--text-2)' }}>{icon}</span>
-      <span style={{ fontWeight: 700, fontSize: 15, flex: 1, textAlign: 'left', color: 'var(--text)' }}>{label}</span>
-      {count ? <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-3)', marginRight: 4 }}>{count}</span> : null}
+      <span style={{ fontWeight: 500, fontSize: 15, flex: 1, textAlign: 'left', color: 'var(--text)' }}>{label}</span>
+      {count ? <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)', marginRight: 4 }}>{count}</span> : null}
       <I.chevR size={15} style={{ color: 'var(--text-3)', opacity: 0.7 }} />
     </button>
   );
@@ -181,8 +181,8 @@ function BrowseView({ onAddProject, onAddSection }) {
         {icon}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-        <span style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--text)', letterSpacing: '-0.01em' }}>{label}</span>
-        <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-3)', marginTop: 2 }}>
+        <span style={{ fontWeight: 600, fontSize: 14.5, color: 'var(--text)', letterSpacing: '-0.01em' }}>{label}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--text-3)', marginTop: 2 }}>
           {count !== undefined ? `${count} ${count === 1 ? 'task' : 'tasks'}` : 'Open view'}
         </span>
       </div>
@@ -221,7 +221,7 @@ function BrowseView({ onAddProject, onAddSection }) {
 
       {savedFilters.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <div className="section-title" style={{ padding: '0 6px 8px', fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>Saved Filters</div>
+          <div className="section-title" style={{ padding: '0 6px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em' }}>Saved Filters</div>
           <div className="scandinavian-card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-elev)', border: '1px solid var(--border)' }}>
             {savedFilters.map((f, idx) => (
               <div key={f.id} style={{ borderBottom: idx < savedFilters.length - 1 ? '1px solid var(--border)' : 'none' }}>
@@ -249,12 +249,12 @@ function BrowseView({ onAddProject, onAddSection }) {
                   style={{
                     flex: 1, border: '1px solid var(--accent)', background: 'var(--bg)',
                     color: 'var(--text)', borderRadius: 8, padding: '6px 10px',
-                    fontSize: 12, fontWeight: 800, textTransform: 'uppercase',
+                    fontSize: 12, fontWeight: 600, textTransform: 'uppercase',
                     letterSpacing: '.06em', outline: 'none', minWidth: 0, marginRight: 8
                   }}
                 />
               ) : (
-                <div className="section-title" style={{ padding: 0, fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.05em' }}>{sec.name}</div>
+                <div className="section-title" style={{ padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em' }}>{sec.name}</div>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button 
@@ -325,14 +325,14 @@ function BrowseView({ onAddProject, onAddSection }) {
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28 }}>
         <button onClick={onAddProject} className="active-scale" style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderRadius: 12,
-          background: 'var(--hover)', color: 'var(--text)', fontWeight: 800, fontSize: 13.5,
+          background: 'var(--hover)', color: 'var(--text)', fontWeight: 600, fontSize: 13.5,
           border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)'
         }}>
           <I.plusSm size={18} /> Add Project
         </button>
         <button onClick={onAddSection} className="active-scale" style={{
           display: 'flex', alignItems: 'center', gap: 8, padding: '12px 18px', borderRadius: 12,
-          background: 'var(--hover)', color: 'var(--text)', fontWeight: 800, fontSize: 13.5,
+          background: 'var(--hover)', color: 'var(--text)', fontWeight: 600, fontSize: 13.5,
           border: 'none', cursor: 'pointer', boxShadow: 'var(--shadow-sm)'
         }}>
           <I.plusSm size={18} /> Add Section
@@ -388,7 +388,7 @@ function BackBar({ visible }) {
           alignItems: 'center', 
           gap: 6, 
           color: 'var(--accent)', 
-          fontWeight: 800, 
+          fontWeight: 600, 
           fontSize: 18, 
           border: 'none', 
           background: 'transparent', 
@@ -456,7 +456,7 @@ function AddSectionModal({ onClose }) {
         {/* Grab Handle for Bottom Sheet */}
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
         
-        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Section</div>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Section</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <input 
             autoFocus 
@@ -477,8 +477,8 @@ function AddSectionModal({ onClose }) {
             }} 
           />
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} className="active-scale" style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', fontSize: 14.5, fontWeight: 700, padding: '10px 16px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 800, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Section</button>
+            <button onClick={onClose} className="active-scale" style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', fontSize: 14.5, fontWeight: 500, padding: '10px 16px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 600, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Section</button>
           </div>
         </div>
       </div>
@@ -525,7 +525,7 @@ function AddProjectModal({ onClose }) {
         {/* Grab Handle for Bottom Sheet */}
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
 
-        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Project</div>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Project</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <input 
             autoFocus 
@@ -547,7 +547,7 @@ function AddProjectModal({ onClose }) {
           />
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Assign to Section</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Assign to Section</span>
             <select 
               value={group} 
               onChange={(e) => {
@@ -598,7 +598,7 @@ function AddProjectModal({ onClose }) {
 
           {!isCustom && parentOptions.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Nest Under (optional)</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Nest Under (optional)</span>
               <select
                 value={parent}
                 onChange={(e) => setParent(e.target.value)}
@@ -626,8 +626,8 @@ function AddProjectModal({ onClose }) {
           )}
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button onClick={onClose} className="active-scale" style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', fontSize: 14.5, fontWeight: 700, padding: '10px 16px', cursor: 'pointer' }}>Cancel</button>
-            <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 800, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Project</button>
+            <button onClick={onClose} className="active-scale" style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', fontSize: 14.5, fontWeight: 500, padding: '10px 16px', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={handleAdd} className="active-scale" style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14.5, fontWeight: 600, padding: '10px 22px', borderRadius: 12, cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>Add Project</button>
           </div>
         </div>
       </div>
@@ -721,7 +721,7 @@ export function MobileApp() {
       {toasts && toasts.length > 0 && (
         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {toasts.map(t => (
-            <div key={t.id} style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '10px 14px', borderRadius: 8, fontWeight: 700, fontSize: 13, color: 'var(--text)', animation: 'slideUp .2s ease-out' }}>
+            <div key={t.id} style={{ background: 'var(--bg-elev)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)', padding: '10px 14px', borderRadius: 8, fontWeight: 500, fontSize: 13, color: 'var(--text)', animation: 'slideUp .2s ease-out' }}>
               {t.msg}
             </div>
           ))}

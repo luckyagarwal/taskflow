@@ -79,7 +79,7 @@ export function DueBadge({ offset, time, small, startOffset, startTime }) {
       alignItems: 'center',
       gap: 4,
       fontSize,
-      fontWeight: 700,
+      fontWeight: 500,
       color,
       padding: small ? '2px 7px' : '2.5px 8.5px',
       borderRadius: 99,
@@ -105,7 +105,7 @@ export function SubProgress({ subtasks }) {
   if (!subtasks || !subtasks.length) return null;
   const done = subtasks.filter((s) => s.done).length;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-2)', fontWeight: 700, fontSize: 12.5 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-2)', fontWeight: 500, fontSize: 12.5 }}>
       <I.logbook size={13} sw={2} />{done}/{subtasks.length}
     </span>
   );
@@ -195,14 +195,14 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
       {projInMeta && (
         <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
-            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 700, fontSize: 13 }}>
+            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-2)', fontWeight: 500, fontSize: 13 }}>
             <Dot color={proj.color} size={8} />{proj.name}
           </button>
         </div>
       )}
       {task.status && statusChoices[task.status] && (
         <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => setMenu(menu === 'status' ? null : 'status')} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: statusChoices[task.status].color, fontWeight: 700, fontSize: 12 }}>
+          <button onClick={() => setMenu(menu === 'status' ? null : 'status')} style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, color: statusChoices[task.status].color, fontWeight: 500, fontSize: 12 }}>
             {task.status === 'inprogress' && <span style={{ width: 10, height: 10, borderRadius: 99, border: '2px solid var(--p2)', position: 'relative', overflow: 'hidden', display: 'inline-block', flexShrink: 0 }}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'var(--p2)' }} /></span>}
             {task.status === 'blocked' && <I.x size={10} style={{ color: 'var(--p1)', flexShrink: 0 }} />}
             {task.status === 'waiting' && <I.repeat size={10} style={{ color: 'var(--p3)', flexShrink: 0 }} />}
@@ -431,7 +431,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                   alignItems: 'center',
                   gap: 6,
                   color: 'var(--text-2)',
-                  fontWeight: 700,
+                  fontWeight: 500,
                   fontSize: 12.5,
                   whiteSpace: 'nowrap',
                   opacity: showActions ? 0 : 1,
@@ -446,7 +446,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               )}
               {menu === 'proj_badge' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 22, right: 0, zIndex: 100, minWidth: 180 }}>
-                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
+                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
                   
                   {/* Inbox */}
                   <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
@@ -540,7 +540,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               </button>
               {menu === 'proj_btn' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 180 }}>
-                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
+                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
                   
                   {/* Inbox */}
                   <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
@@ -635,7 +635,7 @@ export function Empty({ icon, title, sub }) {
       <div style={{ display: 'inline-grid', placeItems: 'center', width: 64, height: 64, borderRadius: 18, background: 'var(--hover)', color: 'var(--text-3)', marginBottom: 16 }}>
         {icon}
       </div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-2)' }}>{title}</div>
+      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>{title}</div>
       {sub && <div style={{ fontSize: 14, marginTop: 5, maxWidth: 320, marginInline: 'auto', lineHeight: 1.5 }}>{sub}</div>}
     </div>
   );
@@ -672,20 +672,20 @@ export function BulkActionBar() {
     return (
       <div className="bulk-bar-mobile" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
             {count} task{count > 1 ? 's' : ''} selected
           </span>
-          <button onClick={clearMultiSelect} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 15, fontWeight: 700, padding: '4px 4px', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={clearMultiSelect} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 15, fontWeight: 500, padding: '4px 4px', cursor: 'pointer' }}>Cancel</button>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => bulkComplete()} style={{
-            flex: 1, height: 48, fontSize: 15, fontWeight: 800, color: '#fff', background: 'var(--accent)',
+            flex: 1, height: 48, fontSize: 15, fontWeight: 600, color: '#fff', background: 'var(--accent)',
             border: 'none', borderRadius: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8
           }}>
             <I.check size={17} sw={2.5} style={{ color: '#fff' }} /> Complete
           </button>
           <button onClick={confirmDelete} style={{
-            flex: 1, height: 48, fontSize: 15, fontWeight: 800, color: 'var(--p1)',
+            flex: 1, height: 48, fontSize: 15, fontWeight: 600, color: 'var(--p1)',
             background: 'color-mix(in srgb, var(--p1) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--p1) 26%, transparent)',
             borderRadius: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8
           }}>
@@ -698,7 +698,7 @@ export function BulkActionBar() {
 
   return (
     <div className="bulk-bar" onClick={(e) => e.stopPropagation()}>
-      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
         {count} task{count > 1 ? 's' : ''} selected
       </span>
 
@@ -712,7 +712,7 @@ export function BulkActionBar() {
             height: 32,
             padding: '0 12px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 500,
             color: '#fff',
             background: 'var(--accent)',
             border: 'none',
@@ -737,7 +737,7 @@ export function BulkActionBar() {
             height: 32,
             padding: '0 12px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 500,
             color: 'var(--p1)',
             background: 'color-mix(in srgb, var(--p1) 10%, transparent)',
             border: '1px solid color-mix(in srgb, var(--p1) 20%, transparent)',
@@ -758,7 +758,7 @@ export function BulkActionBar() {
             height: 32,
             padding: '0 12px',
             fontSize: 13,
-            fontWeight: 700,
+            fontWeight: 500,
             borderRadius: 8,
             cursor: 'pointer'
           }}

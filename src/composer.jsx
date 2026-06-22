@@ -95,7 +95,7 @@ export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
     <div style={{ padding: '6px 8px 4px', userSelect: 'none' }}>
       {/* Month nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>
           {H.MONTHS_LONG[month]} {year}
         </span>
         <div style={{ display: 'flex', gap: 2 }}>
@@ -111,7 +111,7 @@ export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
       {/* Week days */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4, gap: 2 }}>
         {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, idx) => (
-          <div key={idx} style={{ textAlign: 'center', fontSize: 10, fontWeight: 800, color: 'var(--text-3)' }}>{d}</div>
+          <div key={idx} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: 'var(--text-3)' }}>{d}</div>
         ))}
       </div>
 
@@ -151,7 +151,7 @@ export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
               onClick={(e) => { e.stopPropagation(); onChange(off); }}
               style={{
                 width: 24, height: 24, borderRadius, display: 'grid', placeItems: 'center',
-                fontSize: 11, fontWeight: 700,
+                fontSize: 11, fontWeight: 500,
                 background: bg,
                 color,
                 opacity: inMonth ? 1 : 0.35,
@@ -173,7 +173,7 @@ export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
 const Switch = ({ checked, onChange, label }) => {
   return (
     <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 12px', cursor: 'pointer', userSelect: 'none' }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)' }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-2)' }}>{label}</span>
       <div style={{ position: 'relative', width: 32, height: 18, background: checked ? 'var(--accent)' : 'var(--border-2)', borderRadius: 999, transition: 'background-color 0.2s' }}>
         <input type="checkbox" checked={checked} onChange={onChange} style={{ opacity: 0, width: 0, height: 0 }} />
         <div style={{
@@ -302,7 +302,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
           type="button"
           onClick={() => setActiveField('start')}
           style={{
-            flex: 1, padding: narrow ? '10px 10px' : '5px 8px', borderRadius: narrow ? 10 : 6, fontSize: narrow ? 14 : 12, fontWeight: 700,
+            flex: 1, padding: narrow ? '10px 10px' : '5px 8px', borderRadius: narrow ? 10 : 6, fontSize: narrow ? 14 : 12, fontWeight: 500,
             border: `1.5px solid ${activeField === 'start' ? 'var(--accent)' : 'var(--border)'}`,
             background: activeField === 'start' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
             color: activeField === 'start' ? 'var(--accent-text)' : 'var(--text-2)',
@@ -321,7 +321,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
               type="button"
               onClick={() => setActiveField('due')}
               style={{
-                flex: 1, padding: narrow ? '10px 10px' : '5px 8px', borderRadius: narrow ? 10 : 6, fontSize: narrow ? 14 : 12, fontWeight: 700,
+                flex: 1, padding: narrow ? '10px 10px' : '5px 8px', borderRadius: narrow ? 10 : 6, fontSize: narrow ? 14 : 12, fontWeight: 500,
                 border: `1.5px solid ${activeField === 'due' ? 'var(--accent)' : 'var(--border)'}`,
                 background: activeField === 'due' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
                 color: activeField === 'due' ? 'var(--accent-text)' : 'var(--text-2)',
@@ -393,7 +393,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
           {/* Time input */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px 6px' }}>
             <span style={{ color: 'var(--text-3)', display: 'grid', placeItems: 'center' }}><I.clock size={13} /></span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>Time</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-2)' }}>Time</span>
             <input
               type="time"
               value={timeVal}
@@ -420,7 +420,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
             onClick={onClose}
             style={{
               padding: '4px 12px', borderRadius: 6, background: 'var(--accent)', color: '#fff',
-              fontSize: 12, fontWeight: 700, transition: 'opacity 0.15s'
+              fontSize: 12, fontWeight: 500, transition: 'opacity 0.15s'
             }}
             onMouseEnter={(e) => e.currentTarget.style.opacity = 0.85}
             onMouseLeave={(e) => e.currentTarget.style.opacity = 1}
@@ -437,7 +437,7 @@ function PillBtn({ icon, label, color, active, onClick }) {
   return (
     <button onClick={onClick} style={{
       display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px',
-      borderRadius: 8, fontSize: 13, fontWeight: 700,
+      borderRadius: 8, fontSize: 13, fontWeight: 500,
       border: `1.5px solid ${active ? 'transparent' : 'var(--border-2)'}`,
       background: active ? `color-mix(in srgb, ${color} 14%, transparent)` : 'transparent',
       color: active ? color : 'var(--text-2)', whiteSpace: 'nowrap',
@@ -533,7 +533,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         {defaultDueOpt && (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 12, fontWeight: 700, color: defaultDueOpt.color,
+            fontSize: 12, fontWeight: 500, color: defaultDueOpt.color,
             padding: '2px 8px', borderRadius: 99, background: 'var(--hover)',
             marginRight: 4
           }}>
@@ -572,7 +572,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         <input ref={inputRef} className="no-sel" value={title} onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
           placeholder="Task name"
-          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontWeight: 700, color: 'var(--text)' }} />
+          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontWeight: 500, color: 'var(--text)' }} />
         {SR && (
           <button
             type="button"
@@ -653,7 +653,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         <div style={{ marginLeft: 'auto', position: 'relative' }}>
           <button onClick={() => setMenu(menu === 'proj' ? null : 'proj')} style={{
             display: 'inline-flex', alignItems: 'center', gap: 7, height: 30, padding: '0 10px', borderRadius: 8,
-            fontSize: 13, fontWeight: 700, color: 'var(--text-2)', border: '1.5px solid var(--border-2)',
+            fontSize: 13, fontWeight: 500, color: 'var(--text-2)', border: '1.5px solid var(--border-2)',
           }}>
             <Dot color={finalProj.color} />{finalProj.name}<I.chevD size={14} />
           </button>

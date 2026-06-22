@@ -205,7 +205,7 @@ function SubtaskItem({
           <I.calendar size={14} />
         </button>
         {(startLbl || dueLbl) && (
-          <span style={{ fontSize: 11, fontWeight: 750, color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)', marginLeft: 2, marginRight: 2 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)', marginLeft: 2, marginRight: 2 }}>
             {H.dateRangeLabel(s.startOffset, s.dueOffset, null)}
           </span>
         )}
@@ -255,7 +255,7 @@ function MetaRow({ icon, label, children, onClick, accent }) {
       onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'}
       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
       <span style={{ color: accent || 'var(--text-3)', display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
-      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)', width: 76, flex: 'none' }}>{label}</span>
+      <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)', width: 76, flex: 'none' }}>{label}</span>
       <span style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>{children}</span>
     </button>
   );
@@ -421,7 +421,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
             }}
             rows={1}
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 19, fontWeight: 800, lineHeight: 1.3, color: task.done ? 'var(--text-3)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none', fontFamily: 'inherit' }} />
+            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 19, fontWeight: 600, lineHeight: 1.3, color: task.done ? 'var(--text-3)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none', fontFamily: 'inherit' }} />
           <textarea value={localNote} onChange={(e) => setLocalNote(e.target.value)} onBlur={saveNote} placeholder="Add a description…" rows={1}
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: 'var(--text-2)', marginTop: 6, fontFamily: 'inherit', minHeight: 24 }} />
@@ -451,7 +451,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               </button>
               {menu === 'subtaskSort' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 26, right: 0, minWidth: 150, zIndex: 100 }}>
-                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Subtasks</div>
+                  <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Subtasks</div>
                   {[
                     { value: 'manual', label: 'Manual' },
                     { value: 'due', label: 'Due Date' },
@@ -459,7 +459,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
                     { value: 'created', label: 'Date Added' }
                   ].map((opt) => (
                     <div key={opt.value} className="pop-item" style={{
-                      fontWeight: (task.subtaskSort || 'manual') === opt.value ? 800 : 600,
+                      fontWeight: (task.subtaskSort || 'manual') === opt.value ? 600 : 500,
                       color: (task.subtaskSort || 'manual') === opt.value ? 'var(--accent)' : 'var(--text)',
                       display: 'flex',
                       alignItems: 'center',
@@ -509,7 +509,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
                 disabled={aiState === 'loading'}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px',
-                  borderRadius: 8, fontSize: 12.5, fontWeight: 700,
+                  borderRadius: 8, fontSize: 12.5, fontWeight: 500,
                   border: '1.5px solid var(--border-2)', background: 'transparent',
                   color: aiState === 'loading' ? 'var(--text-3)' : 'var(--accent)',
                   cursor: aiState === 'loading' ? 'default' : 'pointer', whiteSpace: 'nowrap',
@@ -528,7 +528,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               <div style={{ marginTop: 4 }}>
                 <button onClick={() => setDoneSubsCollapsed(c => !c)} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'transparent', cursor: 'pointer', padding: '6px 0', color: 'var(--text-3)' }}>
                   <span style={{ transition: 'transform .15s', transform: doneSubsCollapsed ? 'rotate(-90deg)' : 'none', display: 'flex' }}><I.chevD size={14} /></span>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.04em' }}>Completed · {subDone}</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>Completed · {subDone}</span>
                 </button>
                 {!doneSubsCollapsed && sortedSubtasks.map((s, idx) => s.done && (
                   <SubtaskItem
@@ -556,13 +556,13 @@ export function TaskEditor({ taskId, inline, mobile }) {
         {/* Status */}
         <div style={{ position: 'relative' }}>
           <MetaRow icon={<StatusIcon status={task.status || 'planned'} priority={task.priority} size={18} />} label="Status" onClick={() => setMenu(menu === 'status' ? null : 'status')}>
-            <span style={{ fontWeight: 800, fontSize: 14, color: STATUS_CHOICES[task.status || 'planned'].color }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: STATUS_CHOICES[task.status || 'planned'].color }}>
               {STATUS_CHOICES[task.status || 'planned'].label}
             </span>
           </MetaRow>
           {menu === 'status' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160, zIndex: 100 }}>
-              <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Status</div>
+              <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Status</div>
               {Object.entries(STATUS_CHOICES).map(([k, v]) => (
                 <div key={k} className="pop-item" style={{ gap: 8 }} onClick={() => {
                   updateTask(task.id, {
@@ -589,11 +589,11 @@ export function TaskEditor({ taskId, inline, mobile }) {
             onClick={() => setMenu(menu === 'date' ? null : 'date')}
           >
             {(task.startOffset !== null || task.dueOffset !== null) ? (
-              <span style={{ fontWeight: 800, fontSize: 14, color: dueLbl ? TONE[dueLbl.tone] : TONE[startLbl.tone] }}>
+              <span style={{ fontWeight: 600, fontSize: 14, color: dueLbl ? TONE[dueLbl.tone] : TONE[startLbl.tone] }}>
                 {H.dateRangeLabel(task.startOffset, task.dueOffset, task.time)}
               </span>
             ) : (
-              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Empty</span>
+              <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-3)' }}>Empty</span>
             )}
           </MetaRow>
 
@@ -602,7 +602,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
         {/* Priority */}
         <div style={{ position: 'relative' }}>
           <MetaRow icon={<I.flag size={18} />} label="Priority" accent={prioOpt.color} onClick={() => setMenu(menu === 'prio' ? null : 'prio')}>
-            <span style={{ fontWeight: 800, fontSize: 14, color: task.priority < 4 ? prioOpt.color : 'var(--text-3)' }}>{task.priority < 4 ? prioOpt.label : 'None'}</span>
+            <span style={{ fontWeight: 600, fontSize: 14, color: task.priority < 4 ? prioOpt.color : 'var(--text-3)' }}>{task.priority < 4 ? prioOpt.label : 'None'}</span>
           </MetaRow>
           {menu === 'prio' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160, zIndex: 100 }}>
@@ -618,13 +618,13 @@ export function TaskEditor({ taskId, inline, mobile }) {
         {/* Project */}
         <div style={{ position: 'relative' }}>
           <MetaRow icon={proj ? <Dot color={proj.color} size={10} /> : <I.inbox size={18} />} label="Project" onClick={() => setMenu(menu === 'project' ? null : 'project')}>
-            <span style={{ fontWeight: 800, fontSize: 14, color: proj ? 'var(--text)' : 'var(--text-3)' }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: proj ? 'var(--text)' : 'var(--text-3)' }}>
               {proj ? proj.name : 'Inbox'}
             </span>
           </MetaRow>
           {menu === 'project' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 180, zIndex: 100 }}>
-              <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
+              <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
               
               {/* Inbox */}
               <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
@@ -649,7 +649,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
         <div style={{ position: 'relative' }}>
           <MetaRow icon={<I.tag size={18} />} label="Labels" onClick={() => setMenu(menu === 'label' ? null : 'label')}>
             {task.labels.length ? <span style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{task.labels.map((id) => <LabelChip key={id} id={id} small />)}</span>
-              : <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-3)' }}>Add labels</span>}
+              : <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-3)' }}>Add labels</span>}
           </MetaRow>
           {menu === 'label' && (
             <Popover onClose={() => { setMenu(null); setCreatingLabel(false); }} style={{ top: 44, right: 12, minWidth: 180, zIndex: 100 }}>
@@ -673,12 +673,12 @@ export function TaskEditor({ taskId, inline, mobile }) {
                       if (e.key === 'Escape') setCreatingLabel(false);
                     }} />
                   <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                    <button onClick={() => setCreatingLabel(false)} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-                    <button onClick={handleCreateLabel} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 4, cursor: 'pointer' }}>Create</button>
+                    <button onClick={() => setCreatingLabel(false)} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleCreateLabel} style={{ border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4, cursor: 'pointer' }}>Create</button>
                   </div>
                 </div>
               ) : (
-                <div className="pop-item" style={{ color: 'var(--accent)', fontWeight: 700 }} onClick={(e) => { e.stopPropagation(); setCreatingLabel(true); }}>
+                <div className="pop-item" style={{ color: 'var(--accent)', fontWeight: 500 }} onClick={(e) => { e.stopPropagation(); setCreatingLabel(true); }}>
                   <I.plusSm size={14} /> Create label...
                 </div>
               )}
@@ -691,7 +691,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
         {/* Recurrence / Repeat */}
         <div style={{ position: 'relative' }}>
           <MetaRow icon={<I.repeat size={18} />} label="Repeat" onClick={() => setMenu(menu === 'repeat' ? null : 'repeat')}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: task.recurring ? 'var(--accent-text)' : 'var(--text-3)' }}>
+            <span style={{ fontWeight: 500, fontSize: 14, color: task.recurring ? 'var(--accent-text)' : 'var(--text-3)' }}>
               {task.recurring ? (
                 task.recurring.type === 'weekday' ? `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][task.recurring.dow]}` : `Every ${task.recurring.type}`
               ) : 'None'}
@@ -735,10 +735,10 @@ export function TaskDetail({ taskId, onClose, mobile }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: mobile ? '8px 10px' : '12px 14px', borderBottom: '1px solid var(--border)', flex: 'none' }}>
         <button className="icon-btn" onClick={onClose} aria-label="Close">{mobile ? <I.chevL size={20} /> : <I.x size={18} />}</button>
         {proj ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)' }}>
             <Dot color={proj.color} />{proj.name}
           </span>
-        ) : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 700, color: 'var(--text-2)' }}><I.inbox size={16} />Inbox</span>}
+        ) : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)' }}><I.inbox size={16} />Inbox</span>}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
           <button className="icon-btn" title="Delete" onClick={() => { deleteTask(task.id); onClose(); }}><I.trash size={17} /></button>
           <button className="icon-btn" title="More"><I.dots size={18} /></button>
@@ -932,6 +932,29 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
     { label: 'Next week', off: 7 },
   ];
 
+  // One row that merges the time toggle + the time input: "Add" when off,
+  // an inline time field with a clear (×) button when on.
+  const timeRow = ({ label, on, value, onPick, onToggle, last }) => (
+    <div className="m-toggle-row" style={{ borderBottom: last ? 'none' : '1px solid var(--border)' }}>
+      <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
+      <span style={{ flex: 1, fontWeight: 500, fontSize: 15.5 }}>{label}</span>
+      {on ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="time" value={value || '09:00'} onChange={e => onPick(e.target.value)} className="m-timeinput" />
+          <button type="button" onClick={onToggle} aria-label={`Remove ${label.toLowerCase()}`}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 99, border: 'none', background: 'var(--hover)', color: 'var(--text-3)', cursor: 'pointer' }}>
+            <I.x size={15} />
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={onToggle}
+          style={{ fontWeight: 600, fontSize: 14, color: 'var(--accent)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px' }}>
+          Add
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="push-screen" style={{ zIndex: 160 }}>
       {/* Header bar */}
@@ -942,21 +965,21 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
         <span className="m-navtitle">Date</span>
         <div className="m-navright">
           {end != null && (
-            <button type="button" onClick={setNoDate} style={{ color: 'var(--p1)', fontWeight: 800, fontSize: 14.5 }}>
+            <button type="button" onClick={setNoDate} style={{ color: 'var(--p1)', fontWeight: 600, fontSize: 14.5 }}>
               Clear
             </button>
           )}
         </div>
       </div>
 
-      <div className="scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 18px 120px' }}>
+      <div className="scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 18px 24px' }}>
         {/* Horizontal presets scroll */}
         <div className="scroll-x" style={{ marginBottom: 18 }}>
           {QUICK.map(q => {
             const on = !rangeOn && end === q.off;
             return (
               <button key={q.label} type="button" onClick={() => handleQuickChip(q.off)} style={{
-                height: 36, padding: '0 16px', borderRadius: 99, fontSize: 14, fontWeight: 800,
+                height: 36, padding: '0 16px', borderRadius: 99, fontSize: 14, fontWeight: 600,
                 border: `1.5px solid ${on ? 'transparent' : 'var(--border-2)'}`,
                 background: on ? 'var(--accent)' : 'var(--bg-elev)',
                 color: on ? '#fff' : 'var(--text-2)',
@@ -974,10 +997,10 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
               <I.calendar size={20} />
             </span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                 {rangeOn ? 'Start' : 'Date'}
               </div>
-              <div style={{ fontSize: 15.5, fontWeight: 800, color: (picking === 'start' || !rangeOn) ? 'var(--accent-text)' : 'var(--text)' }}>
+              <div style={{ fontSize: 15.5, fontWeight: 600, color: (picking === 'start' || !rangeOn) ? 'var(--accent-text)' : 'var(--text)' }}>
                 {rangeOn ? (start != null ? `${fmtDate(start)}${startTimeOn && initialStartTime ? ` at ${fmtTime(initialStartTime)}` : ''}` : 'Pick start') : (end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'No date')}
               </div>
             </div>
@@ -988,8 +1011,8 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
                 <I.arrowR size={20} />
               </span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>End</div>
-                <div style={{ fontSize: 15.5, fontWeight: 800, color: picking === 'end' ? 'var(--accent-text)' : 'var(--text)' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>End</div>
+                <div style={{ fontSize: 15.5, fontWeight: 600, color: picking === 'end' ? 'var(--accent-text)' : 'var(--text)' }}>
                   {end != null ? `${fmtDate(end)}${timeOn && initialTime ? ` at ${fmtTime(initialTime)}` : ''}` : 'Pick end'}
                 </div>
               </div>
@@ -1000,7 +1023,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
         {/* Calendar grid card */}
         <div className="m-group" style={{ padding: '12px 12px 14px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', padding: '2px 6px 10px' }}>
-            <span style={{ fontSize: 16, fontWeight: 800 }}>{H.MONTHS_LONG[month]} {year}</span>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{H.MONTHS_LONG[month]} {year}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button type="button" className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMonthShift(m => m - 1)}>
                 <I.chevL size={18} />
@@ -1012,7 +1035,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4 }}>
             {H.DOW.map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, color: 'var(--text-3)', padding: '4px 0' }}>
+              <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', padding: '4px 0' }}>
                 {d[0]}
               </div>
             ))}
@@ -1033,7 +1056,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
                   {(isEnd && rangeOn && end > start) && <div style={{ position: 'absolute', top: 4, bottom: 4, right: '50%', left: -1, background: 'var(--accent-soft)' }} />}
                   <button type="button" onClick={() => tapDay(off)} style={{
                     position: 'relative', width: 34, height: 34, borderRadius: 999,
-                    fontSize: 14, fontWeight: isSel ? 800 : 700,
+                    fontSize: 14, fontWeight: isSel ? 600 : 500,
                     background: isSel ? 'var(--accent)' : 'transparent',
                     color: isSel ? '#fff' : (inMonth ? 'var(--text)' : 'var(--text-3)'),
                     border: isToday && !isSel ? '1.5px solid var(--accent)' : 'none',
@@ -1052,54 +1075,40 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
 
         {/* Toggles settings card */}
         <div className="m-group">
-          <div className="m-toggle-row" style={{ borderBottom: (rangeOn || timeOn || startTimeOn) ? '1px solid var(--border)' : 'none' }}>
+          <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.calendar size={19} /></span>
-            <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>End date</span>
+            <span style={{ flex: 1, fontWeight: 500, fontSize: 15.5 }}>End date</span>
             <IOSToggle value={rangeOn} onChange={toggleRange} />
           </div>
-          {rangeOn && (
-            <>
-              <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Start time</span>
-                <IOSToggle value={startTimeOn} onChange={toggleStartTime} />
-              </div>
-              {startTimeOn && (
-                <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
-                  <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time (Start)</span>
-                  <input type="time" value={initialStartTime || '09:00'} onChange={e => triggerChange(start, end, e.target.value, timeOn ? initialTime : null)}
-                    className="m-timeinput" />
-                </div>
-              )}
-            </>
-          )}
-          <div className="m-toggle-row" style={{ borderBottom: timeOn ? '1px solid var(--border)' : 'none' }}>
-            <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
-            <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>{rangeOn ? 'End time' : 'Include time'}</span>
-            <IOSToggle value={timeOn} onChange={toggleTime} />
-          </div>
-          {timeOn && (
-            <div className="m-toggle-row">
-              <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.clock size={19} /></span>
-              <span style={{ flex: 1, fontWeight: 700, fontSize: 15.5 }}>Time {rangeOn ? '(End)' : ''}</span>
-              <input type="time" value={initialTime || '09:00'} onChange={e => triggerChange(start, end, startTimeOn ? initialStartTime : null, e.target.value)}
-                className="m-timeinput" />
-            </div>
-          )}
+          {rangeOn && timeRow({
+            label: 'Start time',
+            on: startTimeOn,
+            value: initialStartTime,
+            onPick: (v) => triggerChange(start, end, v, timeOn ? initialTime : null),
+            onToggle: toggleStartTime,
+            last: false,
+          })}
+          {timeRow({
+            label: rangeOn ? 'End time' : 'Time',
+            on: timeOn,
+            value: initialTime,
+            onPick: (v) => triggerChange(start, end, startTimeOn ? initialStartTime : null, v),
+            onToggle: toggleTime,
+            last: true,
+          })}
         </div>
 
         {/* Duration preset chips — only when a time is set */}
         {timeOn && (
           <div className="m-group" style={{ marginTop: 16, padding: '12px 14px' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>Duration</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 10 }}>Duration</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {DURATION_PRESETS.map(p => {
                 const cur = task ? (task.duration ?? null) : null;
                 const on = (cur || null) === p.value;
                 return (
                   <button key={p.label} type="button" onClick={() => { if (task) updateTask(task.id, { duration: p.value }); }} style={{
-                    height: 34, padding: '0 14px', borderRadius: 99, fontSize: 13.5, fontWeight: 800,
+                    height: 34, padding: '0 14px', borderRadius: 99, fontSize: 13.5, fontWeight: 600,
                     border: `1.5px solid ${on ? 'transparent' : 'var(--border-2)'}`,
                     background: on ? 'var(--accent)' : 'var(--bg-elev)',
                     color: on ? '#fff' : 'var(--text-2)',
@@ -1110,6 +1119,16 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
             </div>
           </div>
         )}
+      </div>
+
+      {/* Bottom action bar — Done commits and closes (changes already auto-save) */}
+      <div style={{ flex: 'none', padding: '12px 18px calc(12px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
+        <button type="button" onClick={onClose} style={{
+          width: '100%', height: 50, borderRadius: 14, border: 'none',
+          background: 'var(--accent)', color: '#fff', fontWeight: 600, fontSize: 16, cursor: 'pointer',
+        }}>
+          Done
+        </button>
       </div>
     </div>
   );
