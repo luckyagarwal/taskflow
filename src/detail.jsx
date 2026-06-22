@@ -590,7 +590,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
           >
             {(task.startOffset !== null || task.dueOffset !== null) ? (
               <span style={{ fontWeight: 600, fontSize: 14, color: dueLbl ? TONE[dueLbl.tone] : TONE[startLbl.tone] }}>
-                {H.dateRangeLabel(task.startOffset, task.dueOffset, task.time)}
+                {H.dateRangeLabel(task.startOffset, task.dueOffset, task.time, null, task.duration)}
               </span>
             ) : (
               <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-3)' }}>Empty</span>

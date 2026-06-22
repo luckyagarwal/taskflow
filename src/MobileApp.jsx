@@ -8,6 +8,7 @@ import { Dot, BulkActionBar } from './ui.jsx';
 import { Views as V } from './views.jsx';
 import { BoardView } from './board.jsx';
 import { CalendarView } from './calendar.jsx';
+import { DayView } from './timeline.jsx';
 import { TaskDetail } from './detail.jsx';
 import { SearchOverlay } from './search.jsx';
 import { InlineComposer } from './composer.jsx';
@@ -16,7 +17,7 @@ const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers t
 
 function MobileHeader({ visible }) {
   const { view } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
 
   if (showBack) return null;
 
@@ -109,7 +110,7 @@ function Tab({ icon, label, active, onClick }) {
 
 function TabBar({ visible }) {
   const { view, setView, setSearch } = useApp();
-  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
   return (
     <div className="frosted-glass" style={{
       position: 'absolute',
@@ -214,6 +215,7 @@ function BrowseView({ onAddProject, onAddSection }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, marginTop: 8 }}>
         <GridCard icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} color="var(--text-2)" onClick={() => setView({ type: 'inbox' })} />
         <GridCard icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
+        <GridCard icon={<I.clock size={20} />} label="Day" color="var(--accent)" onClick={() => setView({ type: 'day' })} />
         <GridCard icon={<I.grid size={20} />} label="Board" color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
         <GridCard icon={<I.filter size={20} />} label="Filters & Labels" color="#8B5CF6" onClick={() => setView({ type: 'filters' })} />
         <GridCard icon={<I.logbook size={20} />} label="Completed" count={tasks.filter(t => t.done).length} color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
@@ -354,6 +356,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
     case 'filters': return <V.FiltersView density={density} />;
     case 'saved-filter': return <V.SavedFilterView filterId={view.id} density={density} />;
     case 'calendar': return <CalendarView density={density} compact />;
+    case 'day': return <DayView compact />;
     case 'board': return <BoardView />;
     case 'logbook': return <V.LogbookView />;
     case 'settings': return <V.SettingsView />;
@@ -364,7 +367,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
 
 function BackBar({ visible }) {
   const { view, setView } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
   if (!showBack) return null;
   return (
     <div className="frosted-glass" style={{

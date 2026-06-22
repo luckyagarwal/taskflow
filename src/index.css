@@ -487,3 +487,20 @@ body { font-family: var(--font); }
 .day-hour { height: var(--hour-height); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-3); padding-left: 4px; box-sizing: border-box; }
 .time-block { position: absolute; border-radius: 6px; border: 1px solid var(--border-2, var(--border)); color: #fff; font-size: 12px; padding: 2px 6px; overflow: hidden; cursor: pointer; box-sizing: border-box; line-height: 1.2; }
 .day-unscheduled { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+
+/* Day timeline (DayView) — to-scale spine with task blocks + live "now" marker */
+.tl-grid { position: relative; overflow-y: auto; max-height: calc(100vh - 200px); padding-right: 4px; }
+.tl-track { position: relative; margin-top: 6px; }
+.tl-hour { position: relative; height: var(--hour-height); border-top: 1px solid var(--border); box-sizing: border-box; }
+.tl-hour:first-child { border-top: none; }
+.tl-hour-label { position: absolute; top: -7px; left: 0; width: 46px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-3); background: var(--bg); }
+.tl-spine { position: absolute; top: 0; bottom: 0; left: 56px; width: 2px; background: var(--border); border-radius: 2px; }
+.tl-dot { position: absolute; left: 51px; width: 12px; height: 12px; border-radius: 99px; border: 2px solid var(--bg); box-sizing: border-box; z-index: 3; }
+.tl-block { position: absolute; border-radius: 10px; padding: 5px 11px; color: #fff; overflow: hidden; cursor: pointer; box-sizing: border-box; line-height: 1.25; box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: transform .12s ease, box-shadow .12s ease; }
+.tl-block:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0,0,0,.18); }
+.tl-block-title { font-weight: 650; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-block-time { font-size: 11px; opacity: .92; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.tl-now { position: absolute; left: 0; right: 4px; height: 0; z-index: 4; pointer-events: none; }
+.tl-now-label { position: absolute; left: 0; top: -7px; width: 46px; text-align: right; font-size: 11px; font-weight: 700; color: var(--today); font-variant-numeric: tabular-nums; background: var(--bg); }
+.tl-now-line { position: absolute; left: 50px; right: 0; top: 0; height: 2px; background: var(--today); }
+.tl-now-dot { position: absolute; left: 51px; top: -5px; width: 12px; height: 12px; border-radius: 99px; background: var(--today); border: 2px solid var(--bg); box-sizing: border-box; }

@@ -322,14 +322,41 @@ export function advanceRecurring(dueOffset, rule) {
   return offsetFromDate(nextDue);
 }
 
-export function dateRangeLabel(startOffset, dueOffset, time, startTime) {
+// minutes → compact human label: 30 → "30m", 60 → "1h", 90 → "1h 30m"
+export function fmtDuration(min) {
+  if (!min || min <= 0) return '';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+// "HH:MM" + minutes → "HH:MM" (wraps within the day)
+export function addMinutesToHM(hm, min) {
+  const mm = /^(\d{1,2}):(\d{2})$/.exec(hm || '');
+  if (!mm) return null;
+  let total = (+mm[1]) * 60 + (+mm[2]) + (min || 0);
+  total = ((total % 1440) + 1440) % 1440;
+  const h = Math.floor(total / 60), m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function dateRangeLabel(startOffset, dueOffset, time, startTime, duration) {
   const showTime = time && dueOffset !== 'someday';
   const showStartTime = startTime && startOffset !== 'someday';
-  
+
+  // A single due time with a duration renders as "time → end (dur)".
+  // Only applies when there is no separate start-time range to show.
+  const timePart = (t) => {
+    const end = duration > 0 ? addMinutesToHM(t, duration) : null;
+    return end ? `${t} → ${end} (${fmtDuration(duration)})` : t;
+  };
+
   if (startOffset === null || startOffset === undefined) {
     const d = dueLabel(dueOffset);
     if (!d) return null;
-    return d.text + (showTime ? ` · ${time}` : '');
+    return d.text + (showTime ? ` · ${timePart(time)}` : '');
   }
   if (dueOffset === null || dueOffset === undefined) {
     const s = dueLabel(startOffset);
@@ -344,7 +371,7 @@ export function dateRangeLabel(startOffset, dueOffset, time, startTime) {
     if (showStartTime) {
       return `${d.text} · ${startTime}`;
     }
-    return d.text + (showTime ? ` · ${time}` : '');
+    return d.text + (showTime ? ` · ${timePart(time)}` : '');
   }
   const s = dueLabel(startOffset);
   const d = dueLabel(dueOffset);
@@ -363,6 +390,8 @@ export const H = {
   DOW,
   DOW_LONG,
   dueLabel,
+  fmtDuration,
+  addMinutesToHM,
   labelById: (id) => labels.find((l) => l.id === id),
   projectById: (id) => projects.find((p) => p.id === id),
   priorityColor: (p) => ({ 1: '#E44332', 2: '#F5A623', 3: '#2D7FF9', 4: null })[p] || null,
