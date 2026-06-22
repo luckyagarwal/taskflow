@@ -7,6 +7,7 @@ import { compileQuery } from './query.js';
 import { TaskRow, Empty, Dot, Ring, useIsNarrow } from './ui.jsx';
 import { InlineComposer, Popover } from './composer.jsx';
 import { CalendarView } from './calendar.jsx';
+import { eligibleParents, canSetParent } from './projects.js';
 
 // ── Animated task group (handles complete-and-leave) ─────────
 export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }) {
@@ -1251,6 +1252,7 @@ export function ProjectSettingsView({ projectId }) {
   const [name, setName] = React.useState(proj.name);
   const [color, setColor] = React.useState(proj.color);
   const [group, setGroup] = React.useState(proj.group);
+  const [parent, setParent] = React.useState(proj.parent ?? '');
   const [saved, setSaved] = React.useState(false);
 
   // Sync if project changes externally
@@ -1258,9 +1260,12 @@ export function ProjectSettingsView({ projectId }) {
     setName(proj.name);
     setColor(proj.color);
     setGroup(proj.group);
-  }, [proj.name, proj.color, proj.group]);
+    setParent(proj.parent ?? '');
+  }, [proj.name, proj.color, proj.group, proj.parent]);
 
-  const hasChanges = name !== proj.name || color !== proj.color || group !== proj.group;
+  const parentOptions = eligibleParents(projects, projectId).filter(p => p.group === (group || proj.group));
+  const parentValue = parent || '';
+  const hasChanges = name !== proj.name || color !== proj.color || group !== proj.group || (parent || null) !== (proj.parent ?? null);
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -1268,6 +1273,10 @@ export function ProjectSettingsView({ projectId }) {
     if (name.trim() !== proj.name) patch.name = name.trim();
     if (color !== proj.color) patch.color = color;
     if (group !== proj.group) patch.group = group;
+    const newParent = parent || null;
+    if (newParent !== (proj.parent ?? null)) {
+      if (canSetParent(projects, projectId, newParent)) patch.parent = newParent;
+    }
     if (Object.keys(patch).length > 0) {
       updateProject(projectId, patch);
       setSaved(true);
@@ -1389,6 +1398,28 @@ export function ProjectSettingsView({ projectId }) {
           Move this project to a different section.
         </div>
       </div>
+
+      {/* Parent Project */}
+      {parentOptions.length > 0 && (
+        <div style={cardStyle}>
+          <div style={labelStyle}>Nest Under</div>
+          <select
+            value={parentValue}
+            onChange={(e) => setParent(e.target.value)}
+            style={{
+              width: '100%', border: '1px solid var(--border)', background: 'var(--bg)',
+              color: 'var(--text)', borderRadius: 8, padding: '10px 12px',
+              fontSize: 14.5, fontWeight: 500, outline: 'none', cursor: 'pointer'
+            }}
+          >
+            <option value="">None (top-level)</option>
+            {parentOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <div style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 8, fontWeight: 600 }}>
+            Make this a sub-project of another project.
+          </div>
+        </div>
+      )}
 
       {/* Save Button */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>

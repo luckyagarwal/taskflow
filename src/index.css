@@ -70,6 +70,8 @@
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1, 'cv11' 1, 'ss01' 1;
+  user-select: none;
+  -webkit-user-select: none;
   line-height: 1.5;
   letter-spacing: -0.006em;
   height: 100vh;       /* fallback for browsers without dvh */
@@ -88,6 +90,9 @@ input, textarea { font-family: inherit; }
 
 /* utility */
 .no-sel { user-select: none; -webkit-user-select: none; }
+.text-sel { user-select: text; -webkit-user-select: text; }
+/* inputs and contenteditable always allow selection */
+.app-root input, .app-root textarea, .app-root [contenteditable] { user-select: text; -webkit-user-select: text; }
 
 @keyframes pop { 0% { transform: scale(.5); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
 @keyframes slideUp { from { transform: translateY(6px); } to { transform: translateY(0); } }

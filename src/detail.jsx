@@ -1107,7 +1107,23 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
                 const cur = task ? (task.duration ?? null) : null;
                 const on = (cur || null) === p.value;
                 return (
-                  <button key={p.label} type="button" onClick={() => { if (task) updateTask(task.id, { duration: p.value }); }} style={{
+                  <button key={p.label} type="button" onClick={() => {
+                    if (!task) return;
+                    const dur = p.value;
+                    const update = { duration: dur };
+                    if (dur !== null) {
+                      if (startTimeOn && initialStartTime) {
+                        // Start time is set → compute end time from start + duration
+                        const endHM = H.addMinutesToHM(initialStartTime, dur);
+                        if (endHM) { update.time = endHM; if (!timeOn) setTimeOn(true); }
+                      } else if (timeOn && initialTime && rangeOn && !startTimeOn) {
+                        // Only end time set in range mode → compute start time from end - duration
+                        const startHM = H.addMinutesToHM(initialTime, -dur);
+                        if (startHM) { update.startTime = startHM; setStartTimeOn(true); }
+                      }
+                    }
+                    updateTask(task.id, update);
+                  }} style={{
                     height: 34, padding: '0 14px', borderRadius: 99, fontSize: 13.5, fontWeight: 600,
                     border: `1.5px solid ${on ? 'transparent' : 'var(--border-2)'}`,
                     background: on ? 'var(--accent)' : 'var(--bg-elev)',
