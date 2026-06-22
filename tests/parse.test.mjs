@@ -86,3 +86,15 @@ test("day-first with explicit year: 15 Jan 2030", () => {
   assert.equal(r.content, "Launch");
   assert.equal(r.dueOffset, offsetFromDate(new Date(2030, 0, 15)));
 });
+
+test("day-first with comma year: 15 Jan, 2030", () => {
+  const r = P("Launch 15 Jan, 2030");
+  assert.equal(r.content, "Launch");
+  assert.equal(r.dueOffset, offsetFromDate(new Date(2030, 0, 15)));
+});
+
+test("month-first with comma year stays correct: Jan 15, 2030", () => {
+  const r = P("Launch Jan 15, 2030");
+  assert.equal(r.content, "Launch");
+  assert.equal(r.dueOffset, offsetFromDate(new Date(2030, 0, 15)));
+});

@@ -241,8 +241,8 @@ export function parseTask(raw, projects = [], existingLabels = []) {
     { regex: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i,
       parser: (m) => absDateOffset(MONTH_STEMS.indexOf(m[1].toLowerCase().substring(0, 3)), parseInt(m[2]), m[3])
     },
-    // day-then-month: "15 Jan", "15 January", optional " 2026"
-    { regex: /\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:\s+(\d{4}))?\b/i,
+    // day-then-month: "15 Jan", "15 January", optional ", 2026" / " 2026"
+    { regex: /\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:,?\s+(\d{4}))?\b/i,
       parser: (m) => absDateOffset(MONTH_STEMS.indexOf(m[2].toLowerCase().substring(0, 3)), parseInt(m[1]), m[3])
     }
   ];
