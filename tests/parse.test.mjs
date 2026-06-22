@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseTask, offsetFromDate } from "../src/data.js";
+import { parseTask, offsetFromDate, dateFromOffset } from "../src/data.js";
 
 const projects = [{ id: "p_launch", name: "Work" }, { id: "p_home", name: "Home" }];
 const labels = [{ id: "l_email", name: "email" }, { id: "l_deep", name: "deep" }];
@@ -97,4 +97,35 @@ test("month-first with comma year stays correct: Jan 15, 2030", () => {
   const r = P("Launch Jan 15, 2030");
   assert.equal(r.content, "Launch");
   assert.equal(r.dueOffset, offsetFromDate(new Date(2030, 0, 15)));
+});
+
+const DOW = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+test("bare weekday 'on thursday' + time (reported bug)", () => {
+  const r = P("help me understand this on thursday 5pm");
+  assert.equal(r.content, "help me understand this");
+  assert.equal(r.time, "17:00");
+  assert.notEqual(r.dueOffset, null);
+  assert.equal(dateFromOffset(r.dueOffset).getDay(), DOW.thursday);
+});
+
+test("bare weekday without 'on'", () => {
+  const r = P("Call mom friday");
+  assert.equal(r.content, "Call mom");
+  assert.equal(dateFromOffset(r.dueOffset).getDay(), DOW.friday);
+});
+
+test("bare weekday resolves to an upcoming date (0..6 days out)", () => {
+  const r = P("Sync tuesday");
+  assert.ok(r.dueOffset >= 0 && r.dueOffset <= 6, `expected 0..6, got ${r.dueOffset}`);
+});
+
+test("'next thursday' is unaffected by the bare-weekday pattern", () => {
+  // The bare pattern must sit AFTER "next <weekday>" so this still matches first.
+  const bare = P("x thursday").dueOffset;
+  const next = P("x next thursday").dueOffset;
+  assert.ok(next >= 1 && next <= 7, `next out of range: ${next}`);
+  // They diverge only when today is Thursday: bare→0 (today), next→7.
+  if (bare === 0) assert.equal(next, 7);
+  else assert.equal(next, bare);
 });
