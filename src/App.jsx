@@ -97,8 +97,9 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
   const [newProjParent, setNewProjParent] = useState('');
   const [headerHovered, setHeaderHovered] = useState(false);
   const [draggedProjIdx, setDraggedProjIdx] = useState(null);
-  const [dropTarget, setDropTarget] = useState(null); // { id, mode: 'nest' } while hovering a nest zone
+  const [dropTarget, setDropTarget] = useState(null); // { id, mode: 'before'|'after'|'nest' } while dragging
   const [headerDropActive, setHeaderDropActive] = useState(false); // unnest zone on the section header
+  const [hoveredRowId, setHoveredRowId] = useState(null); // shows the drag grip on the hovered row
   const [editingSection, setEditingSection] = useState(false);
   const [sectionEditName, setSectionEditName] = useState(title);
 
@@ -208,8 +209,24 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
     setDropTarget(null);
   };
 
+  // Spoken cue for screen readers — the same information the visual line/ring
+  // conveys, so color/shape is never the only signal (a11y).
+  const draggedRow = draggedProjIdx !== null ? rows[draggedProjIdx]?.project : null;
+  let dndStatus = '';
+  if (draggedRow) {
+    if (headerDropActive) dndStatus = `Drop to move "${draggedRow.name}" to top level`;
+    else if (dropTarget) {
+      const tgt = rows.find((r) => r.project.id === dropTarget.id)?.project;
+      if (tgt) {
+        if (dropTarget.mode === 'nest') dndStatus = `Drop to nest "${draggedRow.name}" under "${tgt.name}"`;
+        else dndStatus = `Drop to move "${draggedRow.name}" ${dropTarget.mode === 'before' ? 'above' : 'below'} "${tgt.name}"`;
+      }
+    }
+  }
+
   return (
     <div style={{ marginTop: 14 }}>
+      <div aria-live="polite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>{dndStatus}</div>
       <div
         onMouseEnter={() => setHeaderHovered(true)}
         onMouseLeave={() => setHeaderHovered(false)}
@@ -283,13 +300,9 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
         };
         const dndMode = dropTarget?.id === p.id ? dropTarget.mode : null;
         const isNestTarget = dndMode === 'nest';
-        const dndShadow = isNestTarget
-          ? 'inset 0 0 0 2px var(--accent)'
-          : dndMode === 'before'
-            ? 'inset 0 2px 0 0 var(--accent)'
-            : dndMode === 'after'
-              ? 'inset 0 -2px 0 0 var(--accent)'
-              : 'none';
+        const showGrip = hoveredRowId === p.id && draggedProjIdx === null && !parentHasKids;
+        // Reorder lands at sibling depth; a child slot is indented to match.
+        const lineLeft = depth === 1 ? 24 : 6;
         return (
           <div
             key={p.id}
@@ -298,23 +311,44 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
             onDragOver={(e) => handleProjDragOver(e, idx)}
             onDrop={(e) => handleProjDrop(e, idx)}
             onDragEnd={handleProjDragEnd}
+            onMouseEnter={() => setHoveredRowId(p.id)}
+            onMouseLeave={() => setHoveredRowId((cur) => (cur === p.id ? null : cur))}
             style={{
               opacity: draggedProjIdx === idx ? 0.4 : 1,
               position: 'relative',
               paddingLeft: depth === 1 ? 24 : 0,
               borderRadius: 8,
+              // Nest = tinted fill + ring; the vertical bar (below) means "inside".
               background: isNestTarget ? 'var(--hover)' : 'transparent',
-              boxShadow: dndShadow,
+              boxShadow: isNestTarget ? 'inset 0 0 0 2px var(--accent)' : 'none',
+              cursor: draggedProjIdx === idx ? 'grabbing' : 'grab',
               transition: 'background .12s, box-shadow .12s',
             }}
           >
-            {parentHasKids && (
+            {/* Reorder: a horizontal insertion line between rows, with a dot at its left end. */}
+            {(dndMode === 'before' || dndMode === 'after') && (
+              <span style={{ position: 'absolute', left: lineLeft, right: 8, height: 2, background: 'var(--accent)', borderRadius: 2, zIndex: 3, [dndMode === 'before' ? 'top' : 'bottom']: -1 }}>
+                <span style={{ position: 'absolute', left: -3, top: -2, width: 6, height: 6, borderRadius: 999, background: 'var(--accent)' }} />
+              </span>
+            )}
+            {/* Nest: a vertical accent bar on the left edge = "drops inside this project". */}
+            {isNestTarget && (
+              <span style={{ position: 'absolute', left: 0, top: 4, bottom: 4, width: 3, borderRadius: 2, background: 'var(--accent)', zIndex: 3 }} />
+            )}
+            {parentHasKids ? (
               <span
                 onClick={(e) => { e.stopPropagation(); toggleExpand(p.id); }}
                 title={collapsed ? 'Expand' : 'Collapse'}
                 style={{ position: 'absolute', left: -2, top: 9, zIndex: 2, display: 'grid', placeItems: 'center', width: 16, height: 16, color: 'var(--text-3)', cursor: 'pointer', transition: 'transform .15s', transform: collapsed ? 'rotate(-90deg)' : 'none' }}
               >
                 <I.chevD size={13} />
+              </span>
+            ) : showGrip && (
+              <span
+                title="Drag to reorder or nest"
+                style={{ position: 'absolute', left: depth === 1 ? 12 : -4, top: 9, zIndex: 2, display: 'grid', placeItems: 'center', width: 16, height: 16, color: 'var(--text-3)', cursor: 'grab' }}
+              >
+                <I.grip size={14} />
               </span>
             )}
             <NavItem icon={<Dot color={p.color} size={11} />} label={p.name} count={n}
