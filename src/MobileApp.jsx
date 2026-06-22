@@ -110,7 +110,7 @@ function Tab({ icon, label, active, onClick }) {
 
 function TabBar({ visible }) {
   const { view, setView, setSearch } = useApp();
-  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const browseActive = ['browse', 'project', 'project-settings', 'inbox', 'calendar', 'upcoming', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
   return (
     <div className="frosted-glass" style={{
       position: 'absolute',
@@ -126,9 +126,8 @@ function TabBar({ visible }) {
       transform: visible ? 'none' : 'translateY(100%)',
       transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
     }}>
-      <Tab icon={<I.today size={20} />} label="Today" active={view.type === 'today'} onClick={() => setView({ type: 'today' })} />
-      <Tab icon={<I.upcoming size={20} />} label="Upcoming" active={view.type === 'upcoming'} onClick={() => setView({ type: 'upcoming' })} />
       <Tab icon={<I.grid size={20} />} label="Browse" active={browseActive} onClick={() => setView({ type: 'browse' })} />
+      <Tab icon={<I.clock size={20} />} label="Day" active={view.type === 'day'} onClick={() => setView({ type: 'day' })} />
       <Tab icon={<I.search size={20} />} label="Search" active={false} onClick={() => setSearch(true)} />
     </div>
   );
@@ -215,7 +214,7 @@ function BrowseView({ onAddProject, onAddSection }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24, marginTop: 8 }}>
         <GridCard icon={<I.inbox size={20} />} label="Inbox" count={c.inbox} color="var(--text-2)" onClick={() => setView({ type: 'inbox' })} />
         <GridCard icon={<I.calendar size={20} />} label="Calendar" color="var(--accent)" onClick={() => setView({ type: 'calendar' })} />
-        <GridCard icon={<I.clock size={20} />} label="Day" color="var(--accent)" onClick={() => setView({ type: 'day' })} />
+        <GridCard icon={<I.upcoming size={20} />} label="Upcoming" count={c.upcoming} color="var(--accent)" onClick={() => setView({ type: 'upcoming' })} />
         <GridCard icon={<I.grid size={20} />} label="Board" color="var(--text-2)" onClick={() => setView({ type: 'board' })} />
         <GridCard icon={<I.filter size={20} />} label="Filters & Labels" color="#8B5CF6" onClick={() => setView({ type: 'filters' })} />
         <GridCard icon={<I.logbook size={20} />} label="Completed" count={tasks.filter(t => t.done).length} color="var(--today)" onClick={() => setView({ type: 'logbook' })} />
