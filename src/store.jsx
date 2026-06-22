@@ -565,37 +565,38 @@ export function useStore() {
     }));
   }, [queueSave, cascadeGroupToChildren]);
 
-  const reorderProjects = useCallback((draggedId, targetId) => {
+  // Move a project to sit immediately before (placeBefore) or after the target.
+  // Deterministic regardless of original positions, so the drop lands exactly
+  // where the insertion line was shown.
+  const reorderProjects = useCallback((draggedId, targetId, placeBefore = true) => {
     setProjects((prev) => {
       const next = [...prev];
       const dragIdx = next.findIndex(p => p.id === draggedId);
+      const tIdx0 = next.findIndex(p => p.id === targetId);
+      if (dragIdx === -1 || tIdx0 === -1 || draggedId === targetId) return prev;
+
+      const targetGroup = next[tIdx0].group;
+      const [removed] = next.splice(dragIdx, 1);
       const targetIdx = next.findIndex(p => p.id === targetId);
-      if (dragIdx !== -1 && targetIdx !== -1) {
-        const [removed] = next.splice(dragIdx, 1);
-        next.splice(targetIdx, 0, removed);
+      const insertIdx = placeBefore ? targetIdx : targetIdx + 1;
+      next.splice(insertIdx, 0, removed);
 
-        // If target project has a different group/section, update the dragged project's group!
-        let groupChanged = false;
-        if (removed.group !== next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group) {
-          const newGroup = next[targetIdx >= dragIdx ? targetIdx - 1 : targetIdx + 1]?.group || removed.group;
-          if (newGroup !== removed.group) {
-            removed.group = newGroup;
-            groupChanged = true;
-          }
-        }
-
-        // A moved parent drags its children's section with it (decision #2).
-        if (groupChanged) {
-          for (const item of next) {
-            if (item.parent === removed.id) item.group = removed.group;
-          }
-        }
-
-        const updated = next.map((p, idx) => ({ ...p, position: idx }));
-        queueSave({ projects: updated });
-        return updated;
+      // Dropping next to a target adopts that target's section.
+      let groupChanged = false;
+      if (removed.group !== targetGroup) {
+        removed.group = targetGroup;
+        groupChanged = true;
       }
-      return prev;
+      // A moved parent drags its children's section with it (decision #2).
+      if (groupChanged) {
+        for (const item of next) {
+          if (item.parent === removed.id) item.group = removed.group;
+        }
+      }
+
+      const updated = next.map((p, idx) => ({ ...p, position: idx }));
+      queueSave({ projects: updated });
+      return updated;
     });
   }, [queueSave]);
 

@@ -153,34 +153,36 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  // One drag, two intents. The center band of a valid top-level target nests the
-  // dragged project under it; the top/bottom edges reorder (live, as before).
+  // One drag, three intents — decided purely by WHERE you drop, and only
+  // committed on drop (no live reorder, so it can't steal the nest gesture).
+  // Center band of a valid top-level target = nest; top half = drop before;
+  // bottom half = drop after.
   const handleProjDragOver = (e, idx) => {
     e.preventDefault();
     if (draggedProjIdx === null) return;
     const dragged = rows[draggedProjIdx]?.project;
     const target = rows[idx]?.project;
-    if (!dragged || !target) return;
+    if (!dragged || !target || dragged.id === target.id) { setDropTarget(null); return; }
 
     const rect = e.currentTarget.getBoundingClientRect();
     const rel = (e.clientY - rect.top) / rect.height;
     const canNest = dragged.parent !== target.id && canSetParent(allProjects, dragged.id, target.id);
 
-    if (canNest && rel > 0.3 && rel < 0.7) {
-      setDropTarget({ id: target.id, mode: 'nest' }); // center band → nest; don't reorder
-      return;
-    }
-    setDropTarget(null);
-    if (draggedProjIdx === idx) return;
-    reorderProjects(dragged.id, target.id);
-    setDraggedProjIdx(idx);
+    let mode;
+    if (canNest && rel >= 0.35 && rel <= 0.65) mode = 'nest';
+    else mode = rel < 0.5 ? 'before' : 'after';
+    setDropTarget({ id: target.id, mode });
   };
 
   const handleProjDrop = (e, idx) => {
     e.preventDefault();
-    if (dropTarget?.mode === 'nest' && draggedProjIdx !== null) {
-      const dragged = rows[draggedProjIdx]?.project;
-      if (dragged) setProjectParent(dragged.id, dropTarget.id);
+    if (draggedProjIdx === null) { setDropTarget(null); return; }
+    const dragged = rows[draggedProjIdx]?.project;
+    const target = rows[idx]?.project;
+    const mode = dropTarget?.id === target?.id ? dropTarget.mode : null;
+    if (dragged && target && dragged.id !== target.id && mode) {
+      if (mode === 'nest') setProjectParent(dragged.id, target.id);
+      else reorderProjects(dragged.id, target.id, mode === 'before');
     }
     setDropTarget(null);
     setDraggedProjIdx(null);
@@ -195,7 +197,7 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
   // Dropping a child onto the section header promotes it back to top-level.
   const handleHeaderDragOver = (e) => {
     if (draggedProjIdx === null) return;
-    if (rows[draggedProjIdx]?.project?.parent) { e.preventDefault(); setHeaderDropActive(true); }
+    if (rows[draggedProjIdx]?.project?.parent) { e.preventDefault(); setHeaderDropActive(true); setDropTarget(null); }
   };
 
   const handleHeaderDrop = (e) => {
@@ -279,7 +281,15 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
             updateProject(p.id, { name: newName });
           }
         };
-        const isNestTarget = dropTarget?.mode === 'nest' && dropTarget.id === p.id;
+        const dndMode = dropTarget?.id === p.id ? dropTarget.mode : null;
+        const isNestTarget = dndMode === 'nest';
+        const dndShadow = isNestTarget
+          ? 'inset 0 0 0 2px var(--accent)'
+          : dndMode === 'before'
+            ? 'inset 0 2px 0 0 var(--accent)'
+            : dndMode === 'after'
+              ? 'inset 0 -2px 0 0 var(--accent)'
+              : 'none';
         return (
           <div
             key={p.id}
@@ -294,7 +304,7 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
               paddingLeft: depth === 1 ? 24 : 0,
               borderRadius: 8,
               background: isNestTarget ? 'var(--hover)' : 'transparent',
-              boxShadow: isNestTarget ? 'inset 0 0 0 2px var(--accent)' : 'none',
+              boxShadow: dndShadow,
               transition: 'background .12s, box-shadow .12s',
             }}
           >
