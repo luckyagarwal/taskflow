@@ -501,6 +501,7 @@ body { font-family: var(--font); }
 .tl-block-title { font-weight: 650; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-block-time { font-size: 11px; opacity: .92; margin-top: 1px; font-variant-numeric: tabular-nums; }
 .tl-ghost { position: absolute; border-radius: 10px; border: 2px dashed var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); padding: 5px 11px; box-sizing: border-box; font-weight: 650; font-size: 12px; pointer-events: none; font-variant-numeric: tabular-nums; z-index: 5; }
+.tl-empty-hint { position: absolute; top: 50%; left: 72px; right: 8px; transform: translateY(-50%); text-align: center; color: var(--text-3); font-size: 13px; font-weight: 500; pointer-events: none; z-index: 1; }
 .tl-now { position: absolute; left: 0; right: 4px; height: 0; z-index: 4; pointer-events: none; }
 .tl-now-label { position: absolute; left: 0; top: -7px; width: 46px; text-align: right; font-size: 11px; font-weight: 700; color: var(--today); font-variant-numeric: tabular-nums; background: var(--bg); }
 .tl-now-line { position: absolute; left: 50px; right: 0; top: 0; height: 2px; background: var(--today); }

@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
-import { Empty } from './ui.jsx';
 import { ViewHeader } from './views.jsx';
 import { layoutDayTasks, fmtHM, parseHM, yToMin, makeRange } from './timegrid.js';
 
@@ -119,10 +118,7 @@ export function DayView({ compact }) {
         </div>
       )}
 
-      {layout.length === 0 && unscheduled.length === 0 ? (
-        <Empty icon={<I.clock size={28} />} title="Nothing scheduled" sub="Add a task with a time to see it on the timeline." />
-      ) : (
-        <div className="tl-grid" ref={gridRef} style={compact ? { maxHeight: 'calc(100vh - 240px)' } : undefined}>
+      <div className="tl-grid" ref={gridRef} style={compact ? { maxHeight: 'calc(100vh - 240px)' } : undefined}>
           <div
             className="tl-track"
             ref={trackRef}
@@ -135,6 +131,9 @@ export function DayView({ compact }) {
               <div key={h} className="tl-hour"><span className="tl-hour-label">{fmtHM(h * 60)}</span></div>
             ))}
             <div className="tl-spine" />
+            {layout.length === 0 && unscheduled.length === 0 && (
+              <div className="tl-empty-hint">{compact ? 'Tap a time to add a task' : 'Drag across a time range to add a task'}</div>
+            )}
 
             {layout.map(({ task, startMin, endMin, lane, lanes }) => {
               const proj = task.projectId !== 'inbox' ? H.projectById(task.projectId) : null;
@@ -187,7 +186,6 @@ export function DayView({ compact }) {
             })()}
           </div>
         </div>
-      )}
     </div>
   );
 }
