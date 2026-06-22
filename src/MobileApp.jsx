@@ -17,7 +17,7 @@ const STATUS_PAD = 12; // floor for top inset; env(safe-area-inset-top) covers t
 
 function MobileHeader({ visible }) {
   const { view } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter', 'browse'].includes(view.type);
 
   if (showBack) return null;
 
@@ -367,7 +367,7 @@ function MobileContent({ density, onAddProject, onAddSection }) {
 
 function BackBar({ visible }) {
   const { view, setView } = useApp();
-  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter'].includes(view.type);
+  const showBack = ['project', 'project-settings', 'inbox', 'calendar', 'day', 'logbook', 'filters', 'label', 'settings', 'saved-filter', 'browse'].includes(view.type);
   if (!showBack) return null;
   return (
     <div className="frosted-glass" style={{
