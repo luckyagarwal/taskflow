@@ -224,9 +224,10 @@ export function parseTask(raw, projects = [], existingLabels = []) {
     const dowList = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dateKw = `(?:today|tomorrow|next\\s+week|${dowList.join('|')})`;
     const timePart = `(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?`;
-    const SEP = `(?:to|till|until|[-–])`;
+    // Word separators (to/till/until) require spaces; dashes allow optional spaces
+    const SEP = `(?:\\s+(?:to|till|until)\\s+|\\s*[-–]\\s*)`;
     const rangeRe = new RegExp(
-      `(?:(${dateKw})\\s+)?${timePart}\\s+${SEP}\\s+(?:(${dateKw})\\s+)?${timePart}`,
+      `(?:(${dateKw})\\s+)?${timePart}${SEP}(?:(${dateKw})\\s+)?${timePart}`,
       'i'
     );
     const rm = text.match(rangeRe);
