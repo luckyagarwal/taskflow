@@ -43,7 +43,7 @@ function DragCard({ task, itemProps, dragging, isDragged, setSelectedId, onToggl
   );
 }
 
-function WeekBoard({ tasks, setSelectedId, weekStartDay, itemProps, drag, dragging }) {
+function WeekBoard({ tasks, setSelectedId, selectedId, toggleTask, weekStartDay, itemProps, drag, dragging }) {
   const [weekOff, setWeekOff] = useState(0);
 
   const todayDow = new Date().getDay(); // 0=Sun
@@ -127,6 +127,8 @@ function WeekBoard({ tasks, setSelectedId, weekStartDay, itemProps, drag, draggi
                   dragging={dragging}
                   isDragged={dragging && drag.id === t.id}
                   setSelectedId={setSelectedId}
+                  selected={selectedId === t.id}
+                  onToggle={() => toggleTask(t.id)}
                 />
               ))}
               <InlineComposer key={`add-${off}`} defaultDue={off} />
@@ -204,8 +206,8 @@ export function BoardView() {
       />
 
       {mode === 'week' ? (
-        <WeekBoard tasks={tasks} setSelectedId={setSelectedId} weekStartDay={weekStartDay}
-          itemProps={itemProps} drag={drag} dragging={dragging} />
+        <WeekBoard tasks={tasks} setSelectedId={setSelectedId} selectedId={selectedId} toggleTask={toggleTask}
+          weekStartDay={weekStartDay} itemProps={itemProps} drag={drag} dragging={dragging} />
       ) : (
         <div className="board-scroll" data-drag-scroll-x>
           {STATUS_ORDER.map((status) => {

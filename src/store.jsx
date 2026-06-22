@@ -709,23 +709,6 @@ export function useStore() {
     setSavedFilters((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
-  const reorderTasks = useCallback((draggedId, targetId) => {
-    setTasks((prev) => {
-      const next = [...prev];
-      const dragIdx = next.findIndex(t => t.id === draggedId);
-      const targetIdx = next.findIndex(t => t.id === targetId);
-      if (dragIdx !== -1 && targetIdx !== -1) {
-        const [removed] = next.splice(dragIdx, 1);
-        next.splice(targetIdx, 0, removed);
-
-        const updated = next.map((t, idx) => ({ ...t, position: idx }));
-        queueSave({ tasks: updated });
-        return updated;
-      }
-      return prev;
-    });
-  }, [queueSave]);
-
   // Pointer-drag move: reorder + optional field patch (new day or status),
   // inserting the dragged task before `beforeId` (or at the end when null).
   const moveTask = useCallback((draggedId, patch = {}, beforeId = null) => {
@@ -736,6 +719,12 @@ export function useStore() {
       return updated;
     });
   }, [queueSave]);
+
+  // Reorder (no field change): insert the dragged task before `targetId`.
+  // Same operation as moveTask with an empty patch.
+  const reorderTasks = useCallback((draggedId, targetId) => {
+    moveTask(draggedId, {}, targetId);
+  }, [moveTask]);
 
   const addLabel = useCallback((name) => {
     if (!name || !name.trim()) return null;

@@ -90,7 +90,9 @@ export function useDragSort({ onDrop }) {
         onDropRef.current(d.id, d.zone, d.beforeId);
       }
       start.current = null;
-      moved.current = false;
+      // NB: do not reset moved.current here — the click that follows a mouse
+      // pointerup fires *after* finish(), and onClickCapture must still see
+      // moved===true to swallow it. The next pointerdown resets it.
       setDrag(null);
     };
 
@@ -121,6 +123,7 @@ export function useDragSort({ onDrop }) {
     window.addEventListener('keydown', onKey);
     return () => {
       stopAuto();
+      if (start.current && start.current.lpTimer) clearTimeout(start.current.lpTimer);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
@@ -133,6 +136,7 @@ export function useDragSort({ onDrop }) {
     'data-drag-item': id,
     onPointerDown: (e) => {
       if (e.button != null && e.button !== 0) return; // left button / touch only
+      moved.current = false; // fresh gesture; cleared here so a prior drag's flag can't leak
       start.current = { id, label, x0: e.clientX, y0: e.clientY, lifted: false, lpTimer: null };
       if (e.pointerType === 'touch') {
         const { clientX, clientY } = e;
