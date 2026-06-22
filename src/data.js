@@ -237,6 +237,16 @@ export function parseTask(raw, projects = [], existingLabels = []) {
         return diff;
       }
     },
+    // bare weekday: "thursday", "on thursday" — nearest upcoming, today included.
+    // MUST stay after "next <weekday>" so that pattern matches first.
+    { regex: /\b(?:on\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i, parser: (m) => {
+        const dows = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const targetDow = dows.indexOf(m[1].toLowerCase());
+        let diff = targetDow - today.getDay();
+        if (diff < 0) diff += 7;
+        return diff;
+      }
+    },
     // month-then-day: "Jan 15", "January 15", optional ", 2026" / " 2026"
     { regex: /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:,?\s+(\d{4}))?\b/i,
       parser: (m) => absDateOffset(MONTH_STEMS.indexOf(m[1].toLowerCase().substring(0, 3)), parseInt(m[2]), m[3])
