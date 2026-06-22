@@ -445,14 +445,15 @@ function PillBtn({ icon, label, color, active, onClick }) {
   );
 }
 
-export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, defaultDue = null, variant = 'inline', autoOpen = false, onDone }) {
+export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, defaultDue = null, defaultTime = null, defaultDuration = null, variant = 'inline', autoOpen = false, onDone }) {
   const { addTask, setView, projects, labels: storeLabels } = useApp();
   const [open, setOpen] = useState(autoOpen);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [start, setStart] = useState(defaultStart);
   const [due, setDue] = useState(defaultDue);
-  const [time, setTime] = useState(null);
+  const [time, setTime] = useState(defaultTime);
+  const [duration, setDuration] = useState(defaultDuration);
   const [prio, setPrio] = useState(4);
   const [project, setProject] = useState(defaultProject);
   const [labels, setLabels] = useState([]);
@@ -493,7 +494,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
     }
   }, [title, projects, storeLabels]);
 
-  const reset = () => { setTitle(''); setNote(''); setStart(defaultStart); setDue(defaultDue); setTime(null); setPrio(4); setLabels([]); setProject(defaultProject); setParsed(null); };
+  const reset = () => { setTitle(''); setNote(''); setStart(defaultStart); setDue(defaultDue); setTime(defaultTime); setDuration(defaultDuration); setPrio(4); setLabels([]); setProject(defaultProject); setParsed(null); };
   const submit = (keepOpen) => {
     if (!title.trim()) return;
     const taskData = parseTask(title, projects, storeLabels);
@@ -503,6 +504,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
       startOffset: start,
       dueOffset: taskData.dueOffset !== null ? taskData.dueOffset : due,
       time: taskData.time || time || null,
+      duration: duration || null,
       priority: taskData.priority !== 4 ? taskData.priority : prio,
       projectId: taskData.projectId || project,
       labels: taskData.labels.length ? taskData.labels : labels,
@@ -682,7 +684,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
   );
 }
 
-export function QuickAddModal({ onClose, defaultProject = 'inbox', defaultDue = null }) {
+export function QuickAddModal({ onClose, defaultProject = 'inbox', defaultDue = null, prefill = null }) {
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
@@ -691,7 +693,15 @@ export function QuickAddModal({ onClose, defaultProject = 'inbox', defaultDue = 
   return (
     <div className="scrim" style={{ position: 'absolute', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '10%', zIndex: 200 }} onMouseDown={onClose}>
       <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(580px,92vw)', animation: 'slideUp .16s ease' }}>
-        <InlineComposer variant="modal" autoOpen defaultProject={defaultProject} defaultDue={defaultDue} onDone={onClose} />
+        <InlineComposer
+          variant="modal"
+          autoOpen
+          defaultProject={defaultProject}
+          defaultDue={prefill && prefill.dueOffset != null ? prefill.dueOffset : defaultDue}
+          defaultTime={prefill ? prefill.time : null}
+          defaultDuration={prefill ? prefill.duration : null}
+          onDone={onClose}
+        />
       </div>
     </div>
   );

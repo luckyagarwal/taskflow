@@ -55,3 +55,25 @@ export function layoutDayTasks(tasks, { defaultDuration = 60 } = {}) {
   flush();
   return out;
 }
+
+// Pixel offset within the track -> minute of day (0..1439), scaled by hour height.
+export function yToMin(y, hourH) {
+  const min = Math.round((y / hourH) * 60);
+  return Math.max(0, Math.min(1439, min));
+}
+
+// Round a minute value to the nearest `step`, clamped so a step-sized block
+// still fits before midnight.
+export function snapMin(min, step = 5) {
+  const snapped = Math.round(min / step) * step;
+  return Math.max(0, Math.min(1440 - step, snapped));
+}
+
+// Two raw minute values (drag start/end, any order) -> a clean snapped range.
+export function makeRange(aMin, bMin, { step = 5, minDur = 5 } = {}) {
+  let lo = snapMin(Math.min(aMin, bMin), step);
+  let hi = snapMin(Math.max(aMin, bMin), step);
+  let durationMin = Math.max(minDur, hi - lo);
+  if (lo + durationMin > 1440) lo = Math.max(0, 1440 - durationMin);
+  return { startMin: lo, durationMin };
+}

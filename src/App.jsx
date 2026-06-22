@@ -931,7 +931,7 @@ export function DesktopApp({ frameW = 1320 }) {
         </div>
       )}
       {search && <SearchOverlay onClose={() => setSearch(false)} />}
-      {quickAdd && <QuickAddModal onClose={() => setQuickAdd(false)} />}
+      {quickAdd && <QuickAddModal prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
       <BulkActionBar />
       {toasts && toasts.length > 0 && (
         <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
