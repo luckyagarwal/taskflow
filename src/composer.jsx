@@ -592,6 +592,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
     <div style={{
       border: '1.5px solid var(--border-2)', borderRadius: 14, background: 'var(--bg-elev)',
       boxShadow: 'var(--shadow-md)', padding: '12px 14px 10px', animation: 'slideUp .16s ease',
+      marginBottom: 8,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input ref={inputRef} className="no-sel" value={title} onChange={(e) => setTitle(e.target.value)}

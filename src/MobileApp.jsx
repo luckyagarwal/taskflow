@@ -480,7 +480,7 @@ function QuickAddSheet({ onClose, prefill = null }) {
         transition={{ duration: 0.15 }}
         className="sheet-scrim"
         onMouseDown={onClose}
-        style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+        style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
       />
       <motion.div
         initial={{ y: '100%' }}
@@ -526,7 +526,7 @@ function AddSectionModal({ onClose }) {
         transition={{ duration: 0.15 }}
         className="sheet-scrim"
         onMouseDown={onClose}
-        style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+        style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
       />
       <motion.div
         initial={{ y: '100%' }}
@@ -609,7 +609,7 @@ function AddProjectModal({ onClose }) {
         transition={{ duration: 0.15 }}
         className="sheet-scrim"
         onMouseDown={onClose}
-        style={{ position: 'absolute', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+        style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'var(--scrim)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
       />
       <motion.div
         initial={{ y: '100%' }}
