@@ -486,8 +486,8 @@ body { font-family: var(--font); }
 
 
 
-.board-scroll { display: flex; flex-wrap: nowrap; gap: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; align-items: flex-start; }
-.board-column { min-width: 280px; flex: 0 0 280px; background: var(--bg-side); border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
+.board-scroll { display: flex; flex-wrap: nowrap; gap: 12px; overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; align-items: flex-start; flex: 1; min-height: 0; }
+.board-column { min-width: 240px; flex: 1 1 0; background: var(--bg-side); border: 1px solid var(--border); border-radius: 10px; padding: 8px; }
 .board-column-head { font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 6px 8px; display: flex; justify-content: space-between; }
 
 :root { --hour-height: 60px; }
