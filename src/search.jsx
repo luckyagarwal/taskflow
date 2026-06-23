@@ -12,7 +12,7 @@ export function SearchOverlay({ onClose }) {
   const [q, setQ] = useState('');
   const inputRef = useRef(null);
   
-  useEffect(() => { inputRef.current && inputRef.current.focus(); }, []);
+  useEffect(() => { inputRef.current && inputRef.current.focus({ preventScroll: true }); }, []);
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
@@ -58,7 +58,7 @@ export function SearchOverlay({ onClose }) {
         initial={narrow ? { y: '100%' } : { y: -20, opacity: 0, scale: 0.96 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={narrow ? { y: '100%' } : { y: -20, opacity: 0, scale: 0.96 }}
-        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 32 }}
+        transition={shouldReduceMotion ? { duration: 0 } : (narrow ? { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.32 } : { type: 'spring', stiffness: 350, damping: 32 })}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
           position: 'relative',
@@ -82,7 +82,7 @@ export function SearchOverlay({ onClose }) {
             : <kbd style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', border: '1px solid var(--border-2)', borderRadius: 6, padding: '2px 6px' }}>ESC</kbd>}
         </div>
 
-        <div className="scroll" style={{ overflowY: 'auto', padding: 8 }}>
+        <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 8 }}>
           {ql && matchTasks.length > 0 && (
             <Section title="Tasks">
               {matchTasks.map((t) => {

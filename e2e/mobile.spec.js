@@ -214,4 +214,92 @@ test.describe("Mobile App — Core Functionality", () => {
       page.getByText("Inbox", { exact: true }).first()
     ).toBeVisible();
   });
+
+  test("opening search overlay should not scroll the background view to the top", async ({ page }) => {
+    // Seed 20 additional tasks for today to make sure it is scrollable
+    for (let i = 1; i <= 20; i++) {
+      mockDb.tasks.push({
+        id: `task_extra_${i}`,
+        title: `Extra Task ${i}`,
+        note: "",
+        projectId: "inbox",
+        startOffset: null,
+        dueOffset: 0,
+        time: null,
+        priority: 4,
+        labels: [],
+        subtasks: [],
+        done: false,
+        doneOffset: null,
+        recurring: null,
+        createdAt: Date.now() - 100000 + i * 1000,
+        updatedAt: Date.now(),
+        subtaskSort: "manual",
+        position: i,
+        status: "planned",
+      });
+    }
+
+    await page.goto("/mobile");
+    await waitForAppLoad(page);
+
+    // Navigate to Today view first (it has tasks and is scrollable)
+    await page.getByText("Today", { exact: true }).first().click();
+    await page.waitForTimeout(500);
+
+    // Locate the main scroll container
+    const scrollContainer = page.locator("div.scroll").first();
+
+    const heightsBefore = await scrollContainer.evaluate(el => ({
+      scrollTop: el.scrollTop,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight
+    }));
+    console.log("Container heights before scroll:", heightsBefore);
+
+    // Scroll the container down by 200px
+    await scrollContainer.evaluate(el => el.scrollTop = 200);
+    await page.waitForTimeout(200);
+
+    // Scroll up slightly to make the tab bar visible again (mimics real user behavior)
+    await scrollContainer.evaluate(el => el.scrollTop = 180);
+    await page.waitForTimeout(200);
+
+    // Check that it actually scrolled
+    const scrollTopBefore = await scrollContainer.evaluate(el => el.scrollTop);
+    console.log("Scroll position before tapping search:", scrollTopBefore);
+    expect(scrollTopBefore).toBeGreaterThan(50);
+
+    // Tap the Search tab at the bottom to open search
+    await page.getByText("Search", { exact: true }).last().click();
+    await page.waitForTimeout(500);
+
+    // Verify search input is visible
+    const searchInput = page.getByPlaceholder(/search/i).first();
+    await expect(searchInput).toBeVisible();
+
+    const parentScrollTop = await page.evaluate(() => {
+      const parent = document.querySelector('div[style*="position: relative; height: 100%"]');
+      return parent ? parent.scrollTop : null;
+    });
+    console.log("MobileApp container scrollTop:", parentScrollTop);
+    expect(parentScrollTop).toBe(0);
+
+    // Take screenshot of search overlay
+    await page.screenshot({ path: "/Users/casex/.gemini/antigravity/brain/251a2be0-93d0-4b9d-8785-67778551a7c0/scratch/search_overlay.png" });
+
+    const bodyScrollTop = await page.evaluate(() => ({
+      bodyScrollTop: document.body.scrollTop,
+      htmlScrollTop: document.documentElement.scrollTop,
+      windowScrollY: window.scrollY
+    }));
+    console.log("Window/Body scroll position:", bodyScrollTop);
+
+    // Check the scroll position of the background scroll container
+    const scrollTopAfter = await scrollContainer.evaluate(el => el.scrollTop);
+    console.log("Scroll position after tapping search:", scrollTopAfter);
+
+    // The scroll position should NOT have been reset to 0
+    expect(scrollTopAfter).toBe(scrollTopBefore);
+  });
 });

@@ -472,7 +472,7 @@ function QuickAddSheet({ onClose, prefill = null }) {
     return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
   }, []);
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -486,7 +486,7 @@ function QuickAddSheet({ onClose, prefill = null }) {
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.32 }}
         className="bottom-sheet"
         onMouseDown={(e) => e.stopPropagation()}
         style={{ width: '100%', padding: `20px 16px ${28 + bottomGap}px`, position: 'relative', zIndex: 2 }}
@@ -518,7 +518,7 @@ function AddSectionModal({ onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -532,14 +532,14 @@ function AddSectionModal({ onClose }) {
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.32 }}
         className="bottom-sheet"
         onMouseDown={(e) => e.stopPropagation()}
         style={{ width: '100%', position: 'relative', zIndex: 2 }}
       >
         {/* Grab Handle for Bottom Sheet */}
         <div style={{ width: 36, height: 5, borderRadius: 3, background: 'var(--border-2)', margin: '-12px auto 20px' }} />
-        
+
         <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 16, color: 'var(--text)', letterSpacing: '-0.02em' }}>New Section</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <input 
@@ -601,7 +601,7 @@ function AddProjectModal({ onClose }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 200, display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -615,7 +615,7 @@ function AddProjectModal({ onClose }) {
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 30 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.32 }}
         className="bottom-sheet"
         onMouseDown={(e) => e.stopPropagation()}
         style={{ width: '100%', position: 'relative', zIndex: 2 }}
