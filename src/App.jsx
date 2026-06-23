@@ -613,9 +613,13 @@ function MainContent({ density, narrow }) {
     default: content = <V.TodayView density={density} />;
   }
   const fullWidth = view.type === 'board';
+  // The board owns the full viewport height so it can be scrolled horizontally
+  // anywhere on the page — not just over the cards. Make the scroll chain a
+  // height-filling flex column down to the board's own scroll container.
+  const fillStyle = fullWidth ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : {};
   return (
-    <div className="scroll" style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
-      <div style={{ maxWidth: fullWidth ? 'none' : 760, margin: '0 auto', padding: narrow ? '30px 28px 80px' : '34px 40px 80px', position: 'relative' }}>
+    <div className="scroll" style={{ flex: 1, overflowY: fullWidth ? 'hidden' : 'auto', minWidth: 0, display: fullWidth ? 'flex' : undefined, flexDirection: fullWidth ? 'column' : undefined }}>
+      <div style={{ maxWidth: fullWidth ? 'none' : 760, margin: fullWidth ? undefined : '0 auto', padding: narrow ? (fullWidth ? '30px 28px 24px' : '30px 28px 80px') : (fullWidth ? '34px 40px 24px' : '34px 40px 80px'), position: 'relative', ...fillStyle }}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`${view.type}-${view.id || ''}`}
@@ -623,6 +627,7 @@ function MainContent({ density, narrow }) {
             animate={{ opacity: 1, x: 0 }}
             exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: direction === 'forward' ? -24 : 24 }}
             transition={{ type: 'tween', ease: 'easeInOut', duration: 0.18 }}
+            style={fillStyle}
           >
             {content}
           </motion.div>

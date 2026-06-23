@@ -59,7 +59,7 @@ function WeekBoard({ tasks, setSelectedId, selectedId, toggleTask, weekStartDay,
   const isCurrentWeek = weekOff === 0;
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* week navigation bar */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -174,7 +174,7 @@ export function BoardView() {
   );
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <ViewHeader
         icon={<span style={{ color: 'var(--accent)' }}><I.grid size={24} /></span>}
         title="Board"

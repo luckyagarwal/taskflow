@@ -336,6 +336,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
         </div>
       )}
       <div style={{
+        width: '100%',
+        minWidth: 0,
         padding: narrow ? pad : 0,
         background: narrow ? ((selected || isMultiSelected) ? 'var(--active)' : (card ? 'var(--bg-elev)' : 'var(--bg)')) : undefined,
         transform: (narrow && dragX) ? `translateX(${dragX}px)` : undefined,
@@ -370,6 +372,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
             style={{
               width: '100%',
+              minWidth: 0,
               border: 'none',
               outline: 'none',
               resize: 'none',
@@ -420,9 +423,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           {compact && hasMeta && meta}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: 0, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: card ? 1 : 0, minWidth: card ? 64 : undefined, maxWidth: card ? '40%' : undefined, position: 'relative' }}>
           {showProject && proj && (
-            <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ position: 'relative', minWidth: card ? 0 : undefined }} onClick={(e) => e.stopPropagation()}>
               {!narrow && (
               <span
                 onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
@@ -434,6 +437,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                   fontWeight: 500,
                   fontSize: 12.5,
                   whiteSpace: 'nowrap',
+                  maxWidth: card ? '100%' : undefined,
+                  minWidth: card ? 0 : undefined,
                   opacity: showActions ? 0 : 1,
                   transform: showActions ? 'translateX(-8px)' : 'translateX(0)',
                   transition: 'opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -441,7 +446,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 }}
                 title="Change project"
               >
-                {proj.name}<Dot color={proj.color} />
+                <span style={card ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 } : undefined}>{proj.name}</span>
+                <span style={{ flexShrink: 0, display: 'inline-flex' }}><Dot color={proj.color} /></span>
               </span>
               )}
               {menu === 'proj_badge' && (
