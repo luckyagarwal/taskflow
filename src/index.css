@@ -224,6 +224,7 @@ input:focus, textarea:focus { outline: none; }
 /* Phone widths: flat full-width list rows with dividers (native feel) */
 @media (max-width: 767px) {
   .task-row { border-radius: 0; }
+  .task-card { border-radius: 12px; }
   .exit-wrap + .exit-wrap .task-row { border-top: 1px solid var(--border); }
 }
 
