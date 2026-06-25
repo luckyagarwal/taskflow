@@ -2,7 +2,7 @@
 // Cards are moved/reordered with the unified pointer-drag system (touch + mouse):
 // drag within a column reorders; drag to another column changes the day (Week)
 // or the status (Status).
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons as I } from './icons.jsx';
 import { H } from './data.js';
 import { useApp } from './store.jsx';
@@ -145,11 +145,21 @@ function WeekBoard({ tasks, setSelectedId, selectedId, toggleTask, weekStartDay,
 }
 
 export function BoardView() {
-  const { tasks, projects, setSelectedId, selectedId, toggleTask, weekStartDay = 1, moveTask } = useApp();
+  const { tasks, projects, sections, setSelectedId, selectedId, toggleTask, weekStartDay = 1, moveTask } = useApp();
   const [projectFilter, setProjectFilter] = useState(null);
-  const [mode, setMode] = useState('status'); // 'status' | 'week'
+  const [mode, setMode] = useState('status'); // 'status' | 'week' | 'section'
+  const [sectionFilter, setSectionFilter] = useState(null);
+
+  useEffect(() => {
+    if (mode === 'section' && !sectionFilter && sections.length > 0) {
+      setSectionFilter(sections[0].name);
+    }
+  }, [mode, sections, sectionFilter]);
 
   const cols = groupTasksByStatus(tasks, { projectId: projectFilter });
+  const sectionProjects = mode === 'section'
+    ? projects.filter((p) => p.group === sectionFilter)
+    : [];
 
   const onDrop = (draggedId, zone, beforeId) => {
     if (zone.startsWith('day:')) {
@@ -159,6 +169,9 @@ export function BoardView() {
       const task = tasks.find((t) => t.id === draggedId);
       const patch = task && columnOf(task) === target ? {} : statusPatch(target);
       moveTask(draggedId, patch, beforeId);
+    } else if (zone.startsWith('project:')) {
+      const targetProjectId = zone.slice(8);
+      moveTask(draggedId, { projectId: targetProjectId }, beforeId);
     }
   };
   const { drag, itemProps, dragging } = useDragSort({ onDrop });
@@ -190,6 +203,7 @@ export function BoardView() {
             <div style={{ display: 'flex', background: 'var(--hover)', borderRadius: 10, padding: 3 }}>
               <ModeTab id="status" label="Status" />
               <ModeTab id="week" label="Week" />
+              <ModeTab id="section" label="Section" />
             </div>
             {mode === 'status' && (
               <select
@@ -207,6 +221,22 @@ export function BoardView() {
                 ))}
               </select>
             )}
+            {mode === 'section' && (
+              <select
+                value={sectionFilter || ''}
+                onChange={(e) => setSectionFilter(e.target.value || null)}
+                style={{
+                  border: '1px solid var(--border)', background: 'var(--bg-elev)',
+                  color: 'var(--text)', borderRadius: 8, padding: '8px 12px',
+                  fontSize: 13.5, fontWeight: 500, outline: 'none', cursor: 'pointer'
+                }}
+              >
+                <option value="" disabled>Pick a section</option>
+                {sections.map((s) => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         }
       />
@@ -214,6 +244,49 @@ export function BoardView() {
       {mode === 'week' ? (
         <WeekBoard tasks={tasks} setSelectedId={setSelectedId} selectedId={selectedId} toggleTask={toggleTask}
           weekStartDay={weekStartDay} itemProps={itemProps} drag={drag} dragging={dragging} />
+      ) : mode === 'section' ? (
+        <div className="board-scroll" data-drag-scroll-x>
+          {sectionProjects.length === 0 ? (
+            <div style={{ padding: '40px 24px', color: 'var(--text-3)', fontSize: 14 }}>
+              {sections.length === 0
+                ? 'No sections yet. Create sections from the sidebar to use this mode.'
+                : 'No projects in this section.'}
+            </div>
+          ) : (
+            sectionProjects.map((proj) => {
+              const projTasks = tasks.filter((t) => t.projectId === proj.id && !t.done);
+              const isOver = dragging && drag.zone === `project:${proj.id}`;
+              return (
+                <div
+                  key={proj.id}
+                  className="board-column"
+                  data-drop-zone={`project:${proj.id}`}
+                  style={isOver ? { outline: '2px solid var(--accent)', outlineOffset: -1 } : undefined}
+                >
+                  <div className="board-column-head">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 999, background: proj.color, flexShrink: 0 }} />
+                      {proj.name}
+                    </span>
+                    <span>{projTasks.length}</span>
+                  </div>
+                  {projTasks.map((t) => (
+                    <DragCard
+                      key={t.id}
+                      task={t}
+                      itemProps={itemProps}
+                      dragging={dragging}
+                      isDragged={dragging && drag.id === t.id}
+                      setSelectedId={setSelectedId}
+                      selected={selectedId === t.id}
+                      onToggle={() => toggleTask(t.id)}
+                    />
+                  ))}
+                </div>
+              );
+            })
+          )}
+        </div>
       ) : (
         <div className="board-scroll" data-drag-scroll-x>
           {STATUS_ORDER.map((status) => {
