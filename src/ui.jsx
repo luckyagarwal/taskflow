@@ -21,18 +21,19 @@ export function useIsNarrow() {
 }
 
 // ── Circular priority checkbox ───────────────────────────────
-export function Checkbox({ done, priority = 4, onToggle, size = 20 }) {
+export function Checkbox({ done, completing, priority = 4, onToggle, size = 20 }) {
   const pc = H.priorityColor(priority);
+  const isDone = done || completing;
   const ring = pc || 'var(--check-empty)';
-  const bg = done ? (pc || 'var(--accent)') : (pc ? `color-mix(in srgb, ${pc} 13%, transparent)` : 'transparent');
+  const bg = isDone ? (pc || 'var(--accent)') : (pc ? `color-mix(in srgb, ${pc} 13%, transparent)` : 'transparent');
   return (
     <button
-      className={'checkbox no-sel' + (done ? ' is-done' : '')}
+      className={'checkbox no-sel' + (isDone ? ' is-done' : '')}
       onClick={(e) => { e.stopPropagation(); onToggle && onToggle(e); }}
       aria-label={done ? 'Mark incomplete' : 'Complete task'}
       style={{
         width: size, height: size,
-        border: `2px solid ${done ? (pc || 'var(--accent)') : ring}`,
+        border: `2px solid ${isDone ? (pc || 'var(--accent)') : ring}`,
         background: bg,
       }}>
       <I.check size={size * 0.62} className="cb-check" />
@@ -126,7 +127,7 @@ export function Segmented({ value, onChange, options }) {
 
 // ── Task row ────────────────────────────────────────────────
 // density: 'comfortable' | 'compact' | 'card'
-export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true }) {
+export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortable', showProject = true, completing }) {
   const { updateTask, deleteTask, labels: customLabels, multiSelectedIds = [], toggleMultiSelect, projects } = useApp();
   const [menu, setMenu] = React.useState(null);
   const [localTitle, setLocalTitle] = React.useState(task.title);
@@ -323,7 +324,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   return (
     <div
       data-task-id={task.id}
-      className={'task-row no-sel' + ((selected || isMultiSelected) ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (card ? ' task-card' : '')}
+      className={'task-row no-sel' + ((selected || isMultiSelected) ? ' is-selected' : '') + (task.done ? ' is-done' : '') + (completing ? ' is-completing' : '') + (card ? ' task-card' : '')}
       style={{ marginBottom: card ? 8 : 0, display: 'flex', flexDirection: 'column', position: 'relative', overflow: narrow ? 'hidden' : undefined, padding: narrow ? 0 : pad }}
       onClick={handleRowClick}
       onTouchStart={onRowTouchStart}
@@ -345,11 +346,12 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
       }}>
       <div style={{ display: 'flex', width: '100%', alignItems: 'start', gap: 12 }}>
         <div style={{ paddingTop: compact ? 1 : 1.5, flexShrink: 0 }}>
-          <Checkbox done={task.done} priority={task.priority} size={compact ? 18 : (narrow ? 24 : 20)} onToggle={onToggle} />
+          <Checkbox done={task.done} completing={completing} priority={task.priority} size={compact ? 18 : (narrow ? 24 : 20)} onToggle={onToggle} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <textarea
+            className="task-title"
             value={localTitle}
             readOnly={!selected}
             onChange={(e) => setLocalTitle(e.target.value)}

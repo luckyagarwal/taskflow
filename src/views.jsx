@@ -11,12 +11,13 @@ import { CalendarView } from './calendar.jsx';
 import { eligibleParents, canSetParent } from './projects.js';
 
 // ── Animated task group (handles complete-and-leave) ─────────
-export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }) {
+export function TaskGroup({ tasks, density, showProject, dateMode, reorderable, isCompletedSection }) {
   const { toggleTask, setSelectedId, selectedId, reorderTasks } = useApp();
   const narrow = useIsNarrow();
   const shouldReduceMotion = useReducedMotion();
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [draggableId, setDraggableId] = useState(null);
+  const [completingIds, setCompletingIds] = useState(new Set());
   // Keyboard reordering: the grip handle is a real button. Space/Enter picks a
   // task up, Arrow Up/Down moves it, Space/Enter drops, Escape cancels. Changes
   // are announced via the aria-live region rendered at the end of the list.
@@ -61,7 +62,16 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
       }
       return;
     }
-    toggleTask(task.id);
+    if (!task.done) {
+      // Hold the row briefly so the checkbox pop animation is visible before exit
+      setCompletingIds(prev => new Set([...prev, task.id]));
+      setTimeout(() => {
+        toggleTask(task.id);
+        setCompletingIds(prev => { const s = new Set(prev); s.delete(task.id); return s; });
+      }, 340);
+    } else {
+      toggleTask(task.id);
+    }
   };
 
   const handleDragStart = (e, idx) => {
@@ -87,9 +97,11 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
     animate: { opacity: 1 },
     exit: { opacity: 1 }
   } : {
-    initial: { opacity: 0, height: 0, scale: 0.98, y: -4 },
+    initial: { opacity: 0, height: 0, scale: 0.98, y: isCompletedSection ? 10 : -4 },
     animate: { opacity: 1, height: 'auto', scale: 1, y: 0 },
-    exit: { opacity: 0, height: 0, scale: 0.98, y: 4 }
+    // completing → exits downward (toward completed section below)
+    // uncompleting → exits upward (toward active section above)
+    exit: { opacity: 0, height: 0, scale: 0.98, y: isCompletedSection ? -10 : 10 }
   };
 
   return (
@@ -155,6 +167,7 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
               <TaskRow task={task} density={density}
                 showProject={dateMode ? 'inDate' : showProject}
                 selected={selectedId === task.id}
+                completing={completingIds.has(task.id)}
                 onToggle={(e) => handleToggle(task, e)}
                 onOpen={(t) => setSelectedId(t.id)} />
             </div>
@@ -549,7 +562,7 @@ export function TodayView({ density }) {
         <>
           <SectionHeader title="Completed" count={completedToday.length}
             collapsible collapsed={collapsedSections.includes('today-completed')} onToggle={(e) => handleToggle('today-completed', e)} />
-          <CollapsibleContent collapsed={collapsedSections.includes('today-completed')}><TaskGroup tasks={sortedCompleted} density={density} showProject /></CollapsibleContent>
+          <CollapsibleContent collapsed={collapsedSections.includes('today-completed')}><TaskGroup tasks={sortedCompleted} density={density} showProject isCompletedSection /></CollapsibleContent>
         </>
       )}
     </div>
@@ -615,7 +628,7 @@ export function UpcomingView({ density }) {
               )}
               {completedForDay.length > 0 && (
                 <div style={{ marginTop: activeForDay.length > 0 ? 6 : 0, borderTop: activeForDay.length > 0 ? '1px dashed var(--border)' : 'none', paddingTop: activeForDay.length > 0 ? 6 : 0 }}>
-                  <TaskGroup tasks={completedForDay} density={density} dateMode showProject />
+                  <TaskGroup tasks={completedForDay} density={density} dateMode showProject isCompletedSection />
                 </div>
               )}
             </CollapsibleContent>
@@ -736,7 +749,7 @@ export function ProjectView({ projectId, density }) {
         <>
           <SectionHeader title="Completed" count={completed.length}
             collapsible collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed((v) => !v)} />
-          <CollapsibleContent collapsed={completedCollapsed}><TaskGroup tasks={completed} density={density} showProject={false} /></CollapsibleContent>
+          <CollapsibleContent collapsed={completedCollapsed}><TaskGroup tasks={completed} density={density} showProject={false} isCompletedSection /></CollapsibleContent>
         </>
       )}
     </div>
