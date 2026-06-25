@@ -160,7 +160,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const narrow = useIsNarrow();
   // On touch/mobile we never reveal the desktop hover CTA bar — a tap opens the
   // task detail instead. The popover menus (opened from meta chips) still work.
-  const showActions = !narrow && !!(selected || menu);
+  const showActions = !narrow && density !== 'card' && !!(selected || menu);
   const compact = density === 'compact';
   // On phone widths a "card" list becomes flat full-width rows with dividers
   // (native list feel) instead of separated bordered boxes.
@@ -187,9 +187,35 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const hasMeta = (task.dueOffset !== null && task.dueOffset !== undefined && showProject !== 'inDate') ||
     (task.startOffset !== null && task.startOffset !== undefined && showProject !== 'inDate') ||
     labels.length || (task.subtasks && task.subtasks.length) || task.note ||
-    (task.status && statusChoices[task.status]) || projInMeta;
+    (task.status && statusChoices[task.status]) || projInMeta || (card && showProject && !!proj);
 
-  const pad = card ? '11px 13px' : compact ? '6px 8px' : (narrow ? '14px 4px' : '10px 8px');
+  const pad = card ? '12px 14px' : compact ? '6px 8px' : (narrow ? '14px 4px' : '10px 8px');
+
+  const cardMeta = card && (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+      {task.status && statusChoices[task.status] && (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          color: statusChoices[task.status].color, fontWeight: 500, fontSize: 11.5,
+          background: 'var(--hover)', border: '1px solid var(--border)',
+          padding: '2px 7px', borderRadius: 99,
+        }}>
+          {task.status === 'inprogress' && <span style={{ width: 8, height: 8, borderRadius: 99, border: '2px solid var(--p2)', position: 'relative', overflow: 'hidden', display: 'inline-block', flexShrink: 0 }}><span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'var(--p2)' }} /></span>}
+          {task.status === 'blocked' && <I.x size={9} style={{ color: 'var(--p1)', flexShrink: 0 }} />}
+          {task.status === 'waiting' && <I.repeat size={9} style={{ color: 'var(--p3)', flexShrink: 0 }} />}
+          {statusChoices[task.status].label}
+        </span>
+      )}
+      <DueBadge offset={task.dueOffset} startOffset={task.startOffset} time={task.time} startTime={task.startTime} duration={task.duration} small />
+      <SubProgress subtasks={task.subtasks} />
+      {labels.map((id) => <LabelChip key={id} id={id} small />)}
+      {showProject && proj && (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-3)', fontSize: 11.5, fontWeight: 500 }}>
+          <Dot color={proj.color} size={7} />{proj.name}
+        </span>
+      )}
+    </div>
+  );
 
   const meta = (
     <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 10 : 12, flexWrap: 'wrap', marginTop: compact ? 1 : (narrow ? 8 : 4) }}>
@@ -350,50 +376,68 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <textarea
-            className="task-title"
-            value={localTitle}
-            readOnly={!selected}
-            onChange={(e) => setLocalTitle(e.target.value)}
-            onBlur={saveTitle}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.target.blur();
-              }
-            }}
-            onClick={selected ? (e) => e.stopPropagation() : undefined}
-            placeholder="Task title…"
-            aria-label="Task title"
-            name="taskTitle"
-            autoComplete="off"
-            rows={1}
-            ref={(el) => {
-              if (el) {
-                el.style.height = 'auto';
-                el.style.height = el.scrollHeight + 'px';
-              }
-            }}
-            onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            style={{
-              width: '100%',
-              minWidth: 0,
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              background: 'transparent',
-              fontSize: compact ? '14.5px' : (narrow ? '17px' : '15.5px'),
-              fontWeight: narrow ? 500 : 600,
-              lineHeight: 1.34,
-              color: 'var(--text)',
-              fontFamily: 'inherit',
-              padding: 0,
-              margin: 0,
-              pointerEvents: selected ? 'auto' : 'none',
-              cursor: selected ? 'text' : 'pointer',
-            }}
-          />
-          {selected ? (
+          {card ? (
+            <div
+              className="task-title"
+              style={{
+                width: '100%',
+                minWidth: 0,
+                fontSize: '14px',
+                fontWeight: 500,
+                lineHeight: 1.4,
+                color: 'var(--text)',
+              }}
+            >
+              {task.title}
+            </div>
+          ) : (
+            <textarea
+              className="task-title"
+              value={localTitle}
+              readOnly={!selected}
+              onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.target.blur();
+                }
+              }}
+              onClick={selected ? (e) => e.stopPropagation() : undefined}
+              placeholder="Task title…"
+              aria-label="Task title"
+              name="taskTitle"
+              autoComplete="off"
+              rows={1}
+              ref={(el) => {
+                if (el) {
+                  el.style.height = 'auto';
+                  el.style.height = el.scrollHeight + 'px';
+                }
+              }}
+              onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+              style={{
+                width: '100%',
+                minWidth: 0,
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                background: 'transparent',
+                fontSize: compact ? '14.5px' : (narrow ? '17px' : '15.5px'),
+                fontWeight: narrow ? 500 : 600,
+                lineHeight: 1.34,
+                color: 'var(--text)',
+                fontFamily: 'inherit',
+                padding: 0,
+                margin: 0,
+                pointerEvents: selected ? 'auto' : 'none',
+                cursor: selected ? 'text' : 'pointer',
+              }}
+            />
+          )}
+          {card ? (
+            task.note ? <div className="task-note-clamp" style={{ fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.45, marginTop: 3, WebkitLineClamp: 2 }}>{task.note}</div> : null
+          ) : selected ? (
             <textarea
               value={localNote}
               onChange={(e) => setLocalNote(e.target.value)}
@@ -427,12 +471,11 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           ) : task.note ? (
             <div className="task-note-clamp" style={{ fontSize: narrow ? '14.5px' : '12.5px', color: 'var(--text-3)', lineHeight: 1.4, marginTop: narrow ? 3 : 2 }}>{task.note}</div>
           ) : null}
-          {hasMeta && (compact ? null : meta)}
-          {compact && hasMeta && meta}
+          {hasMeta && (card ? cardMeta : meta)}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 1, paddingLeft: 4, flexShrink: card ? 1 : 0, minWidth: card ? 64 : undefined, maxWidth: card ? '40%' : undefined, position: 'relative' }}>
-          {showProject && proj && (
+          {showProject && proj && !card && (
             <div style={{ position: 'relative', minWidth: card ? 0 : undefined }} onClick={(e) => e.stopPropagation()}>
               {!narrow && (
               <button
