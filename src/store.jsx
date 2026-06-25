@@ -156,7 +156,7 @@ export function useStore() {
       if (window.location.pathname.startsWith('/mobile')) {
         return { type: 'browse' };
       }
-      return { type: 'board' };
+      return { type: 'today' };
     }
     return { type: 'today' };
   });
