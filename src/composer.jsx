@@ -600,7 +600,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input ref={inputRef} className="no-sel" value={title} onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(variant === 'modal' ? false : !e.metaKey); if (e.key === 'Escape') close(); }}
           placeholder="Task name"
           aria-label="Task name"
           name="task-name"
@@ -626,7 +626,7 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         )}
       </div>
       <input value={note} onChange={(e) => setNote(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
+        onKeyDown={(e) => { if (e.key === 'Enter') submit(variant === 'modal' ? false : !e.metaKey); if (e.key === 'Escape') close(); }}
         placeholder="Description"
         aria-label="Description"
         name="task-description"
