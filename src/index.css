@@ -127,6 +127,12 @@ input, textarea { font-family: inherit; }
 
 /* ── Task row ─────────────────────────────────────────── */
 .task-row { position: relative; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: 12px; cursor: pointer; border-radius: 10px; transition: background .12s; }
+/* Long lists (Inbox / Project / Label / Logbook / Board): the browser skips
+   layout+paint for rows scrolled off-screen, but keeps them in the DOM so
+   drag-and-drop measurement and selection still work. `auto` caches each row's
+   real height after first paint, so variable-height rows don't drift the scrollbar.
+   On-screen rows render normally, including overflowing menus/popovers. */
+.task-row { content-visibility: auto; contain-intrinsic-size: auto 56px; }
 .task-row.is-selected { background: var(--active); }
 .task-row .row-hover { opacity: 0; transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
 .task-row.is-selected .row-hover { opacity: 1; }
