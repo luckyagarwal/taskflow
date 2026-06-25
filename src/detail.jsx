@@ -554,9 +554,11 @@ export function TaskEditor({ taskId, inline, mobile }) {
             <div aria-live="assertive" className="sr-only">{subAnnounce}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '6px 0' }}>
               <span style={{ color: 'var(--accent)' }}><I.plusSm size={18} /></span>
-              <input value={newSub} onChange={(e) => setNewSub(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newSub.trim()) { addSubtask(task.id, newSub.trim()); setNewSub(''); } }}
-                placeholder="Add sub-task" aria-label="Add sub-task" name="newSubtask" autoComplete="off" style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }} />
+              <textarea value={newSub} onChange={(e) => setNewSub(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && newSub.trim()) { e.preventDefault(); addSubtask(task.id, newSub.trim()); setNewSub(''); } }}
+                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                placeholder="Add sub-task" aria-label="Add sub-task" name="newSubtask" autoComplete="off" rows={1}
+                style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, color: 'var(--text)', resize: 'none', overflow: 'hidden', fontFamily: 'inherit' }} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0 2px' }}>

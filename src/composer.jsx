@@ -625,13 +625,15 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
           </button>
         )}
       </div>
-      <input value={note} onChange={(e) => setNote(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') submit(variant === 'modal' ? false : !e.metaKey); if (e.key === 'Escape') close(); }}
+      <textarea value={note} onChange={(e) => setNote(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(variant === 'modal' ? false : !e.metaKey); } if (e.key === 'Escape') close(); }}
+        onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
         placeholder="Description"
         aria-label="Description"
         name="task-description"
         autoComplete="off"
-        style={{ width: '100%', border: 'none', background: 'transparent', fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)', marginTop: 4 }} />
+        rows={1}
+        style={{ width: '100%', border: 'none', background: 'transparent', fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)', marginTop: 4, resize: 'none', overflow: 'hidden', fontFamily: 'inherit' }} />
 
 
 

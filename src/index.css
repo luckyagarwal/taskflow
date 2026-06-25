@@ -181,6 +181,7 @@ input, textarea { font-family: inherit; }
 .seg button.on { background: var(--bg-elev); color: var(--text); box-shadow: var(--shadow-sm); }
 
 /* ── inputs ───────────────────────────────────────────── */
+input:focus, textarea:focus { outline: none; }
 .field { width: 100%; background: var(--bg); border: 1.5px solid var(--border-2); border-radius: 10px; padding: 10px 12px; font-size: 14.5px; color: var(--text); outline: none; transition: border-color .12s, box-shadow .12s; }
 .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .field::placeholder { color: var(--text-3); }
