@@ -420,6 +420,6 @@ export const H = {
   projectById: (id) => projects.find((p) => p.id === id),
   priorityColor: (p) => ({ 1: '#E44332', 2: '#F5A623', 3: '#2D7FF9', 4: null })[p] || null,
   parseTask,
-  advanceRecurring,
+
   dateRangeLabel,
 };
