@@ -87,7 +87,7 @@ function SubtaskItem({
       onMouseLeave={() => { setHovered(false); setDraggableId(null); }}
       style={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 11,
         padding: '7px 0',
         borderBottom: '1px solid var(--border)',
@@ -118,7 +118,7 @@ function SubtaskItem({
             transition: 'opacity .15s',
             display: 'flex',
             alignItems: 'center',
-            padding: '0 2px'
+            padding: '2px 2px 0'
           }}
         >
           <I.grip size={14} />
@@ -128,7 +128,7 @@ function SubtaskItem({
       )}
 
       {/* 1. Status Dropdown / Checkbox */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', paddingTop: 1 }}>
         <button onClick={(e) => {
           if (e.altKey) {
             e.preventDefault();
@@ -199,7 +199,7 @@ function SubtaskItem({
       />
 
       {/* 3. Priority Popover */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', paddingTop: 2 }}>
         <button type="button" aria-label="Set subtask priority" onClick={() => setMenu(menu === 'prio' ? null : 'prio')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: s.priority < 4 ? prioOpt.color : 'var(--text-3)' }}>
           <I.flag size={14} sw={2} />
         </button>
@@ -215,7 +215,7 @@ function SubtaskItem({
       </div>
 
       {/* 4. Date Popover */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', paddingTop: 2 }}>
         <button type="button" onClick={() => setMenu(menu === 'date' ? null : 'date')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)' }} title="Date" aria-label="Set subtask date">
           <I.calendar size={14} />
         </button>
@@ -247,7 +247,7 @@ function SubtaskItem({
         style={{
           border: 'none',
           background: 'transparent',
-          padding: 4,
+          padding: '2px 4px 4px',
           display: 'flex',
           cursor: 'pointer',
           color: 'var(--text-3)',
