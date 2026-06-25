@@ -284,7 +284,6 @@ export function TaskEditor({ taskId, inline, mobile }) {
   const [newSub, setNewSub] = useState('');
   const [subtasksCollapsed, setSubtasksCollapsed] = useState(false);
   const [doneSubsCollapsed, setDoneSubsCollapsed] = useState(true);
-  const [aiState, setAiState] = useState('idle'); // 'idle' | 'loading' | error message string
   const [creatingLabel, setCreatingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
 
@@ -328,33 +327,6 @@ export function TaskEditor({ taskId, inline, mobile }) {
       }
       setNewLabelName('');
       setCreatingLabel(false);
-    }
-  };
-
-  const suggestSubtasks = async () => {
-    if (!task || aiState === 'loading') return;
-    setAiState('loading');
-    try {
-      const res = await fetch('/api/ai-subtasks', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: task.title, note: task.note || '' }),
-      });
-      if (res.status === 503) {
-        setAiState("AI isn't set up yet");
-        return;
-      }
-      if (!res.ok) {
-        setAiState("Couldn't generate subtasks.");
-        return;
-      }
-      const { subtasks } = await res.json();
-      (subtasks || []).forEach((str) => {
-        if (typeof str === 'string' && str.trim()) addSubtask(task.id, str.trim());
-      });
-      setAiState('idle');
-    } catch {
-      setAiState("Couldn't generate subtasks.");
     }
   };
 
@@ -559,28 +531,6 @@ export function TaskEditor({ taskId, inline, mobile }) {
                 onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                 placeholder="Add sub-task" aria-label="Add sub-task" name="newSubtask" autoComplete="off" rows={1}
                 style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, color: 'var(--text)', resize: 'none', overflow: 'hidden', fontFamily: 'inherit' }} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0 2px' }}>
-              <button
-                type="button"
-                onClick={suggestSubtasks}
-                disabled={aiState === 'loading'}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 10px',
-                  borderRadius: 8, fontSize: 12.5, fontWeight: 500,
-                  border: '1.5px solid var(--border-2)', background: 'transparent',
-                  color: aiState === 'loading' ? 'var(--text-3)' : 'var(--accent)',
-                  cursor: aiState === 'loading' ? 'default' : 'pointer', whiteSpace: 'nowrap',
-                }}
-                title="Suggest subtasks with AI"
-              >
-                <I.sparkle size={14} />
-                {aiState === 'loading' ? 'Generating…' : 'Suggest subtasks'}
-              </button>
-              <span aria-live="polite" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)' }}>
-                {aiState !== 'idle' && aiState !== 'loading' ? aiState : ''}
-              </span>
             </div>
 
             {subDone > 0 && (

@@ -785,8 +785,6 @@ export function FiltersView({ density }) {
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
   const [query, setQuery] = useState('');
-  const [nlState, setNlState] = useState('idle'); // 'idle' | 'loading' | error message string
-
   const colors = ['#7C5CFC', '#1F9D55', '#F5A623', '#9AA0A6', '#2D7FF9', '#E8588A'];
 
   const compiled = compileQuery(query, { labels, projects });
@@ -796,37 +794,6 @@ export function FiltersView({ density }) {
     results = base.filter(compiled.predicate);
   }
   const canSave = compiled.ok && !compiled.empty && query.trim();
-
-  const askInWords = async () => {
-    if (nlState === 'loading') return;
-    const text = window.prompt('Describe the tasks you want');
-    if (!text) return;
-    setNlState('loading');
-    try {
-      const res = await fetch('/api/nl-filter', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          labels: labels.map((l) => ({ name: l.name })),
-          projects: projects.map((p) => ({ name: p.name })),
-        }),
-      });
-      if (res.status === 503) {
-        setNlState("AI isn't set up yet");
-        return;
-      }
-      if (!res.ok) {
-        setNlState("Couldn't translate");
-        return;
-      }
-      const { query: q } = await res.json();
-      setQuery(q || '');
-      setNlState('idle');
-    } catch {
-      setNlState("Couldn't translate");
-    }
-  };
 
   const startEdit = (l) => {
     setEditingId(l.id);
@@ -868,26 +835,7 @@ export function FiltersView({ density }) {
           >
             Save filter
           </button>
-          <button
-            type="button"
-            onClick={askInWords}
-            disabled={nlState === 'loading'}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 12px',
-              borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: '1.5px solid var(--border-2)', background: 'transparent',
-              color: nlState === 'loading' ? 'var(--text-3)' : 'var(--accent)',
-              cursor: nlState === 'loading' ? 'default' : 'pointer', whiteSpace: 'nowrap',
-            }}
-            title="Translate plain English into a filter"
-          >
-            <I.sparkle size={14} />
-            {nlState === 'loading' ? 'Translating…' : 'Ask in words'}
-          </button>
         </div>
-        {nlState !== 'idle' && nlState !== 'loading' && (
-          <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)' }}>{nlState}</div>
-        )}
         {!compiled.ok && (
           <div style={{ marginTop: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--p1)' }}>{compiled.error}</div>
         )}
