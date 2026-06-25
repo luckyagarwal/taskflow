@@ -344,6 +344,13 @@ export function parseTask(raw, projects = [], existingLabels = []) {
     }
   }
 
+  // A bare time or time-range with no explicit date means "today" — otherwise
+  // the parsed time has no day to attach to and silently disappears.
+  if ((time || startTime) && dueOffset === null && startOffset === null) {
+    dueOffset = 0;
+    if (startTime) startOffset = 0;
+  }
+
   const content = text.replace(/\s+/g, ' ').trim();
   return {
     content: content || 'Untitled',

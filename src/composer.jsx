@@ -7,6 +7,7 @@ import { H, parseTask } from './data.js';
 import { useApp } from './store.jsx';
 import { Dot, DueBadge } from './ui.jsx';
 import { DateSelectorModal } from './detail.jsx';
+import { orderedProjectsForSection } from './projects.js';
 
 export const DUE_OPTIONS = [
   { label: 'Today', off: 0, color: 'var(--today)', icon: (p) => <I.today {...p} /> },
@@ -199,9 +200,10 @@ const Switch = ({ checked, onChange, label }) => {
       <div style={{ position: 'relative', width: 32, height: 18, background: checked ? 'var(--accent)' : 'var(--border-2)', borderRadius: 999, transition: 'background-color 0.2s' }}>
         <input type="checkbox" checked={checked} onChange={onChange} style={{ opacity: 0, width: 0, height: 0 }} />
         <div style={{
-          position: 'absolute', top: 2, left: checked ? 16 : 2, width: 14, height: 14,
+          position: 'absolute', top: 2, left: 2, width: 14, height: 14,
           borderRadius: 999, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-          transition: 'left 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+          transform: checked ? 'translateX(14px)' : 'translateX(0)',
+          transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }} />
       </div>
     </label>
@@ -329,7 +331,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
             background: activeField === 'start' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
             color: activeField === 'start' ? 'var(--accent-text)' : 'var(--text-2)',
             textAlign: 'center',
-            transition: 'all 0.15s ease'
+            transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease'
           }}
         >
           <div style={{ fontSize: 9, opacity: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>Start Date</div>
@@ -348,7 +350,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
                 background: activeField === 'due' ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : 'var(--bg)',
                 color: activeField === 'due' ? 'var(--accent-text)' : 'var(--text-2)',
                 textAlign: 'center',
-                transition: 'all 0.15s ease'
+                transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease'
               }}
             >
               <div style={{ fontSize: 9, opacity: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>End Date</div>
@@ -457,7 +459,7 @@ export function WhenPicker({ startOffset, dueOffset, value, time, onChange, onCl
 
 function PillBtn({ icon, label, color, active, onClick }) {
   return (
-    <button onClick={onClick} style={{
+    <button type="button" onClick={onClick} style={{
       display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px',
       borderRadius: 8, fontSize: 13, fontWeight: 500,
       border: `1.5px solid ${active ? 'transparent' : 'var(--border-2)'}`,
@@ -468,7 +470,7 @@ function PillBtn({ icon, label, color, active, onClick }) {
 }
 
 export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, defaultDue = null, defaultTime = null, defaultDuration = null, variant = 'inline', autoOpen = false, onDone }) {
-  const { addTask, setView, projects, labels: storeLabels } = useApp();
+  const { addTask, setView, projects, sections, labels: storeLabels } = useApp();
   const [open, setOpen] = useState(autoOpen);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -577,7 +579,9 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
   const proj = project === 'inbox' ? { id: 'inbox', name: 'Inbox', color: 'var(--text-3)' } : (projects.find(p => p.id === project) || H.projectById(project));
 
   const finalDue = (parsed && parsed.dueOffset !== null) ? parsed.dueOffset : due;
+  const finalStart = (parsed && parsed.startOffset !== null) ? parsed.startOffset : start;
   const finalTime = (parsed && parsed.time) ? parsed.time : time;
+  const finalStartTime = parsed?.startTime || null;
   const finalLabels = (parsed && parsed.labels.length) ? parsed.labels : labels;
   const finalPrio = (parsed && parsed.priority !== 4) ? parsed.priority : prio;
   const finalProj = (parsed && parsed.projectId) ? (parsed.projectId.startsWith('__new__') ? { name: parsed.projectId.replace('__new__', ''), color: '#7C5CFC' } : (projects.find(p => p.id === parsed.projectId) || H.projectById(parsed.projectId))) : proj;
@@ -598,7 +602,10 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         <input ref={inputRef} className="no-sel" value={title} onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
           placeholder="Task name"
-          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontWeight: 500, color: 'var(--text)' }} />
+          aria-label="Task name"
+          name="task-name"
+          autoComplete="off"
+          style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 16, fontWeight: 500, color: 'var(--text)' }} />
         {SR && (
           <button
             type="button"
@@ -621,7 +628,10 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
       <input value={note} onChange={(e) => setNote(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(true); if (e.key === 'Escape') close(); }}
         placeholder="Description"
-        style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)', marginTop: 4 }} />
+        aria-label="Description"
+        name="task-description"
+        autoComplete="off"
+        style={{ width: '100%', border: 'none', background: 'transparent', fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)', marginTop: 4 }} />
 
 
 
@@ -629,9 +639,9 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
         <div style={{ position: 'relative' }}>
           <PillBtn
             icon={<I.calendar size={15} sw={2} />}
-            label={(start !== null || finalDue !== null) ? H.dateRangeLabel(start, finalDue, finalTime, null, duration) : 'Date'}
-            color={(finalDueOpt || (start !== null ? { color: 'var(--today)' } : null))?.color || 'var(--text-2)'}
-            active={start !== null || finalDue !== null}
+            label={(finalStart !== null || finalDue !== null) ? H.dateRangeLabel(finalStart, finalDue, finalTime, finalStartTime, duration) : 'Date'}
+            color={(finalDueOpt || (finalStart !== null ? { color: 'var(--today)' } : null))?.color || 'var(--text-2)'}
+            active={finalStart !== null || finalDue !== null}
             onClick={() => setMenu(menu === 'due' ? null : 'due')}
           />
           {menu === 'due' && (
@@ -654,9 +664,9 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
           {menu === 'prio' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, left: 0, minWidth: 160 }}>
               {PRIO.map((p) => (
-                <div key={p.p} className="pop-item" onClick={() => { setPrio(p.p); setMenu(null); }}>
+                <button type="button" key={p.p} className="pop-item" onClick={() => { setPrio(p.p); setMenu(null); }}>
                   <I.flag size={16} sw={2} style={{ color: p.color }} />{p.label}
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -667,10 +677,10 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
           {menu === 'label' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, left: 0, minWidth: 180 }}>
               {storeLabels.map((l) => (
-                <div key={l.id} className="pop-item" onClick={() => setLabels((ls) => ls.includes(l.id) ? ls.filter((x) => x !== l.id) : [...ls, l.id])}>
+                <button type="button" key={l.id} className="pop-item" onClick={() => setLabels((ls) => ls.includes(l.id) ? ls.filter((x) => x !== l.id) : [...ls, l.id])}>
                   <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
                   {labels.includes(l.id) && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -685,14 +695,28 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
           </button>
           {menu === 'proj' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 36, right: 0, minWidth: 200 }}>
-              <div className="pop-item" onClick={() => { setProject('inbox'); setMenu(null); }}>
+              <button type="button" className="pop-item" onClick={() => { setProject('inbox'); setMenu(null); }}>
                 <I.inbox size={16} style={{ color: 'var(--text-2)' }} />Inbox
-              </div>
+              </button>
               <div className="divider" style={{ margin: '4px 8px' }} />
-              {projects.map((p) => (
-                <div key={p.id} className="pop-item" onClick={() => { setProject(p.id); setMenu(null); }}>
+              {sections.map((sec) => {
+                const items = orderedProjectsForSection(projects, sec.name);
+                if (!items.length) return null;
+                return (
+                  <React.Fragment key={sec.id}>
+                    <div style={{ padding: '5px 10px 3px', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sec.name}</div>
+                    {items.map(({ project: p, depth }) => (
+                      <button type="button" key={p.id} className="pop-item" style={{ paddingLeft: depth ? 22 : undefined }} onClick={() => { setProject(p.id); setMenu(null); }}>
+                        <Dot color={p.color} />{p.name}
+                      </button>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {projects.filter(p => !p.group && !p.parent).map((p) => (
+                <button type="button" key={p.id} className="pop-item" onClick={() => { setProject(p.id); setMenu(null); }}>
                   <Dot color={p.color} />{p.name}
-                </div>
+                </button>
               ))}
             </Popover>
           )}

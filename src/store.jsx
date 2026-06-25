@@ -17,6 +17,35 @@ function uid(prefix) {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+const ANCHOR_KEY = 'taskflow-offset-anchor';
+
+// Returns today as a YYYY-MM-DD string (local time).
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Shift every numeric dueOffset/startOffset by `delta` days so that
+// offsets remain correct when the calendar date has advanced since they
+// were last written (e.g. the app was closed overnight).
+function shiftTaskOffsets(tasks, delta) {
+  if (!delta || !tasks.length) return tasks;
+  return tasks.map((t) => {
+    const next = { ...t };
+    if (typeof t.dueOffset === 'number') next.dueOffset = t.dueOffset - delta;
+    if (typeof t.startOffset === 'number') next.startOffset = t.startOffset - delta;
+    if (Array.isArray(t.subtasks)) {
+      next.subtasks = t.subtasks.map((s) => {
+        const ns = { ...s };
+        if (typeof s.dueOffset === 'number') ns.dueOffset = s.dueOffset - delta;
+        if (typeof s.startOffset === 'number') ns.startOffset = s.startOffset - delta;
+        return ns;
+      });
+    }
+    return next;
+  });
+}
+
 export function AppProvider({ children, value }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
@@ -277,8 +306,29 @@ export function useStore() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const local = await repo.loadAll();
+      let local = await repo.loadAll();
       if (cancelled) return;
+
+      // Shift stored offsets forward when the calendar date has advanced since
+      // they were last saved. Without this a task set to "today" stays at
+      // offset 0 forever and never goes overdue.
+      const today = todayISO();
+      const anchor = localStorage.getItem(ANCHOR_KEY);
+      if (anchor && anchor !== today) {
+        const anchorDate = new Date(anchor + 'T00:00:00');
+        const todayDate = new Date(today + 'T00:00:00');
+        const daysDelta = Math.round((todayDate - anchorDate) / 86400000);
+        if (daysDelta > 0) {
+          const shifted = shiftTaskOffsets(local.tasks || [], daysDelta);
+          if (shifted !== local.tasks) {
+            local = { ...local, tasks: shifted };
+            // Persist the corrected offsets so they survive the next load.
+            repo.enqueue({ tasks: shifted }, {});
+          }
+        }
+      }
+      localStorage.setItem(ANCHOR_KEY, today);
+
       applyToState(local);
       setLoaded(true);
 
@@ -834,6 +884,11 @@ export function useStore() {
     setSections((prev) => {
       const sec = prev.find((s) => s.id === id);
       if (!sec) return prev;
+      if (patch.name) {
+        const cleanName = patch.name.trim();
+        if (prev.some(s => s.id !== id && s.name.toLowerCase() === cleanName.toLowerCase())) return prev;
+        patch = { ...patch, name: cleanName };
+      }
 
       const updatedSecs = prev.map((s) => {
         if (s.id !== id) return s;

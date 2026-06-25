@@ -6,6 +6,7 @@ import { H } from './data.js';
 import { useApp } from './store.jsx';
 import { Checkbox, Dot, LabelChip, Ring, useIsNarrow } from './ui.jsx';
 import { Popover, DUE_OPTIONS, PRIO, WhenPicker } from './composer.jsx';
+import { orderedProjectsForSection } from './projects.js';
 
 const STATUS_CHOICES = {
   planned: { label: 'Planned', icon: <span style={{ width: 14, height: 14, borderRadius: 99, border: '2.5px solid var(--text-3)', display: 'inline-block' }} />, color: 'var(--text-3)' },
@@ -133,15 +134,15 @@ function SubtaskItem({
           } else {
             setMenu(menu === 'status' ? null : 'status');
           }
-        }} style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', cursor: 'pointer' }}>
+        }} type="button" aria-label="Change subtask status" style={{ border: 'none', background: 'transparent', padding: 0, display: 'flex', cursor: 'pointer' }}>
           <StatusIcon status={s.status || 'planned'} priority={s.priority} size={18} />
         </button>
         {menu === 'status' && (
           <Popover onClose={() => setMenu(null)} style={{ top: 24, left: 0, zIndex: 100, minWidth: 160 }}>
             {Object.entries(STATUS_CHOICES).map(([k, v]) => (
-              <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateSubtask(taskId, s.id, { status: k }); setMenu(null); }}>
+              <button type="button" key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateSubtask(taskId, s.id, { status: k }); setMenu(null); }}>
                 {v.icon}{v.label}
-              </div>
+              </button>
             ))}
           </Popover>
         )}
@@ -158,7 +159,10 @@ function SubtaskItem({
             e.target.blur();
           }
         }}
-        placeholder="Subtask title..."
+        placeholder="Subtask title…"
+        aria-label="Subtask title"
+        name="subtaskTitle"
+        autoComplete="off"
         rows={1}
         ref={(el) => {
           if (el) {
@@ -185,15 +189,15 @@ function SubtaskItem({
 
       {/* 3. Priority Popover */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => setMenu(menu === 'prio' ? null : 'prio')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: s.priority < 4 ? prioOpt.color : 'var(--text-3)' }}>
+        <button type="button" aria-label="Set subtask priority" onClick={() => setMenu(menu === 'prio' ? null : 'prio')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: s.priority < 4 ? prioOpt.color : 'var(--text-3)' }}>
           <I.flag size={14} sw={2} />
         </button>
         {menu === 'prio' && (
           <Popover onClose={() => setMenu(null)} style={{ top: 24, right: 0, zIndex: 100, minWidth: 140 }}>
             {PRIO.map((p) => (
-              <div key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateSubtask(taskId, s.id, { priority: p.p }); setMenu(null); }}>
+              <button type="button" key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateSubtask(taskId, s.id, { priority: p.p }); setMenu(null); }}>
                 <I.flag size={14} sw={2} style={{ color: p.color }} />{p.label}
-              </div>
+              </button>
             ))}
           </Popover>
         )}
@@ -201,7 +205,7 @@ function SubtaskItem({
 
       {/* 4. Date Popover */}
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <button onClick={() => setMenu(menu === 'date' ? null : 'date')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)' }} title="Date">
+        <button type="button" onClick={() => setMenu(menu === 'date' ? null : 'date')} style={{ border: 'none', background: 'transparent', padding: 4, display: 'flex', cursor: 'pointer', color: (dueLbl || startLbl) ? TONE[dueLbl?.tone || startLbl?.tone] : 'var(--text-3)' }} title="Date" aria-label="Set subtask date">
           <I.calendar size={14} />
         </button>
         {(startLbl || dueLbl) && (
@@ -227,7 +231,8 @@ function SubtaskItem({
       {/* 6. Delete Button */}
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); deleteSubtask(taskId, s.id); }}
+        aria-label="Delete subtask"
+        onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this subtask?')) deleteSubtask(taskId, s.id); }}
         style={{
           border: 'none',
           background: 'transparent',
@@ -262,7 +267,7 @@ function MetaRow({ icon, label, children, onClick, accent }) {
 }
 
 export function TaskEditor({ taskId, inline, mobile }) {
-  const { tasks, updateTask, toggleTask, addSubtask, projects, labels: customLabels, addLabel } = useApp();
+  const { tasks, updateTask, toggleTask, addSubtask, projects, sections, labels: customLabels, addLabel } = useApp();
   const task = tasks.find((t) => t.id === taskId);
   const [menu, setMenu] = useState(null);
   const [newSub, setNewSub] = useState('');
@@ -413,6 +418,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <textarea value={localTitle} onChange={(e) => setLocalTitle(e.target.value)} onBlur={saveTitle}
+            aria-label="Task title" name="taskTitle" autoComplete="off"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -421,10 +427,11 @@ export function TaskEditor({ taskId, inline, mobile }) {
             }}
             rows={1}
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 19, fontWeight: 600, lineHeight: 1.3, color: task.done ? 'var(--text-3)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none', fontFamily: 'inherit' }} />
+            style={{ width: '100%', border: 'none', resize: 'none', background: 'transparent', fontSize: 19, fontWeight: 600, lineHeight: 1.3, color: task.done ? 'var(--text-3)' : 'var(--text)', textDecoration: task.done ? 'line-through' : 'none', fontFamily: 'inherit' }} />
           <textarea value={localNote} onChange={(e) => setLocalNote(e.target.value)} onBlur={saveNote} placeholder="Add a description…" rows={1}
+            aria-label="Description" name="taskNote" autoComplete="off"
             onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-            style={{ width: '100%', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: 'var(--text-2)', marginTop: 6, fontFamily: 'inherit', minHeight: 24 }} />
+            style={{ width: '100%', border: 'none', resize: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, lineHeight: 1.5, color: 'var(--text-2)', marginTop: 6, fontFamily: 'inherit', minHeight: 24 }} />
         </div>
       </div>
 
@@ -446,7 +453,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
           
           {task.subtasks.length > 0 && (
             <div style={{ position: 'relative' }}>
-              <button onClick={(e) => { e.stopPropagation(); setMenu(menu === 'subtaskSort' ? null : 'subtaskSort'); }} className="icon-btn" style={{ width: 24, height: 24, borderRadius: 6, background: (task.subtaskSort && task.subtaskSort !== 'manual') ? 'var(--hover-strong)' : undefined }} title="Sort subtasks">
+              <button type="button" aria-label="Sort subtasks" onClick={(e) => { e.stopPropagation(); setMenu(menu === 'subtaskSort' ? null : 'subtaskSort'); }} className="icon-btn" style={{ width: 24, height: 24, borderRadius: 6, background: (task.subtaskSort && task.subtaskSort !== 'manual') ? 'var(--hover-strong)' : undefined }} title="Sort subtasks">
                 <I.sliders size={14} style={{ color: (task.subtaskSort && task.subtaskSort !== 'manual') ? 'var(--accent)' : 'var(--text-3)' }} />
               </button>
               {menu === 'subtaskSort' && (
@@ -458,7 +465,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
                     { value: 'priority', label: 'Priority' },
                     { value: 'created', label: 'Date Added' }
                   ].map((opt) => (
-                    <div key={opt.value} className="pop-item" style={{
+                    <button type="button" key={opt.value} className="pop-item" style={{
                       fontWeight: (task.subtaskSort || 'manual') === opt.value ? 600 : 500,
                       color: (task.subtaskSort || 'manual') === opt.value ? 'var(--accent)' : 'var(--text)',
                       display: 'flex',
@@ -470,7 +477,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
                     }} onClick={() => { updateTask(task.id, { subtaskSort: opt.value }); setMenu(null); }}>
                       <span>{opt.label}</span>
                       {(task.subtaskSort || 'manual') === opt.value && <I.check size={13} style={{ color: 'var(--accent)' }} />}
-                    </div>
+                    </button>
                   ))}
                 </Popover>
               )}
@@ -499,7 +506,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               <span style={{ color: 'var(--accent)' }}><I.plusSm size={18} /></span>
               <input value={newSub} onChange={(e) => setNewSub(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && newSub.trim()) { addSubtask(task.id, newSub.trim()); setNewSub(''); } }}
-                placeholder="Add sub-task" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }} />
+                placeholder="Add sub-task" aria-label="Add sub-task" name="newSubtask" autoComplete="off" style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0 2px' }}>
@@ -519,9 +526,9 @@ export function TaskEditor({ taskId, inline, mobile }) {
                 <I.sparkle size={14} />
                 {aiState === 'loading' ? 'Generating…' : 'Suggest subtasks'}
               </button>
-              {aiState !== 'idle' && aiState !== 'loading' && (
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)' }}>{aiState}</span>
-              )}
+              <span aria-live="polite" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)' }}>
+                {aiState !== 'idle' && aiState !== 'loading' ? aiState : ''}
+              </span>
             </div>
 
             {subDone > 0 && (
@@ -564,7 +571,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160, zIndex: 100 }}>
               <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Status</div>
               {Object.entries(STATUS_CHOICES).map(([k, v]) => (
-                <div key={k} className="pop-item" style={{ gap: 8 }} onClick={() => {
+                <button type="button" key={k} className="pop-item" style={{ gap: 8 }} onClick={() => {
                   updateTask(task.id, {
                     status: k,
                     done: k === 'done',
@@ -574,7 +581,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
                 }}>
                   <StatusIcon status={k} priority={task.priority} size={16} />
                   <span>{v.label}</span>
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -607,9 +614,9 @@ export function TaskEditor({ taskId, inline, mobile }) {
           {menu === 'prio' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 160, zIndex: 100 }}>
               {PRIO.map((p) => (
-                <div key={p.p} className="pop-item" onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
+                <button type="button" key={p.p} className="pop-item" onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
                   <I.flag size={16} sw={2} style={{ color: p.color }} />{p.label}
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -627,19 +634,36 @@ export function TaskEditor({ taskId, inline, mobile }) {
               <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
               
               {/* Inbox */}
-              <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
+              <button type="button" className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
                 <I.inbox size={14} />
                 <span>Inbox</span>
                 {(!task.projectId || task.projectId === 'inbox') && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-              </div>
+              </button>
               
-              {/* Projects */}
-              {projects.map((p) => (
-                <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+              {/* Projects grouped by section */}
+              {sections.map((sec) => {
+                const items = orderedProjectsForSection(projects, sec.name);
+                if (!items.length) return null;
+                return (
+                  <React.Fragment key={sec.id}>
+                    <div style={{ padding: '6px 10px 3px', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{sec.name}</div>
+                    {items.map(({ project: p, depth }) => (
+                      <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13, paddingLeft: depth ? 22 : undefined }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+                        <Dot color={p.color} size={8} />
+                        <span>{p.name}</span>
+                        {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
+                      </div>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {/* Projects with no section */}
+              {projects.filter(p => !p.group && !p.parent).map((p) => (
+                <button type="button" key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
                   <Dot color={p.color} size={8} />
                   <span>{p.name}</span>
                   {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -656,18 +680,19 @@ export function TaskEditor({ taskId, inline, mobile }) {
               {customLabels.map((l) => {
                 const on = task.labels.includes(l.id);
                 return (
-                  <div key={l.id} className="pop-item" onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
+                  <button type="button" key={l.id} className="pop-item" onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
                     <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
                     {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                  </div>
+                  </button>
                 );
               })}
               <div className="divider" style={{ margin: '4px 0' }} />
               {creatingLabel ? (
                 <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6 }} onClick={(e) => e.stopPropagation()}>
                   <input autoFocus value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)}
-                    placeholder="Label name..."
-                    style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '4px 6px', fontSize: 12, outline: 'none' }}
+                    placeholder="Label name…"
+                    aria-label="Label name" name="newLabelName" autoComplete="off"
+                    style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 4, padding: '4px 6px', fontSize: 12 }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleCreateLabel();
                       if (e.key === 'Escape') setCreatingLabel(false);
@@ -678,9 +703,9 @@ export function TaskEditor({ taskId, inline, mobile }) {
                   </div>
                 </div>
               ) : (
-                <div className="pop-item" style={{ color: 'var(--accent)', fontWeight: 500 }} onClick={(e) => { e.stopPropagation(); setCreatingLabel(true); }}>
-                  <I.plusSm size={14} /> Create label...
-                </div>
+                <button type="button" className="pop-item" style={{ color: 'var(--accent)', fontWeight: 500 }} onClick={(e) => { e.stopPropagation(); setCreatingLabel(true); }}>
+                  <I.plusSm size={14} /> Create label…
+                </button>
               )}
             </Popover>
           )}
@@ -699,16 +724,16 @@ export function TaskEditor({ taskId, inline, mobile }) {
           </MetaRow>
           {menu === 'repeat' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 180 }}>
-              <div className="pop-item" onClick={() => { updateTask(task.id, { recurring: null }); setMenu(null); }}>None</div>
-              <div className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'day' } }); setMenu(null); }}>Every day</div>
-              <div className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'week' } }); setMenu(null); }}>Every week</div>
-              <div className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'month' } }); setMenu(null); }}>Every month</div>
-              <div className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'year' } }); setMenu(null); }}>Every year</div>
+              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: null }); setMenu(null); }}>None</button>
+              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'day' } }); setMenu(null); }}>Every day</button>
+              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'week' } }); setMenu(null); }}>Every week</button>
+              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'month' } }); setMenu(null); }}>Every month</button>
+              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'year' } }); setMenu(null); }}>Every year</button>
               <div className="divider" style={{ margin: '4px 8px' }} />
               {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
-                <div key={dow} className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'weekday', dow } }); setMenu(null); }}>
+                <button type="button" key={dow} className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'weekday', dow } }); setMenu(null); }}>
                   Every {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow]}
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -740,8 +765,8 @@ export function TaskDetail({ taskId, onClose, mobile }) {
           </span>
         ) : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 500, color: 'var(--text-2)' }}><I.inbox size={16} />Inbox</span>}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
-          <button className="icon-btn" title="Delete" onClick={() => { deleteTask(task.id); onClose(); }}><I.trash size={17} /></button>
-          <button className="icon-btn" title="More"><I.dots size={18} /></button>
+          <button type="button" className="icon-btn" title="Delete" aria-label="Delete task" onClick={() => { if (window.confirm('Delete this task? This cannot be undone.')) { deleteTask(task.id); onClose(); } }}><I.trash size={17} /></button>
+          <button type="button" className="icon-btn" title="More" aria-label="More actions"><I.dots size={18} /></button>
         </div>
       </div>
 
@@ -766,14 +791,19 @@ function fmtDate(off) {
   return `${H.DOW[d.getDay()]}, ${H.MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
-function IOSToggle({ value, onChange }) {
+function IOSToggle({ value, onChange, label = 'Toggle' }) {
   return (
-    <div onClick={() => onChange(!value)} className="ios-toggle" style={{
-      background: value ? 'var(--accent)' : 'var(--border-2)',
-      justifyContent: value ? 'flex-end' : 'flex-start',
-    }}>
-      <div className="ios-toggle-thumb" />
-    </div>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      aria-label={label}
+      onClick={() => onChange(!value)}
+      className="ios-toggle"
+      style={{ background: value ? 'var(--accent)' : 'var(--border-2)' }}
+    >
+      <span className="ios-toggle-thumb" style={{ transform: value ? 'translateX(20px)' : 'translateX(0)' }} aria-hidden="true" />
+    </button>
   );
 }
 
@@ -1022,7 +1052,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
 
         {/* Calendar grid card */}
         <div className="m-group" style={{ padding: '12px 12px 14px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'space-between', padding: '2px 6px 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 6px 10px' }}>
             <span style={{ fontSize: 16, fontWeight: 600 }}>{H.MONTHS_LONG[month]} {year}</span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button type="button" className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setMonthShift(m => m - 1)}>
@@ -1078,7 +1108,7 @@ export function DatePage({ task, startOffset, dueOffset, time, onChange, onClose
           <div className="m-toggle-row" style={{ borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: 'var(--text-2)', display: 'flex' }}><I.calendar size={19} /></span>
             <span style={{ flex: 1, fontWeight: 500, fontSize: 15.5 }}>End date</span>
-            <IOSToggle value={rangeOn} onChange={toggleRange} />
+            <IOSToggle value={rangeOn} onChange={toggleRange} label="End date" />
           </div>
           {rangeOn && timeRow({
             label: 'Start time',

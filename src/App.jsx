@@ -37,6 +37,8 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
         <span className="nav-ico" style={{ color: active ? undefined : (color || 'var(--text-3)'), display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
         <input
           autoFocus
+          name="rename-nav-item"
+          autoComplete="off"
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditing(false); }}
@@ -63,7 +65,8 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
       <span className="nav-ico" style={{ color: active ? undefined : (color || 'var(--text-3)'), display: 'grid', placeItems: 'center', width: 20 }}>{icon}</span>
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
       {onAddChild && hovered && (
-        <span
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onAddChild(); }}
           style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s' }}
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
@@ -72,29 +75,33 @@ function NavItem({ icon, label, count, active, color, onClick, onDelete, onRenam
           aria-label="Add sub-project"
         >
           <I.plusSm size={15} />
-        </span>
+        </button>
       )}
       {onRename && hovered && (
-        <span
+        <button
+          type="button"
           onClick={startEdit}
           style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', marginRight: 4 }}
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
           title="Rename (or double-click)"
+          aria-label="Rename (or double-click)"
         >
           <I.edit size={14} />
-        </span>
+        </button>
       )}
       {onDelete && hovered ? (
-        <span 
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           style={{ display: 'grid', placeItems: 'center', padding: '2px 4px', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s' }}
           onMouseEnter={(e) => e.currentTarget.style.color = 'var(--p1)'}
           onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
           title="Delete"
+          aria-label="Delete"
         >
           <I.trash size={14} />
-        </span>
+        </button>
       ) : count ? (
         <span className="nav-count">{count}</span>
       ) : null}
@@ -116,6 +123,8 @@ function InlineAddForm({ placeholder, indentLeft = 28, onSubmit, onCancel }) {
     <div style={{ padding: `4px 8px 6px ${indentLeft}px`, display: 'flex', alignItems: 'center', gap: 6 }}>
       <input
         autoFocus
+        name="inline-add"
+        autoComplete="off"
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel(); }}
@@ -285,6 +294,8 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
             <span style={{ transition: 'transform .15s', transform: open ? 'none' : 'rotate(-90deg)', color: 'var(--text-3)' }}><I.chevD size={15} /></span>
             <input
               autoFocus
+              name="rename-section"
+              autoComplete="off"
               value={sectionEditName}
               onChange={(e) => setSectionEditName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') commitSectionEdit(); if (e.key === 'Escape') setEditingSection(false); }}
@@ -305,24 +316,28 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
         )}
         {headerHovered && !editingSection && (
           <div style={{ display: 'flex', gap: 2 }}>
-            <span 
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); startSectionEdit(); }}
               style={{ display: 'grid', placeItems: 'center', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', padding: 4 }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
               title="Rename section (or double-click)"
+              aria-label="Rename section (or double-click)"
             >
               <I.edit size={14} />
-            </span>
-            <span 
+            </button>
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); handleSectionDelete(); }}
               style={{ display: 'grid', placeItems: 'center', color: 'var(--text-3)', cursor: 'pointer', transition: 'color .1s', padding: 4 }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--p1)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-3)'}
               title="Delete section"
+              aria-label="Delete section"
             >
               <I.trash size={14} />
-            </span>
+            </button>
           </div>
         )}
       </div>
@@ -380,13 +395,16 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
               <span style={{ position: 'absolute', left: 0, top: 4, bottom: 4, width: 3, borderRadius: 2, background: 'var(--accent)', zIndex: 3 }} />
             )}
             {parentHasKids ? (
-              <span
+              <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); toggleExpand(p.id); }}
                 title={collapsed ? 'Expand' : 'Collapse'}
+                aria-label={collapsed ? 'Expand' : 'Collapse'}
+                aria-expanded={!collapsed}
                 style={{ position: 'absolute', left: -2, top: 9, zIndex: 2, display: 'grid', placeItems: 'center', width: 16, height: 16, color: 'var(--text-3)', cursor: 'pointer', transition: 'transform .15s', transform: collapsed ? 'rotate(-90deg)' : 'none' }}
               >
                 <I.chevD size={13} />
-              </span>
+              </button>
             ) : showGrip && (
               <span
                 title="Drag to reorder or nest"
@@ -402,7 +420,7 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
           </div>
           {addingChildOf === p.id && (
             <InlineAddForm
-              placeholder="Sub-project name..."
+              placeholder="Sub-project name…"
               indentLeft={44}
               onSubmit={(name) => addProject(name, title, p.id)}
               onCancel={() => setAddingChildOf(null)}
@@ -419,7 +437,7 @@ function ProjectGroup({ title, projects = [], allProjects = [], view, setView })
       {open && (
         addingProj ? (
           <InlineAddForm
-            placeholder="Project name..."
+            placeholder="Project name…"
             indentLeft={28}
             onSubmit={(name) => addProject(name, title, null)}
             onCancel={() => setAddingProj(false)}
@@ -483,10 +501,10 @@ function Sidebar({ style }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 12px' }}>
         <span style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#2D7FF9,#7C5CFC)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 600, fontSize: 15, flex: 'none' }}>C</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Casex Tasks</div>
+          <div translate="no" style={{ fontWeight: 600, fontSize: 14.5, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Casex Tasks</div>
         </div>
-        <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme"><I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
-        <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setSidebarCollapsed(true)} title="Collapse sidebar"><I.menu size={18} /></button>
+        <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title="Toggle theme" aria-label="Toggle theme"><I.sun size={18} style={{ display: theme === 'dark' ? 'block' : 'none' }} /><I.moon size={18} style={{ display: theme !== 'dark' ? 'block' : 'none' }} /></button>
+        <button className="icon-btn" style={{ flex: 'none' }} onClick={() => setSidebarCollapsed(true)} title="Collapse sidebar" aria-label="Collapse sidebar"><I.menu size={18} /></button>
       </div>
 
       {/* add + search */}
@@ -497,7 +515,7 @@ function Sidebar({ style }) {
       </button>
       <button onClick={() => setSearch(true)} style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '8px 12px', borderRadius: 9, color: 'var(--text-3)', fontWeight: 600, fontSize: 14.5, border: 'none', background: 'transparent', cursor: 'pointer' }}
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-        <I.search size={19} /> Search <kbd style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, border: '1px solid var(--border-2)', borderRadius: 5, padding: '1px 6px' }}>⌘K</kbd>
+        <I.search size={19} /> Search <kbd style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, border: '1px solid var(--border-2)', borderRadius: 5, padding: '1px 6px' }}>⌘{' '}K</kbd>
       </button>
 
       {/* primary nav */}
@@ -539,9 +557,9 @@ function Sidebar({ style }) {
 
       {addingSec ? (
         <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg-elev)', borderRadius: 8, border: '1px solid var(--border)', marginTop: 8 }}>
-          <input autoFocus value={newSecName} onChange={(e) => setNewSecName(e.target.value)}
+          <input autoFocus name="add-section" autoComplete="off" value={newSecName} onChange={(e) => setNewSecName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddSection(); if (e.key === 'Escape') { setAddingSec(false); setNewSecName(''); } }}
-            placeholder="Section name..."
+            placeholder="Section name…"
             style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }} />
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
             <button onClick={() => { setAddingSec(false); setNewSecName(''); }} style={{ border: 'none', background: 'transparent', color: 'var(--text-3)', fontSize: 12.5, fontWeight: 500, padding: '4px 8px', cursor: 'pointer' }}>Cancel</button>
@@ -1017,7 +1035,7 @@ export function DesktopApp({ frameW = 1320 }) {
         {search && <SearchOverlay onClose={() => setSearch(false)} />}
       </AnimatePresence>
       <AnimatePresence>
-        {quickAdd && <QuickAddModal prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
+        {quickAdd && <QuickAddModal defaultProject={view.type === 'project' ? view.id : 'inbox'} prefill={typeof quickAdd === 'object' ? quickAdd : null} onClose={() => setQuickAdd(false)} />}
       </AnimatePresence>
       <BulkActionBar />
       {toasts && toasts.length > 0 && (
