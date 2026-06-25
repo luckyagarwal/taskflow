@@ -178,16 +178,38 @@ export function SectionHeader({ title, count, color, icon, right, collapsible, c
         background: 'var(--bg)', width: '100%', textAlign: 'left'
       }}>
       {collapsible && (
-        <span style={{
-          display: 'flex', color: 'var(--text-3)', transition: 'transform .15s',
-          transform: collapsed ? 'rotate(-90deg)' : 'none'
-        }}><I.chevD size={15} /></span>
+        <motion.span
+          animate={{ rotate: collapsed ? -90 : 0 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          style={{ display: 'flex', color: 'var(--text-3)', originX: '50%', originY: '50%' }}
+        ><I.chevD size={15} /></motion.span>
       )}
       {icon}
       <span style={{ fontSize: 14.5, fontWeight: 600, color: color || 'var(--text)' }}>{title}</span>
       {count !== undefined && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)' }}>{count}</span>}
       {right && <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>{right}</div>}
     </Tag>
+  );
+}
+
+// ── Collapsible section content wrapper ─────────────────────
+const collapsibleStyle = { overflow: 'hidden' };
+export function CollapsibleContent({ collapsed, children }) {
+  const shouldReduceMotion = useReducedMotion();
+  return (
+    <AnimatePresence initial={false}>
+      {!collapsed && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 38 }}
+          style={collapsibleStyle}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -513,21 +535,21 @@ export function TodayView({ density }) {
           <SectionHeader title="Overdue" count={overdue.length} color="var(--p1)"
             collapsible collapsed={collapsedSections.includes('today-overdue')} onToggle={(e) => handleToggle('today-overdue', e)}
             right={<button type="button" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-text)' }}>Reschedule</button>} />
-          {!collapsedSections.includes('today-overdue') && <TaskGroup tasks={sortedOverdue} density={density} showProject reorderable={reorderable} />}
+          <CollapsibleContent collapsed={collapsedSections.includes('today-overdue')}><TaskGroup tasks={sortedOverdue} density={density} showProject reorderable={reorderable} /></CollapsibleContent>
         </>
       )}
       {todayT.length > 0 && (
         <>
           <SectionHeader title="Today" count={todayT.length} icon={<Dot color="var(--today)" size={8} />}
             collapsible collapsed={collapsedSections.includes('today-today')} onToggle={(e) => handleToggle('today-today', e)} />
-          {!collapsedSections.includes('today-today') && <TaskGroup tasks={sortedToday} density={density} showProject reorderable={reorderable} />}
+          <CollapsibleContent collapsed={collapsedSections.includes('today-today')}><TaskGroup tasks={sortedToday} density={density} showProject reorderable={reorderable} /></CollapsibleContent>
         </>
       )}
       {completedToday.length > 0 && (
         <>
           <SectionHeader title="Completed" count={completedToday.length}
             collapsible collapsed={collapsedSections.includes('today-completed')} onToggle={(e) => handleToggle('today-completed', e)} />
-          {!collapsedSections.includes('today-completed') && <TaskGroup tasks={sortedCompleted} density={density} showProject />}
+          <CollapsibleContent collapsed={collapsedSections.includes('today-completed')}><TaskGroup tasks={sortedCompleted} density={density} showProject /></CollapsibleContent>
         </>
       )}
     </div>
@@ -586,19 +608,17 @@ export function UpcomingView({ density }) {
               title={`${off === 0 ? 'Today' : off === 1 ? 'Tomorrow' : H.DOW_LONG[d.getDay()]}`}
               collapsible collapsed={isCollapsed} onToggle={(e) => handleToggle(off, e)}
               right={<span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)' }}>{H.MONTHS[d.getMonth()]} {d.getDate()}</span>} />
-            {!isCollapsed && (
-              <>
-                <InlineComposer defaultDue={off} />
-                {activeForDay.length > 0 && (
-                  <TaskGroup tasks={activeForDay} density={density} dateMode showProject reorderable={reorderable} />
-                )}
-                {completedForDay.length > 0 && (
-                  <div style={{ marginTop: activeForDay.length > 0 ? 6 : 0, borderTop: activeForDay.length > 0 ? '1px dashed var(--border)' : 'none', paddingTop: activeForDay.length > 0 ? 6 : 0 }}>
-                    <TaskGroup tasks={completedForDay} density={density} dateMode showProject />
-                  </div>
-                )}
-              </>
-            )}
+            <CollapsibleContent collapsed={isCollapsed}>
+              <InlineComposer defaultDue={off} />
+              {activeForDay.length > 0 && (
+                <TaskGroup tasks={activeForDay} density={density} dateMode showProject reorderable={reorderable} />
+              )}
+              {completedForDay.length > 0 && (
+                <div style={{ marginTop: activeForDay.length > 0 ? 6 : 0, borderTop: activeForDay.length > 0 ? '1px dashed var(--border)' : 'none', paddingTop: activeForDay.length > 0 ? 6 : 0 }}>
+                  <TaskGroup tasks={completedForDay} density={density} dateMode showProject />
+                </div>
+              )}
+            </CollapsibleContent>
           </div>
         );
       })}
@@ -685,21 +705,21 @@ export function ProjectView({ projectId, density }) {
             <>
               <SectionHeader title="Scheduled" count={scheduled.length}
                 collapsible collapsed={collapsedSections.includes('project-scheduled')} onToggle={() => toggleSection('project-scheduled')} />
-              {!collapsedSections.includes('project-scheduled') && <TaskGroup tasks={scheduled} density={density} showProject={false} reorderable />}
+              <CollapsibleContent collapsed={collapsedSections.includes('project-scheduled')}><TaskGroup tasks={scheduled} density={density} showProject={false} reorderable /></CollapsibleContent>
             </>
           )}
           {anytime.length > 0 && (
             <>
               <SectionHeader title="Anytime" count={anytime.length}
                 collapsible collapsed={collapsedSections.includes('project-anytime')} onToggle={() => toggleSection('project-anytime')} />
-              {!collapsedSections.includes('project-anytime') && <TaskGroup tasks={anytime} density={density} showProject={false} reorderable />}
+              <CollapsibleContent collapsed={collapsedSections.includes('project-anytime')}><TaskGroup tasks={anytime} density={density} showProject={false} reorderable /></CollapsibleContent>
             </>
           )}
           {someday.length > 0 && (
             <>
               <SectionHeader title="Someday" count={someday.length}
                 collapsible collapsed={collapsedSections.includes('project-someday')} onToggle={() => toggleSection('project-someday')} />
-              {!collapsedSections.includes('project-someday') && <TaskGroup tasks={someday} density={density} showProject={false} reorderable />}
+              <CollapsibleContent collapsed={collapsedSections.includes('project-someday')}><TaskGroup tasks={someday} density={density} showProject={false} reorderable /></CollapsibleContent>
             </>
           )}
         </>
@@ -716,7 +736,7 @@ export function ProjectView({ projectId, density }) {
         <>
           <SectionHeader title="Completed" count={completed.length}
             collapsible collapsed={completedCollapsed} onToggle={() => setCompletedCollapsed((v) => !v)} />
-          {!completedCollapsed && <TaskGroup tasks={completed} density={density} showProject={false} />}
+          <CollapsibleContent collapsed={completedCollapsed}><TaskGroup tasks={completed} density={density} showProject={false} /></CollapsibleContent>
         </>
       )}
     </div>
@@ -1002,12 +1022,14 @@ export function LogbookView() {
           <div key={k}>
             <SectionHeader title={lbl(k)} count={groups[k].length}
               collapsible collapsed={isCollapsed} onToggle={() => toggleSection(`logbook-${k}`)} />
-            {!isCollapsed && groups[k].map((t) => (
-              <TaskRow key={t.id} task={t} density="comfortable" showProject
-                onToggle={() => toggleTask(t.id)}
-                onOpen={(x) => setSelectedId(x.id)}
-                selected={selectedId === t.id} />
-            ))}
+            <CollapsibleContent collapsed={isCollapsed}>
+              {groups[k].map((t) => (
+                <TaskRow key={t.id} task={t} density="comfortable" showProject
+                  onToggle={() => toggleTask(t.id)}
+                  onOpen={(x) => setSelectedId(x.id)}
+                  selected={selectedId === t.id} />
+              ))}
+            </CollapsibleContent>
           </div>
         );
       })}
