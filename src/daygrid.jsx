@@ -137,7 +137,7 @@ export function DayTimeline({ selOff, compact }) {
             return (
               <React.Fragment key={task.id}>
                 {lane === 0 && <span className="tl-dot" style={{ top: top - 1, background: bg }} />}
-                <div className="tl-block" onClick={() => setSelectedId(task.id)} style={{
+                <button type="button" className="tl-block" onClick={() => setSelectedId(task.id)} style={{
                   top,
                   height,
                   left: `calc(72px + (${lane} / ${lanes}) * (100% - 80px))`,
@@ -155,7 +155,7 @@ export function DayTimeline({ selOff, compact }) {
                 }}>
                   <div className="tl-block-title">{task.title}</div>
                   {height >= 36 && <div className="tl-block-time">{timeLbl}</div>}
-                </div>
+                </button>
               </React.Fragment>
             );
           })}

@@ -127,12 +127,15 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
 
 // ── Section header ──────────────────────────────────────────
 export function SectionHeader({ title, count, color, icon, right, collapsible, collapsed, onToggle }) {
+  const Tag = collapsible ? 'button' : 'div';
   return (
-    <div onClick={collapsible ? onToggle : undefined} style={{
-      display: 'flex', alignItems: 'center', gap: 8, padding: '18px 8px 7px', borderBottom: '1px solid var(--border)', marginBottom: 4,
-      cursor: collapsible ? 'pointer' : 'default', userSelect: 'none',
-      background: 'var(--bg)'
-    }}>
+    <Tag
+      {...(collapsible ? { type: 'button', onClick: onToggle, 'aria-expanded': !collapsed } : {})}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '18px 8px 7px', borderBottom: '1px solid var(--border)', marginBottom: 4,
+        cursor: collapsible ? 'pointer' : 'default', userSelect: 'none',
+        background: 'var(--bg)', width: '100%', textAlign: 'left'
+      }}>
       {collapsible && (
         <span style={{
           display: 'flex', color: 'var(--text-3)', transition: 'transform .15s',
@@ -143,7 +146,7 @@ export function SectionHeader({ title, count, color, icon, right, collapsible, c
       <span style={{ fontSize: 14.5, fontWeight: 600, color: color || 'var(--text)' }}>{title}</span>
       {count !== undefined && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-3)' }}>{count}</span>}
       {right && <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>{right}</div>}
-    </div>
+    </Tag>
   );
 }
 
@@ -277,7 +280,7 @@ export function HeaderActions({
     <div style={{ display: 'flex', gap: 2, position: 'relative' }} onClick={(e) => e.stopPropagation()}>
       {/* Filter CTA */}
       {setFilterBy && (
-        <button className="icon-btn" title="Filter" onClick={() => { setFilterMenu(!filterMenu); setSortMenu(false); setSelectMenu(false); }} style={{ background: filterBy && filterBy !== 'all' ? 'var(--hover-strong)' : undefined }}>
+        <button className="icon-btn" title="Filter" aria-label="Filter" onClick={() => { setFilterMenu(!filterMenu); setSortMenu(false); setSelectMenu(false); }} style={{ background: filterBy && filterBy !== 'all' ? 'var(--hover-strong)' : undefined }}>
           <I.sliders size={18} style={{ color: filterBy && filterBy !== 'all' ? 'var(--accent)' : undefined }} />
         </button>
       )}
@@ -285,21 +288,21 @@ export function HeaderActions({
         <Popover onClose={() => setFilterMenu(false)} style={{ top: 34, right: 80, zIndex: 100, minWidth: 180 }}>
           <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Filter Tasks</div>
           {filterOptions.map((opt) => (
-            <div key={opt.value} className="pop-item" style={{
+            <button type="button" key={opt.value} className="pop-item" style={{
               fontWeight: filterBy === opt.value ? 600 : 500,
               color: filterBy === opt.value ? 'var(--accent)' : 'var(--text)',
               justifyContent: 'space-between'
             }} onClick={() => { setFilterBy(opt.value); setFilterMenu(false); }}>
               {opt.label}
               {filterBy === opt.value && <I.check size={14} style={{ color: 'var(--accent)' }} />}
-            </div>
+            </button>
           ))}
         </Popover>
       )}
 
       {/* Sort CTA */}
       {setSortBy && (
-        <button className="icon-btn" title="Sort" onClick={() => { setSortMenu(!sortMenu); setFilterMenu(false); setSelectMenu(false); }} style={{ background: sortBy && sortBy !== 'default' ? 'var(--hover-strong)' : undefined }}>
+        <button className="icon-btn" title="Sort" aria-label="Sort" onClick={() => { setSortMenu(!sortMenu); setFilterMenu(false); setSelectMenu(false); }} style={{ background: sortBy && sortBy !== 'default' ? 'var(--hover-strong)' : undefined }}>
           <I.sort size={18} style={{ color: sortBy && sortBy !== 'default' ? 'var(--accent)' : undefined }} />
         </button>
       )}
@@ -307,14 +310,14 @@ export function HeaderActions({
         <Popover onClose={() => setSortMenu(false)} style={{ top: 34, right: 40, zIndex: 100, minWidth: 160 }}>
           <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Sort Tasks</div>
           {sortOptions.map((opt) => (
-            <div key={opt.value} className="pop-item" style={{
+            <button type="button" key={opt.value} className="pop-item" style={{
               fontWeight: sortBy === opt.value ? 600 : 500,
               color: sortBy === opt.value ? 'var(--accent)' : 'var(--text)',
               justifyContent: 'space-between'
             }} onClick={() => { setSortBy(opt.value); setSortMenu(false); }}>
               {opt.label}
               {sortBy === opt.value && <I.check size={14} style={{ color: 'var(--accent)' }} />}
-            </div>
+            </button>
           ))}
         </Popover>
       )}
@@ -323,6 +326,7 @@ export function HeaderActions({
       <button
         className="icon-btn"
         title="Selection options"
+        aria-label="More"
         onClick={() => { setSelectMenu(!selectMenu); setSortMenu(false); }}
         style={{
           background: hasSelection ? 'var(--accent-soft)' : undefined,
@@ -337,27 +341,27 @@ export function HeaderActions({
           <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Select & Edit</div>
 
           {!hasSelection && targetItems.length > 0 && (
-            <div className="pop-item" onClick={() => { toggleMultiSelect(targetItems[0].id); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+            <button type="button" className="pop-item" onClick={() => { toggleMultiSelect(targetItems[0].id); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
               <span style={{ display: 'flex', color: 'var(--accent)' }}><I.check size={15} /></span>
               <span>Select Tasks</span>
-            </div>
+            </button>
           )}
 
-          <div className="pop-item" onClick={handleSelectAll} style={{ fontWeight: 600, gap: 8 }}>
+          <button type="button" className="pop-item" onClick={handleSelectAll} style={{ fontWeight: 600, gap: 8 }}>
             <span style={{ display: 'flex', color: 'var(--accent)' }}>
               {allSelected ? <I.x size={15} /> : <I.check size={15} />}
             </span>
             <span>{allSelected ? 'Deselect All' : 'Select All Tasks'}</span>
-          </div>
+          </button>
 
           {hasSelection && (
             <>
               <div className="divider" style={{ margin: '4px 0' }} />
-              <div className="pop-item" onClick={() => { bulkComplete(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+              <button type="button" className="pop-item" onClick={() => { bulkComplete(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--today)' }}><I.check size={15} /></span>
                 <span>Mark Completed</span>
-              </div>
-              <div className="pop-item" onClick={() => {
+              </button>
+              <button type="button" className="pop-item" onClick={() => {
                 if (window.confirm(`Are you sure you want to delete these ${multiSelectedIds.length} tasks?`)) {
                   bulkDelete();
                 }
@@ -365,36 +369,36 @@ export function HeaderActions({
               }} style={{ fontWeight: 600, color: 'var(--p1)', gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--p1)' }}><I.trash size={15} /></span>
                 <span>Delete Selected</span>
-              </div>
+              </button>
             </>
           )}
 
           {onProjectSettings && (
             <>
               <div className="divider" style={{ margin: '4px 0' }} />
-              <div className="pop-item" onClick={() => { onProjectSettings(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+              <button type="button" className="pop-item" onClick={() => { onProjectSettings(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--accent)' }}><I.settings size={15} /></span>
                 <span>Project Settings</span>
-              </div>
+              </button>
             </>
           )}
 
           {onRenameProject && (
             <>
-              <div className="pop-item" onClick={() => { onRenameProject(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
+              <button type="button" className="pop-item" onClick={() => { onRenameProject(); setSelectMenu(false); }} style={{ fontWeight: 600, gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--accent)' }}><I.edit size={15} /></span>
                 <span>Rename Project</span>
-              </div>
+              </button>
             </>
           )}
 
           {onDeleteProject && (
             <>
               <div className="divider" style={{ margin: '4px 0' }} />
-              <div className="pop-item" onClick={() => { onDeleteProject(); setSelectMenu(false); }} style={{ fontWeight: 600, color: 'var(--p1)', gap: 8 }}>
+              <button type="button" className="pop-item" onClick={() => { onDeleteProject(); setSelectMenu(false); }} style={{ fontWeight: 600, color: 'var(--p1)', gap: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--p1)' }}><I.trash size={15} /></span>
                 <span>Delete Project</span>
-              </div>
+              </button>
             </>
           )}
         </Popover>
@@ -467,7 +471,7 @@ export function TodayView({ density }) {
         <>
           <SectionHeader title="Overdue" count={overdue.length} color="var(--p1)"
             collapsible collapsed={collapsedSections.includes('today-overdue')} onToggle={(e) => handleToggle('today-overdue', e)}
-            right={<button style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-text)' }}>Reschedule</button>} />
+            right={<button type="button" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent-text)' }}>Reschedule</button>} />
           {!collapsedSections.includes('today-overdue') && <TaskGroup tasks={sortedOverdue} density={density} showProject reorderable={reorderable} />}
         </>
       )}
@@ -773,6 +777,9 @@ export function FiltersView({ density }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="p1 & overdue"
+            aria-label="Filter query"
+            name="filter-query"
+            autoComplete="off"
             style={{ flex: 1, minWidth: 200, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none' }}
           />
           <button
@@ -832,7 +839,10 @@ export function FiltersView({ density }) {
                 border: '1.5px solid var(--accent)', background: 'var(--bg-elev)', boxShadow: 'var(--shadow-sm)'
               }}>
                 <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Label name..."
+                  placeholder="Label name…"
+                  aria-label="Label name"
+                  name="label-name"
+                  autoComplete="off"
                   style={{ width: '100%', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', borderRadius: 6, padding: '6px 8px', fontSize: 13, outline: 'none' }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSave(l.id);
@@ -1394,7 +1404,10 @@ export function ProjectSettingsView({ projectId }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-            placeholder="Project name..."
+            placeholder="Project name…"
+            aria-label="Project name"
+            name="projectName"
+            autoComplete="off"
             style={{
               flex: 1, border: '1px solid var(--border)', background: 'var(--bg)',
               color: 'var(--text)', borderRadius: 8, padding: '10px 12px',

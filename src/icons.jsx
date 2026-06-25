@@ -4,6 +4,7 @@ import React from 'react';
 const S = ({ children, size = 20, sw = 1.75, fill = 'none', style, className, ...rest }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill}
     stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true" focusable="false"
     className={className} style={style} {...rest}>{children}</svg>
 );
 

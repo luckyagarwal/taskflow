@@ -211,9 +211,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           {menu === 'status' && (
             <Popover onClose={() => setMenu(null)} style={{ top: 24, left: 0, zIndex: 100, minWidth: 160 }}>
               {Object.entries(STATUS_CHOICES).map(([k, v]) => (
-                <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
+                <button type="button" key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
                   {v.icon}{v.label}
-                </div>
+                </button>
               ))}
             </Popover>
           )}
@@ -244,10 +244,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                 {customLabels.map((l) => {
                   const on = task.labels.includes(l.id);
                   return (
-                    <div key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
+                    <button type="button" key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
                       <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
                       {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                    </div>
+                    </button>
                   );
                 })}
               </Popover>
@@ -361,7 +361,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               }
             }}
             onClick={selected ? (e) => e.stopPropagation() : undefined}
-            placeholder="Task title..."
+            placeholder="Task title…"
+            aria-label="Task title"
+            name="taskTitle"
+            autoComplete="off"
             rows={1}
             ref={(el) => {
               if (el) {
@@ -394,7 +397,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               onChange={(e) => setLocalNote(e.target.value)}
               onBlur={saveNote}
               onClick={(e) => e.stopPropagation()}
-              placeholder="Add note..."
+              placeholder="Add note…"
+              aria-label="Note"
+              name="taskNote"
+              autoComplete="off"
               rows={1}
               ref={(el) => {
                 if (el) {
@@ -427,7 +433,8 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
           {showProject && proj && (
             <div style={{ position: 'relative', minWidth: card ? 0 : undefined }} onClick={(e) => e.stopPropagation()}>
               {!narrow && (
-              <span
+              <button
+                type="button"
                 onClick={() => setMenu(menu === 'proj_badge' ? null : 'proj_badge')}
                 style={{
                   display: 'inline-flex',
@@ -448,26 +455,26 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               >
                 <span style={card ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 } : undefined}>{proj.name}</span>
                 <span style={{ flexShrink: 0, display: 'inline-flex' }}><Dot color={proj.color} /></span>
-              </span>
+              </button>
               )}
               {menu === 'proj_badge' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 22, right: 0, zIndex: 100, minWidth: 180 }}>
                   <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
                   
                   {/* Inbox */}
-                  <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
+                  <button type="button" className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
                     <I.inbox size={14} />
                     <span>Inbox</span>
                     {(!task.projectId || task.projectId === 'inbox') && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                  </div>
-                  
+                  </button>
+
                   {/* Projects */}
                   {projects.map((p) => (
-                    <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+                    <button type="button" key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
                       <Dot color={p.color} size={8} />
                       <span>{p.name}</span>
                       {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                    </div>
+                    </button>
                   ))}
                 </Popover>
               )}
@@ -511,9 +518,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               {menu === 'prio_btn' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 140 }}>
                   {PRIO.map((p) => (
-                    <div key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
+                    <button type="button" key={p.p} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { priority: p.p }); setMenu(null); }}>
                       <I.flag size={14} sw={2} style={{ color: p.color }} />{p.label}
-                    </div>
+                    </button>
                   ))}
                 </Popover>
               )}
@@ -529,10 +536,10 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                   {customLabels.map((l) => {
                     const on = task.labels.includes(l.id);
                     return (
-                      <div key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
+                      <button type="button" key={l.id} className="pop-item" style={{ height: 32, fontSize: 13 }} onClick={() => updateTask(task.id, { labels: on ? task.labels.filter((x) => x !== l.id) : [...task.labels, l.id] })}>
                         <span style={{ width: 9, height: 9, borderRadius: 99, background: l.color }} />{l.name}
                         {on && <I.check size={15} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                      </div>
+                      </button>
                     );
                   })}
                 </Popover>
@@ -549,19 +556,19 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
                   <div style={{ padding: '6px 8px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>Set Project</div>
                   
                   {/* Inbox */}
-                  <div className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
+                  <button type="button" className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: 'inbox' }); setMenu(null); }}>
                     <I.inbox size={14} />
                     <span>Inbox</span>
                     {(!task.projectId || task.projectId === 'inbox') && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                  </div>
-                  
+                  </button>
+
                   {/* Projects */}
                   {projects.map((p) => (
-                    <div key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
+                    <button type="button" key={p.id} className="pop-item" style={{ gap: 8, height: 32, fontSize: 13 }} onClick={() => { updateTask(task.id, { projectId: p.id }); setMenu(null); }}>
                       <Dot color={p.color} size={8} />
                       <span>{p.name}</span>
                       {task.projectId === p.id && <I.check size={13} style={{ marginLeft: 'auto', color: 'var(--accent)' }} />}
-                    </div>
+                    </button>
                   ))}
                 </Popover>
               )}
@@ -575,9 +582,9 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
               {menu === 'status_btn' && (
                 <Popover onClose={() => setMenu(null)} style={{ top: 28, right: 0, zIndex: 100, minWidth: 160 }}>
                   {Object.entries(STATUS_CHOICES).map(([k, v]) => (
-                    <div key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
+                    <button type="button" key={k} className="pop-item" style={{ height: 32, fontSize: 13, gap: 8 }} onClick={() => { updateTask(task.id, { status: k }); setMenu(null); }}>
                       {v.icon}{v.label}
-                    </div>
+                    </button>
                   ))}
                 </Popover>
               )}
@@ -641,7 +648,7 @@ export function Empty({ icon, title, sub }) {
       <div style={{ display: 'inline-grid', placeItems: 'center', width: 64, height: 64, borderRadius: 18, background: 'var(--hover)', color: 'var(--text-3)', marginBottom: 16 }}>
         {icon}
       </div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>{title}</div>
+      <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>{title}</h2>
       {sub && <div style={{ fontSize: 14, marginTop: 5, maxWidth: 320, marginInline: 'auto', lineHeight: 1.5 }}>{sub}</div>}
     </div>
   );

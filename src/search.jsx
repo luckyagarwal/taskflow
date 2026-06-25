@@ -75,14 +75,14 @@ export function SearchOverlay({ onClose }) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: narrow ? 'max(env(safe-area-inset-top), 12px) 14px 12px' : '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <I.search size={20} style={{ color: 'var(--text-3)' }} />
-          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={narrow ? 'Search or jump to…' : 'Search tasks, projects, or jump to a view…'}
-            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 16, fontWeight: 600, color: 'var(--text)' }} />
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" name="search" type="search" autoComplete="off" spellCheck={false} placeholder={narrow ? 'Search or jump to…' : 'Search tasks, projects, or jump to a view…'}
+            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 16, fontWeight: 600, color: 'var(--text)' }} />
           {narrow
             ? <button onClick={onClose} style={{ border: 'none', background: 'transparent', color: 'var(--accent)', fontSize: 15, fontWeight: 500, padding: '4px 4px', cursor: 'pointer' }}>Cancel</button>
             : <kbd style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', border: '1px solid var(--border-2)', borderRadius: 6, padding: '2px 6px' }}>ESC</kbd>}
         </div>
 
-        <div className="scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 8 }}>
+        <div className="scroll" aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 8 }}>
           {ql && matchTasks.length > 0 && (
             <Section title="Tasks">
               {matchTasks.map((t) => {

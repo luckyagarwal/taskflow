@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap');
-
-
+/* Inter font is loaded via <link rel="preconnect"/stylesheet> in index.html (faster than @import). */
 
 :root {
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -14,6 +12,7 @@
 
 /* ── Light ───────────────────────────────────────────── */
 [data-theme="light"] {
+  color-scheme: light;
   --bg: #FAF9F6;
   --bg-side: #F4F2EE;
   --bg-elev: #FFFFFF;
@@ -38,6 +37,7 @@
 
 /* ── Dark ────────────────────────────────────────────── */
 [data-theme="dark"] {
+  color-scheme: dark;
   --bg: #141416;
   --bg-side: #1A1A1E;
   --bg-elev: #222227;
@@ -103,8 +103,19 @@ input, textarea { font-family: inherit; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes panelIn { from { transform: translateX(14px); } to { transform: translateX(0); } }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes strike { from { background-size: 0 1.5px; } to { background-size: 100% 1.5px; } }
+
+/* Honor reduced-motion: disable non-essential animation & transitions */
+@media (prefers-reduced-motion: reduce) {
+  .app-root *,
+  .app-root *::before,
+  .app-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* components.css — component-level styles, hover/interaction states */
 
@@ -153,7 +164,7 @@ input, textarea { font-family: inherit; }
 
 /* ── segmented control ────────────────────────────────── */
 .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--hover); border-radius: 10px; }
-.seg button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--text-2); transition: all .12s; }
+.seg button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--text-2); transition: background .12s, color .12s, box-shadow .12s; }
 .seg button.on { background: var(--bg-elev); color: var(--text); box-shadow: var(--shadow-sm); }
 
 /* ── inputs ───────────────────────────────────────────── */
@@ -450,6 +461,10 @@ body { font-family: var(--font); }
 .m-timeinput:hover {
   background: var(--hover-strong);
 }
+.m-timeinput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* iOS-style toggle */
 .ios-toggle {
@@ -469,7 +484,7 @@ body { font-family: var(--font); }
   border-radius: 99px;
   background: #fff;
   box-shadow: 0 2px 5px rgba(0,0,0,.28);
-  transition: all .22s cubic-bezier(.4,0,.2,1);
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
 }
 
 /* Horizontal scroll helper */
@@ -491,14 +506,14 @@ body { font-family: var(--font); }
 .board-column-head { font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 6px 8px; display: flex; justify-content: space-between; }
 
 :root { --hour-height: 60px; }
-.day-grid { position: relative; overflow-y: auto; max-height: calc(100vh - 220px); }
+.day-grid { position: relative; overflow-y: auto; overscroll-behavior: contain; max-height: calc(100vh - 220px); }
 .day-grid-track { position: relative; }
 .day-hour { height: var(--hour-height); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-3); padding-left: 4px; box-sizing: border-box; }
 .time-block { position: absolute; border-radius: 6px; border: 1px solid var(--border-2, var(--border)); color: #fff; font-size: 12px; padding: 2px 6px; overflow: hidden; cursor: pointer; box-sizing: border-box; line-height: 1.2; }
 .day-unscheduled { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
 
 /* Day timeline (DayView) — to-scale spine with task blocks + live "now" marker */
-.tl-grid { position: relative; overflow-y: auto; max-height: calc(100vh - 200px); padding-right: 4px; }
+.tl-grid { position: relative; overflow-y: auto; overscroll-behavior: contain; max-height: calc(100vh - 200px); padding-right: 4px; }
 .tl-track { position: relative; margin-top: 6px; }
 .tl-hour { position: relative; height: var(--hour-height); border-top: 1px solid var(--border); box-sizing: border-box; }
 .tl-hour:first-child { border-top: none; }

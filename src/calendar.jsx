@@ -46,9 +46,9 @@ export function CalendarView({ density, compact }) {
             </div>
             {!dayMode && (
               <>
-                <button className="icon-btn" onClick={() => setMonthShift((m) => m - 1)}><I.chevL size={18} /></button>
+                <button className="icon-btn" aria-label="Previous month" onClick={() => setMonthShift((m) => m - 1)}><I.chevL size={18} /></button>
                 <button className="btn btn-ghost" style={{ height: 32, padding: '0 12px' }} onClick={() => { setMonthShift(0); setSelOff(0); }}>Today</button>
-                <button className="icon-btn" onClick={() => setMonthShift((m) => m + 1)}><I.chevR size={18} /></button>
+                <button className="icon-btn" aria-label="Next month" onClick={() => setMonthShift((m) => m + 1)}><I.chevR size={18} /></button>
               </>
             )}
           </div>
@@ -57,10 +57,10 @@ export function CalendarView({ density, compact }) {
       {dayMode && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px 10px' }}>
-            <button className="icon-btn" onClick={() => setSelOff(o => o - 1)}><I.chevL size={18} /></button>
+            <button className="icon-btn" aria-label="Previous day" onClick={() => setSelOff(o => o - 1)}><I.chevL size={18} /></button>
             <span style={{ fontSize: 16, fontWeight: 600 }}>{H.DOW_LONG[selDate.getDay()]}</span>
             <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-3)' }}>{H.MONTHS_LONG[selDate.getMonth()]} {selDate.getDate()}</span>
-            <button className="icon-btn" onClick={() => setSelOff(o => o + 1)}><I.chevR size={18} /></button>
+            <button className="icon-btn" aria-label="Next day" onClick={() => setSelOff(o => o + 1)}><I.chevR size={18} /></button>
             <button className="btn btn-ghost" style={{ height: 30, padding: '0 12px', marginLeft: 'auto' }} onClick={() => setSelOff(0)}>Today</button>
           </div>
           <DayTimeline selOff={selOff} compact={compact} />
@@ -79,7 +79,7 @@ export function CalendarView({ density, compact }) {
           const isSel = off === selOff;
           const dayTasks = byOffset[off] || [];
           return (
-            <button key={i} onClick={() => setSelOff(off)} style={{
+            <button key={i} aria-label={`${H.DOW_LONG[d.getDay()]}, ${H.MONTHS_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`} onClick={() => setSelOff(off)} style={{
               position: 'relative', minHeight: narrow ? 52 : (compact ? 64 : 92), padding: narrow ? '6px 0 5px' : '6px 7px',
               textAlign: narrow ? 'center' : 'left',
               borderRight: (i % 7 !== 6) ? '1px solid var(--border)' : 'none',

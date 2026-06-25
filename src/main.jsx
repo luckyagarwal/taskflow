@@ -38,7 +38,7 @@ function Root() {
         <div className="pulse-loader">
           <div className="spinner" />
           <div className="pulse-loader-text">
-            {store.wipingDb ? "Resetting Database..." : "Loading Tasks..."}
+            {store.wipingDb ? "Resetting Database…" : "Loading Tasks…"}
           </div>
         </div>
       </div>

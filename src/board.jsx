@@ -66,6 +66,8 @@ function WeekBoard({ tasks, setSelectedId, selectedId, toggleTask, weekStartDay,
         padding: '10px 16px 8px', borderBottom: '1px solid var(--border)',
       }}>
         <button
+          type="button"
+          aria-label="Previous week"
           onClick={() => setWeekOff((w) => w - 1)}
           style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', padding: 6, display: 'grid', placeItems: 'center' }}
         >
@@ -87,6 +89,8 @@ function WeekBoard({ tasks, setSelectedId, selectedId, toggleTask, weekStartDay,
         </div>
 
         <button
+          type="button"
+          aria-label="Next week"
           onClick={() => setWeekOff((w) => w + 1)}
           style={{ border: 'none', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer', padding: 6, display: 'grid', placeItems: 'center' }}
         >
@@ -161,6 +165,8 @@ export function BoardView() {
 
   const ModeTab = ({ id, label }) => (
     <button
+      type="button"
+      aria-pressed={mode === id}
       onClick={() => setMode(id)}
       style={{
         border: 'none', cursor: 'pointer', padding: '6px 14px', borderRadius: 8,

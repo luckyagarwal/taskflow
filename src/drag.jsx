@@ -75,6 +75,9 @@ export function useDragSort({ onDrop }) {
       if (!s || s.lifted) return;
       s.lifted = true;
       moved.current = false;
+      // Suppress text selection while a card is lifted (re-enabled in finish()).
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
       if (navigator.vibrate) navigator.vibrate(12);
       const { zone, beforeId } = hitTest(x, y, s.id);
       setDrag({ id: s.id, label: s.label, x, y, zone, beforeId, live: true });
@@ -83,6 +86,8 @@ export function useDragSort({ onDrop }) {
 
     const finish = (commit) => {
       stopAuto();
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
       const s = start.current;
       if (s && s.lpTimer) clearTimeout(s.lpTimer);
       const d = dragRef.current;
