@@ -12,7 +12,7 @@ import { InlineComposer } from './composer.jsx';
 import { useDragSort, DragGhost } from './drag.jsx';
 import { STATUS_ORDER, STATUS_LABELS, statusPatch, columnOf, groupTasksByStatus } from './status.js';
 
-const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOW_SHORT = H.DOW;
 
 function weekRangeLabel(days) {
   const s = days[0].date;

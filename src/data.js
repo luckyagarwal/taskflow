@@ -21,10 +21,20 @@ export function offsetFromDate(date) {
   return Math.round((b - a) / MS_DAY);
 }
 
-export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-export const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-export const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-export const DOW_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// Month/weekday names come from Intl.DateTimeFormat using the runtime locale,
+// so they localize automatically. Index semantics are unchanged: MONTHS[m] is
+// month m (0=Jan) and DOW[d] is weekday d (0=Sun), matching Date.get* getters.
+// Built off fixed UTC reference dates (2021-01-01 is a month anchor; 2023-01-01
+// is a Sunday) and formatted in UTC so timezone never shifts the result.
+const _fmt = (opts) => new Intl.DateTimeFormat(undefined, { ...opts, timeZone: 'UTC' });
+const _byMonth = (opts) => Array.from({ length: 12 }, (_, m) => _fmt(opts).format(new Date(Date.UTC(2021, m, 1))));
+const _byDow = (opts) => Array.from({ length: 7 }, (_, d) => _fmt(opts).format(new Date(Date.UTC(2023, 0, 1 + d))));
+
+export const MONTHS = _byMonth({ month: 'short' });
+export const MONTHS_LONG = _byMonth({ month: 'long' });
+export const DOW = _byDow({ weekday: 'short' });
+export const DOW_LONG = _byDow({ weekday: 'long' });
+export const DOW_NARROW = _byDow({ weekday: 'narrow' });
 
 // Human label for a due date given its offset
 export function dueLabel(off) {
@@ -464,6 +474,7 @@ export const H = {
   MONTHS_LONG,
   DOW,
   DOW_LONG,
+  DOW_NARROW,
   dueLabel,
   fmtDuration,
   addMinutesToHM,

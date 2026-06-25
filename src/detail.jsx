@@ -718,7 +718,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
           <MetaRow icon={<I.repeat size={18} />} label="Repeat" onClick={() => setMenu(menu === 'repeat' ? null : 'repeat')}>
             <span style={{ fontWeight: 500, fontSize: 14, color: task.recurring ? 'var(--accent-text)' : 'var(--text-3)' }}>
               {task.recurring ? (
-                task.recurring.type === 'weekday' ? `Every ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][task.recurring.dow]}` : `Every ${task.recurring.type}`
+                task.recurring.type === 'weekday' ? `Every ${H.DOW_LONG[task.recurring.dow]}` : `Every ${task.recurring.type}`
               ) : 'None'}
             </span>
           </MetaRow>
@@ -732,7 +732,7 @@ export function TaskEditor({ taskId, inline, mobile }) {
               <div className="divider" style={{ margin: '4px 8px' }} />
               {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
                 <button type="button" key={dow} className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'weekday', dow } }); setMenu(null); }}>
-                  Every {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dow]}
+                  Every {H.DOW_LONG[dow]}
                 </button>
               ))}
             </Popover>

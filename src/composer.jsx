@@ -133,8 +133,8 @@ export function MiniCalendar({ startValue, dueValue, activeField, onChange }) {
 
       {/* Week days */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4, gap: 2 }}>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, idx) => (
-          <div key={idx} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: 'var(--text-3)' }}>{d}</div>
+        {[1, 2, 3, 4, 5, 6, 0].map((dow, idx) => (
+          <div key={idx} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: 'var(--text-3)' }}>{H.DOW_NARROW[dow]}</div>
         ))}
       </div>
 
