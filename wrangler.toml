@@ -11,6 +11,9 @@
 
 name = "taskflow"
 pages_build_output_dir = "dist"
+
+[build]
+command = "npm run build"
 compatibility_date = "2024-09-23"
 
 [[d1_databases]]
