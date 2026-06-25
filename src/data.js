@@ -149,8 +149,6 @@ export function parseTask(raw, projects = [], existingLabels = []) {
   let startTime = null;
   let projectId = null;
   let taskLabels = [];
-  let recurring = null;
-
   // 1. Parse Priority: p1 to p4
   const prioRegex = /\bp([1-4])\b/i;
   const prioMatch = text.match(prioRegex);
@@ -187,34 +185,7 @@ export function parseTask(raw, projects = [], existingLabels = []) {
   }
   text = text.replace(tagRegex, '');
 
-  // 4. Parse Recurrence
-  const recurPatterns = [
-    { regex: /\bevery\s+day\b/i, rule: { type: 'day' } },
-    { regex: /\bdaily\b/i, rule: { type: 'day' } },
-    { regex: /\bevery\s+week\b/i, rule: { type: 'week' } },
-    { regex: /\bweekly\b/i, rule: { type: 'week' } },
-    { regex: /\bevery\s+month\b/i, rule: { type: 'month' } },
-    { regex: /\bmonthly\b/i, rule: { type: 'month' } },
-    { regex: /\bevery\s+year\b/i, rule: { type: 'year' } },
-    { regex: /\byearly\b/i, rule: { type: 'year' } },
-    { regex: /\bevery\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i, parser: (m) => {
-        const dows = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dow = dows.indexOf(m[1].toLowerCase());
-        return { type: 'weekday', dow };
-      }
-    }
-  ];
-
-  for (const p of recurPatterns) {
-    const m = text.match(p.regex);
-    if (m) {
-      recurring = p.rule || p.parser(m);
-      text = text.replace(p.regex, '');
-      break;
-    }
-  }
-
-  // 5. Parse Dates (Relative/Calendar) — BEFORE time so a date's day number
+  // 4. Parse Dates (Relative/Calendar) — BEFORE time so a date's day number
   //    can't be mis-grabbed by the time matcher.
   const today = new Date();
 
@@ -371,40 +342,7 @@ export function parseTask(raw, projects = [], existingLabels = []) {
     priority,
     projectId,
     labels: taskLabels,
-    recurring
   };
-}
-
-export function advanceRecurring(dueOffset, rule) {
-  if (!rule) return null;
-  const today = startOfToday();
-  const currentDue = dateFromOffset(dueOffset) || today;
-  let nextDue = new Date(currentDue);
-
-  const step = () => {
-    if (rule.type === 'day') {
-      nextDue.setDate(nextDue.getDate() + 1);
-    } else if (rule.type === 'week') {
-      nextDue.setDate(nextDue.getDate() + 7);
-    } else if (rule.type === 'month') {
-      nextDue.setMonth(nextDue.getMonth() + 1);
-    } else if (rule.type === 'year') {
-      nextDue.setFullYear(nextDue.getFullYear() + 1);
-    } else if (rule.type === 'weekday') {
-      const targetDow = rule.dow;
-      do {
-        nextDue.setDate(nextDue.getDate() + 1);
-      } while (nextDue.getDay() !== targetDow);
-    }
-  };
-
-  let iterations = 0;
-  do {
-    step();
-    iterations++;
-  } while (nextDue.getTime() < today.getTime() && iterations < 365);
-
-  return offsetFromDate(nextDue);
 }
 
 // minutes → compact human label: 30 → "30m", 60 → "1h", 90 → "1h 30m"

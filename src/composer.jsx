@@ -506,7 +506,6 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
       priority: taskData.priority !== 4 ? taskData.priority : prio,
       projectId: taskData.projectId || project,
       labels: taskData.labels.length ? taskData.labels : labels,
-      recurring: taskData.recurring
     });
     reset();
     if (keepOpen) { setTimeout(() => inputRef.current && inputRef.current.focus(), 0); }
@@ -558,8 +557,6 @@ export function InlineComposer({ defaultProject = 'inbox', defaultStart = null, 
   const finalLabels = (parsed && parsed.labels.length) ? parsed.labels : labels;
   const finalPrio = (parsed && parsed.priority !== 4) ? parsed.priority : prio;
   const finalProj = (parsed && parsed.projectId) ? (parsed.projectId.startsWith('__new__') ? { name: parsed.projectId.replace('__new__', ''), color: '#7C5CFC' } : (projects.find(p => p.id === parsed.projectId) || H.projectById(parsed.projectId))) : proj;
-  const finalRecurring = parsed?.recurring;
-
   const finalDueOpt = finalDue === 'someday'
     ? { label: 'Someday', color: '#E8588A' }
     : (DUE_OPTIONS.find((d) => d.off === finalDue) || (finalDue !== null ? { label: H.dueLabel(finalDue)?.text, color: 'var(--today)' } : null));

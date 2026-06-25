@@ -13,8 +13,7 @@ function atom(tok, ctx) {
   if (t === "upcoming") return { fn: (k) => !k.done && typeof k.dueOffset === "number" && k.dueOffset > 0 };
   if (t === "nodate") return { fn: (k) => k.dueOffset === null || k.dueOffset === undefined };
   if (t === "someday") return { fn: (k) => k.dueOffset === "someday" };
-  if (t === "recurring") return { fn: (k) => !!k.recurring };
-  if (t === "inbox") return { fn: (k) => k.projectId === "inbox" };
+if (t === "inbox") return { fn: (k) => k.projectId === "inbox" };
   if (t === "done") return { fn: (k) => k.done === true, usesDone: true };
   if (STATUSES.includes(t)) return { fn: (k) => (k.status || "planned") === t };
   if (tok[0] === "@") {

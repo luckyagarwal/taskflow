@@ -1,6 +1,6 @@
 // store.jsx — app state + actions via context. Exposes AppContext, AppProvider, useApp, useStore, Sel
 import React, { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
-import { DATA, advanceRecurring } from './data.js';
+import { DATA } from './data.js';
 import { saveChanges, startOnlineSync, fullSync, getSyncHeaders, setOnAuthStatusChange, fetchAllData, isLocalHostname } from './sync.js';
 import * as repo from './repo.js';
 import { childrenOf, canSetParent, promoteChildrenOnDelete } from './projects.js';
@@ -367,10 +367,7 @@ export function useStore() {
     setTasks((ts) => ts.map((t) => {
       if (t.id !== id) return t;
       let updated;
-      if (!t.done && t.recurring) {
-        const nextDue = advanceRecurring(t.dueOffset, t.recurring);
-        updated = { ...t, dueOffset: nextDue, done: false, status: 'planned' };
-      } else {
+      {
         const nextDone = !t.done;
         updated = { ...t, done: nextDone, doneOffset: nextDone ? 0 : null, status: nextDone ? 'done' : 'planned' };
       }
@@ -453,7 +450,7 @@ export function useStore() {
     const task = Object.assign({
       id, title: 'Untitled', note: '', projectId: targetProjectId, startOffset: null, dueOffset: null,
       time: null, duration: null, priority: 4, labels: finalLabels, subtasks: [], done: false, doneOffset: null,
-      recurring: null, createdAt: Date.now(), subtaskSort: 'manual',
+      createdAt: Date.now(), subtaskSort: 'manual',
       position: minPos - 1, status: 'planned'
     }, partial, { projectId: targetProjectId, labels: finalLabels });
 
@@ -504,12 +501,7 @@ export function useStore() {
         if (!ids.includes(t.id)) return t;
         if (t.done) return t;
         let updated;
-        if (t.recurring) {
-          const nextDue = advanceRecurring(t.dueOffset, t.recurring);
-          updated = { ...t, dueOffset: nextDue, done: false, status: 'planned' };
-        } else {
-          updated = { ...t, done: true, doneOffset: 0, status: 'done' };
-        }
+        updated = { ...t, done: true, doneOffset: 0, status: 'done' };
         completedTasks.push(updated);
         return updated;
       })

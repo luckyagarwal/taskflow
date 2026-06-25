@@ -712,34 +712,6 @@ export function TaskEditor({ taskId, inline, mobile }) {
             </Popover>
           )}
         </div>
-
-
-
-        {/* Recurrence / Repeat */}
-        <div style={{ position: 'relative' }}>
-          <MetaRow icon={<I.repeat size={18} />} label="Repeat" onClick={() => setMenu(menu === 'repeat' ? null : 'repeat')}>
-            <span style={{ fontWeight: 500, fontSize: 14, color: task.recurring ? 'var(--accent-text)' : 'var(--text-3)' }}>
-              {task.recurring ? (
-                task.recurring.type === 'weekday' ? `Every ${H.DOW_LONG[task.recurring.dow]}` : `Every ${task.recurring.type}`
-              ) : 'None'}
-            </span>
-          </MetaRow>
-          {menu === 'repeat' && (
-            <Popover onClose={() => setMenu(null)} style={{ top: 44, right: 12, minWidth: 180 }}>
-              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: null }); setMenu(null); }}>None</button>
-              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'day' } }); setMenu(null); }}>Every day</button>
-              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'week' } }); setMenu(null); }}>Every week</button>
-              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'month' } }); setMenu(null); }}>Every month</button>
-              <button type="button" className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'year' } }); setMenu(null); }}>Every year</button>
-              <div className="divider" style={{ margin: '4px 8px' }} />
-              {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
-                <button type="button" key={dow} className="pop-item" onClick={() => { updateTask(task.id, { recurring: { type: 'weekday', dow } }); setMenu(null); }}>
-                  Every {H.DOW_LONG[dow]}
-                </button>
-              ))}
-            </Popover>
-          )}
-        </div>
       </div>
       {menu === 'date' && (
         <DatePage task={task} onClose={() => setMenu(null)} />
