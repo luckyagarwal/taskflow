@@ -17,6 +17,35 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
   const shouldReduceMotion = useReducedMotion();
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [draggableId, setDraggableId] = useState(null);
+  // Keyboard reordering: the grip handle is a real button. Space/Enter picks a
+  // task up, Arrow Up/Down moves it, Space/Enter drops, Escape cancels. Changes
+  // are announced via the aria-live region rendered at the end of the list.
+  const [grabbedId, setGrabbedId] = useState(null);
+  const [announce, setAnnounce] = useState('');
+
+  const onGripKeyDown = (e, idx, task) => {
+    if (!reorderable) return;
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (grabbedId === task.id) {
+        setGrabbedId(null);
+        setAnnounce(`Dropped ${task.title} at position ${idx + 1} of ${tasks.length}.`);
+      } else {
+        setGrabbedId(task.id);
+        setAnnounce(`Picked up ${task.title}, position ${idx + 1} of ${tasks.length}. Use Arrow Up and Down to move, Space to drop, Escape to cancel.`);
+      }
+    } else if (grabbedId === task.id && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      const to = idx + (e.key === 'ArrowUp' ? -1 : 1);
+      if (to < 0 || to >= tasks.length) return;
+      reorderTasks(task.id, tasks[to].id);
+      setAnnounce(`${task.title}, position ${to + 1} of ${tasks.length}.`);
+    } else if (e.key === 'Escape' && grabbedId === task.id) {
+      e.preventDefault();
+      setGrabbedId(null);
+      setAnnounce('Reordering cancelled.');
+    }
+  };
 
   const handleToggle = (task, e) => {
     if (e && e.altKey) {
@@ -81,7 +110,9 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
               display: 'flex',
               alignItems: 'center',
               gap: 2,
-              position: 'relative'
+              position: 'relative',
+              borderRadius: 10,
+              boxShadow: grabbedId === task.id ? '0 0 0 2px var(--accent)' : 'none'
             }}
             draggable={reorderable && draggableId === task.id}
             onDragStart={reorderable ? (e) => handleDragStart(e, idx) : undefined}
@@ -89,13 +120,22 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
             onDragEnd={reorderable ? handleDragEnd : undefined}
           >
             {reorderable && !narrow && (
-              <span
+              <button
+                type="button"
+                className="drag-grip"
+                aria-label={grabbedId === task.id
+                  ? `${task.title}, grabbed. Use Arrow Up and Down to move, Space to drop, Escape to cancel.`
+                  : `Reorder ${task.title}. Press Space to pick up.`}
+                aria-pressed={grabbedId === task.id}
                 onMouseDown={() => setDraggableId(task.id)}
                 onMouseUp={() => setDraggableId(null)}
+                onKeyDown={(e) => onGripKeyDown(e, idx, task)}
                 style={{
                   cursor: 'grab',
                   color: 'var(--text-3)',
-                  opacity: (selectedId === task.id || draggableId === task.id) ? 0.6 : 0,
+                  background: 'transparent',
+                  border: 'none',
+                  opacity: (selectedId === task.id || draggableId === task.id || grabbedId === task.id) ? 0.6 : 0,
                   transition: 'opacity .15s',
                   display: 'flex',
                   alignItems: 'center',
@@ -109,7 +149,7 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
                 title="Drag to reorder"
               >
                 <I.grip size={15} />
-              </span>
+              </button>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <TaskRow task={task} density={density}
@@ -121,6 +161,7 @@ export function TaskGroup({ tasks, density, showProject, dateMode, reorderable }
           </motion.div>
         ))}
       </AnimatePresence>
+      <div aria-live="assertive" className="sr-only">{announce}</div>
     </div>
   );
 }

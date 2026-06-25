@@ -52,7 +52,7 @@ function SubtaskItem({
   taskId, s, index,
   draggedIndex, draggableId, setDraggableId,
   handleDragStart, handleDragOver, handleDragEnd,
-  sortMode
+  sortMode, grabbedId, onGripKeyDown, total
 }) {
   const { updateSubtask, deleteSubtask, tasks } = useApp();
   const [menu, setMenu] = useState(null);
@@ -93,17 +93,28 @@ function SubtaskItem({
         borderBottom: '1px solid var(--border)',
         opacity: draggedIndex === index ? 0.4 : 1,
         cursor: (!sortMode && draggableId === s.id) ? 'grabbing' : 'default',
+        borderRadius: grabbedId === s.id ? 8 : 0,
+        boxShadow: grabbedId === s.id ? '0 0 0 2px var(--accent)' : 'none',
       }}
     >
       {/* Drag Handle */}
       {!sortMode ? (
-        <span
+        <button
+          type="button"
+          className="drag-grip"
+          aria-label={grabbedId === s.id
+            ? `${s.title}, grabbed. Use Arrow Up and Down to move, Space to drop, Escape to cancel.`
+            : `Reorder ${s.title}. Press Space to pick up.`}
+          aria-pressed={grabbedId === s.id}
           onMouseDown={() => setDraggableId(s.id)}
           onMouseUp={() => setDraggableId(null)}
+          onKeyDown={(e) => onGripKeyDown && onGripKeyDown(e, index, s)}
           style={{
             cursor: 'grab',
             color: 'var(--text-3)',
-            opacity: hovered ? 0.6 : 0,
+            background: 'transparent',
+            border: 'none',
+            opacity: (hovered || grabbedId === s.id) ? 0.6 : 0,
             transition: 'opacity .15s',
             display: 'flex',
             alignItems: 'center',
@@ -111,7 +122,7 @@ function SubtaskItem({
           }}
         >
           <I.grip size={14} />
-        </span>
+        </button>
       ) : (
         <div style={{ width: 18 }} />
       )}
@@ -373,6 +384,41 @@ export function TaskEditor({ taskId, inline, mobile }) {
     setDraggableId(null);
   };
 
+  // Keyboard reordering for subtasks: Space/Enter on the grip picks the subtask
+  // up, Arrow Up/Down moves it, Space/Enter drops, Escape cancels. Mirrors the
+  // pointer-drag splice above. Announced via the aria-live region below the list.
+  const [subGrabbedId, setSubGrabbedId] = useState(null);
+  const [subAnnounce, setSubAnnounce] = useState('');
+
+  const onSubGripKeyDown = (e, idx, s) => {
+    const sortMode = task.subtaskSort && task.subtaskSort !== 'manual';
+    if (sortMode) return; // reordering only makes sense in manual order
+    const len = task.subtasks.length;
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (subGrabbedId === s.id) {
+        setSubGrabbedId(null);
+        setSubAnnounce(`Dropped ${s.title} at position ${idx + 1} of ${len}.`);
+      } else {
+        setSubGrabbedId(s.id);
+        setSubAnnounce(`Picked up ${s.title}, position ${idx + 1} of ${len}. Use Arrow Up and Down to move, Space to drop, Escape to cancel.`);
+      }
+    } else if (subGrabbedId === s.id && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      e.preventDefault();
+      const to = idx + (e.key === 'ArrowUp' ? -1 : 1);
+      if (to < 0 || to >= len) return;
+      const next = [...task.subtasks];
+      const [item] = next.splice(idx, 1);
+      next.splice(to, 0, item);
+      updateTask(task.id, { subtasks: next });
+      setSubAnnounce(`${s.title}, position ${to + 1} of ${len}.`);
+    } else if (e.key === 'Escape' && subGrabbedId === s.id) {
+      e.preventDefault();
+      setSubGrabbedId(null);
+      setSubAnnounce('Reordering cancelled.');
+    }
+  };
+
   if (!task) return null;
 
   const dueLbl = H.dueLabel(task.dueOffset);
@@ -500,8 +546,12 @@ export function TaskEditor({ taskId, inline, mobile }) {
                 handleDragOver={handleDragOver}
                 handleDragEnd={handleDragEnd}
                 sortMode={task.subtaskSort && task.subtaskSort !== 'manual'}
+                grabbedId={subGrabbedId}
+                onGripKeyDown={onSubGripKeyDown}
+                total={task.subtasks.length}
               />
             ))}
+            <div aria-live="assertive" className="sr-only">{subAnnounce}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '6px 0' }}>
               <span style={{ color: 'var(--accent)' }}><I.plusSm size={18} /></span>
               <input value={newSub} onChange={(e) => setNewSub(e.target.value)}

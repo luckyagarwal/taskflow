@@ -90,6 +90,10 @@ input, textarea { font-family: inherit; }
 
 /* utility */
 .no-sel { user-select: none; -webkit-user-select: none; }
+/* visually hidden but available to screen readers (for aria-live announcements) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+/* keyboard-reorder handles: invisible until focused, then shown with a ring */
+.drag-grip:focus-visible { opacity: 1 !important; outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px; }
 .text-sel { user-select: text; -webkit-user-select: text; }
 /* editable inputs and contenteditable allow selection; read-only/disabled ones do not
    (a read-only title textarea on a card must stay unselectable so it can't fight gestures) */
