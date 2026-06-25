@@ -267,7 +267,7 @@ export function TaskRow({ task, onToggle, onOpen, selected, density = 'comfortab
   const lpFired = React.useRef(false);
   const sw = React.useRef({ x: 0, y: 0, mode: null, swallow: false });
   const [dragX, setDragX] = React.useState(0);
-  const swipeEnabled = narrow && !anyMultiSelected && !selected;
+  const swipeEnabled = narrow && !anyMultiSelected && !selected && density !== 'card';
 
   const startLongPress = () => {
     if (!toggleMultiSelect) return;
