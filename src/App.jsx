@@ -678,7 +678,7 @@ const getSelectedTaskSectionId = (task, view) => {
 export function DesktopApp({ frameW = 1320 }) {
   const {
     selectedId, setSelectedId, search, setSearch, quickAdd, setQuickAdd,
-    sidebarWidth, setSidebarWidth, sidebarCollapsed, toasts,
+    sidebarWidth, setSidebarWidth, sidebarCollapsed, setSidebarCollapsed, toasts,
     view, setView, tasks, updateTask, deleteTask, density,
     toggleTask, updateSubtask, collapsedSections, setCollapsedSections, toggleSection
   } = useApp();
@@ -705,6 +705,13 @@ export function DesktopApp({ frameW = 1320 }) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setSearch(prev => !prev);
+        return;
+      }
+
+      // Sidebar Toggle (Cmd/Ctrl + B)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setSidebarCollapsed(prev => !prev);
         return;
       }
 
